@@ -35,137 +35,13 @@ class Game {
             { id: 7, name: 'Forest', resource: null, rewards: [] }
         ];
         
-        // Randomly assign weapons to players
-        const assignedWeapons = this.getRandomWeapons(2);
-        console.log('Assigned weapons:', assignedWeapons);
-        
-        // Randomly assign colors to players
-        this.playerColors = this.getRandomPlayerColors();
-        console.log('Assigned colors:', this.playerColors);
-        console.log('Player 1 color:', this.playerColors[1]);
-        console.log('Player 2 color:', this.playerColors[2]);
-        
-        this.players = [
-            { 
-                id: 1, 
-                name: 'Player 1',
-                tokens: {
-                    hunter: null,
-                    apprentice: null
-                },
-                selectedCards: {
-                    hunter: null,
-                    apprentice: null
-                },
-                resources: {
-                    money: assignedWeapons[0].initialMoney,
-                    exp: 3,
-                    hp: 4,
-                    ep: 6,
-                    beer: 0,
-                    bloodBag: 0
-                },
-                upgradeProgress: {
-                    ep: 0,  // beer for EP upgrade (0/4)
-                    hp: 0   // blood bags for HP upgrade (0/3)
-                },
-                milestones: {
-                    ep8: false,  // Max EP 8 milestone (2 points)
-                    ep10: false, // Max EP 10 milestone (4 points)
-                    hp8: false,  // Max HP 8 milestone (2 points)
-                    hp10: false  // Max HP 10 milestone (4 points)
-                },
-                score: 0,
-                maxResources: {
-                    money: 15,
-                    exp: 15,
-                    hp: 4,
-                    ep: 6
-                },
-                weapon: {
-                    ...assignedWeapons[0],
-                    currentAttackDice: assignedWeapons[0].attackDice,
-                    currentDefenseDice: assignedWeapons[0].name === 'Sword' ? 1 : assignedWeapons[0].defenseDice, // Sword Level 1: Start with 1 defense die
-                    attackLevel: 1,
-                    defenseLevel: 1,
-                    powerTrackPosition: 1 // Start at position 1
-                },
-                maxInventoryCapacity: assignedWeapons[0].capacity,
-                inventory: [], // Array to hold purchased items
-                popularityTrack: {
-                    pointToken: 0,  // Current level of point token (0-5)
-                    rewardToken: 0, // Current level of reward token (0-5)
-                    levelReached: [false, false, false, false, false, false] // Track which point levels have been collected
-                },
-                color: this.playerColors[1],
-                pets: {
-                    level1: 0,
-                    level2: 0,
-                    level3: 0
-                }
-            },
-            { 
-                id: 2, 
-                name: 'Player 2',
-                tokens: {
-                    hunter: null,
-                    apprentice: null
-                },
-                selectedCards: {
-                    hunter: null,
-                    apprentice: null
-                },
-                resources: {
-                    money: assignedWeapons[1].initialMoney,
-                    exp: 3,
-                    hp: 4,
-                    ep: 6,
-                    beer: 0,
-                    bloodBag: 0
-                },
-                upgradeProgress: {
-                    ep: 0,  // beer for EP upgrade (0/4)
-                    hp: 0   // blood bags for HP upgrade (0/3)
-                },
-                milestones: {
-                    ep8: false,  // Max EP 8 milestone (2 points)
-                    ep10: false, // Max EP 10 milestone (4 points)
-                    hp8: false,  // Max HP 8 milestone (2 points)
-                    hp10: false  // Max HP 10 milestone (4 points)
-                },
-                score: 0,
-                maxResources: {
-                    money: 15,
-                    exp: 15,
-                    hp: 4,
-                    ep: 6
-                },
-                weapon: {
-                    ...assignedWeapons[1],
-                    currentAttackDice: assignedWeapons[1].attackDice,
-                    currentDefenseDice: assignedWeapons[1].name === 'Sword' ? 1 : assignedWeapons[1].defenseDice, // Sword Level 1: Start with 1 defense die
-                    attackLevel: 1,
-                    defenseLevel: 1,
-                    powerTrackPosition: 1 // Start at position 1
-                },
-                maxInventoryCapacity: assignedWeapons[1].capacity,
-                inventory: [], // Array to hold purchased items
-                popularityTrack: {
-                    pointToken: 0,  // Current level of point token (0-5)
-                    rewardToken: 0, // Current level of reward token (0-5)
-                    levelReached: [false, false, false, false, false, false] // Track which point levels have been collected
-                },
-                color: this.playerColors[2],
-                pets: {
-                    level1: 0,
-                    level2: 0,
-                    level3: 0
-                }
-            }
-        ];
-        
+        // Initialize game properties (will be set up when player count is selected)
+        this.playerCount = 0;
+        this.players = [];
+        this.playerColors = null;
+        this.dummyTokens = [];
         this.currentPlayerIndex = 0;
-        this.roundPhase = 'selection'; // 'selection', 'distribution', 'station', 'store', 'battle', 'nextround'
+        this.roundPhase = 'setup'; // 'setup', 'selection', 'distribution', 'station', 'store', 'battle', 'nextround'
         this.stationChoices = {}; // Store station choices for each player
         this.pendingStationPlayer = null; // Track which player needs to choose
         this.stationTotalCount = 0; // Track total count at station
@@ -174,11 +50,327 @@ class Game {
         this.storeItems = this.loadStoreItems(); // Load store items
         this.currentStorePlayer = null; // Track current shopping player
         
-        // Dummy token system: Start with dummy tokens at locations 2, 4, 6
-        this.dummyTokens = [2, 4, 6]; // Array of location IDs where dummy tokens are placed
-        console.log('Initialized dummy tokens at locations:', this.dummyTokens);
+        this.showPlayerCountSelection();
+    }
+    
+    showPlayerCountSelection() {
+        const selectionScreen = document.getElementById('player-count-selection');
+        selectionScreen.style.display = 'flex';
         
+        // Hide the main game area
+        const playerBoards = document.getElementById('player-boards-container');
+        const gameBoard = document.querySelector('.game-board');
+        const playerArea = document.querySelector('.player-area');
+        const gameStatus = document.querySelector('.game-status');
+        
+        if (playerBoards) playerBoards.style.display = 'none';
+        if (gameBoard) gameBoard.style.display = 'none';
+        if (playerArea) playerArea.style.display = 'none';
+        if (gameStatus) gameStatus.style.display = 'none';
+    }
+    
+    startGameWithPlayers(playerCount) {
+        console.log(`Starting game with ${playerCount} players`);
+        this.playerCount = playerCount;
+        
+        // Hide player count selection
+        const selectionScreen = document.getElementById('player-count-selection');
+        selectionScreen.style.display = 'none';
+        
+        // Show main game area
+        const playerBoards = document.getElementById('player-boards-container');
+        const gameBoard = document.querySelector('.game-board');
+        const playerArea = document.querySelector('.player-area');
+        const gameStatus = document.querySelector('.game-status');
+        
+        if (playerBoards) playerBoards.style.display = 'grid';
+        if (gameBoard) gameBoard.style.display = 'grid';
+        if (playerArea) playerArea.style.display = 'block';
+        if (gameStatus) gameStatus.style.display = 'block';
+        
+        // Initialize the game with selected player count
+        this.initializeGame(playerCount);
+    }
+    
+    initializeGame(playerCount) {
+        // Set up dummy tokens based on player count
+        this.setupDummyTokens(playerCount);
+        
+        // Randomly assign weapons to players
+        const assignedWeapons = this.getRandomWeapons(playerCount);
+        console.log('Assigned weapons:', assignedWeapons);
+        
+        // Randomly assign colors to players
+        this.playerColors = this.getRandomPlayerColors(playerCount);
+        console.log('Assigned colors:', this.playerColors);
+        
+        // Create players
+        this.createPlayers(playerCount, assignedWeapons);
+        
+        // Create player boards
+        this.createPlayerBoards();
+        
+        // Set player board grid class
+        const playerBoardsContainer = document.getElementById('player-boards-container');
+        playerBoardsContainer.className = `player-boards players-${playerCount}`;
+        
+        // Initialize the game UI
+        this.roundPhase = 'selection';
         this.init();
+    }
+    
+    setupDummyTokens(playerCount) {
+        switch (playerCount) {
+            case 2:
+                this.dummyTokens = [2, 4, 6];
+                break;
+            case 3:
+                this.dummyTokens = [2, 5];
+                break;
+            case 4:
+                this.dummyTokens = [3];
+                break;
+            case 5:
+                this.dummyTokens = [];
+                break;
+        }
+        console.log(`Initialized dummy tokens for ${playerCount} players at locations:`, this.dummyTokens);
+    }
+    
+    createPlayers(playerCount, assignedWeapons) {
+        this.players = [];
+        
+        for (let i = 0; i < playerCount; i++) {
+            const playerId = i + 1;
+            const weapon = assignedWeapons[i];
+            
+            const player = {
+                id: playerId,
+                name: `Player ${playerId}`,
+                tokens: {
+                    hunter: null,
+                    apprentice: null
+                },
+                selectedCards: {
+                    hunter: null,
+                    apprentice: null
+                },
+                resources: {
+                    money: weapon.initialMoney,
+                    exp: 3,
+                    hp: 4,
+                    ep: 6,
+                    beer: 0,
+                    bloodBag: 0
+                },
+                upgradeProgress: {
+                    ep: 0,  // beer for EP upgrade (0/4)
+                    hp: 0   // blood bags for HP upgrade (0/3)
+                },
+                milestones: {
+                    ep8: false,  // Max EP 8 milestone (2 points)
+                    ep10: false, // Max EP 10 milestone (4 points)
+                    hp8: false,  // Max HP 8 milestone (2 points)
+                    hp10: false  // Max HP 10 milestone (4 points)
+                },
+                score: 0,
+                maxResources: {
+                    money: 15,
+                    exp: 15,
+                    hp: 4,
+                    ep: 6
+                },
+                weapon: {
+                    ...weapon,
+                    currentAttackDice: weapon.attackDice,
+                    currentDefenseDice: weapon.name === 'Sword' ? 1 : weapon.defenseDice, // Sword Level 1: Start with 1 defense die
+                    attackLevel: 1,
+                    defenseLevel: 1,
+                    powerTrackPosition: 1 // Start at position 1
+                },
+                maxInventoryCapacity: weapon.capacity,
+                inventory: [], // Array to hold purchased items
+                popularityTrack: {
+                    pointToken: 0,  // Current level of point token (0-5)
+                    rewardToken: 0, // Current level of reward token (0-5)
+                    levelReached: [false, false, false, false, false, false] // Track which point levels have been collected
+                },
+                color: this.playerColors[playerId],
+                pets: {
+                    level1: 0,
+                    level2: 0,
+                    level3: 0
+                }
+            };
+            
+            this.players.push(player);
+        }
+        
+        // Verify all players have unique colors (should always pass now)
+        const playerColorNames = this.players.map(p => p.color.name);
+        console.log('✅ Players created with unique colors:', playerColorNames);
+        
+        console.log('Created players:', this.players);
+    }
+    
+    createPlayerBoards() {
+        const container = document.getElementById('player-boards-container');
+        container.innerHTML = ''; // Clear existing content
+        
+        this.players.forEach(player => {
+            const playerBoard = this.createPlayerBoardHTML(player);
+            container.appendChild(playerBoard);
+        });
+    }
+    
+    createPlayerBoardHTML(player) {
+        const board = document.createElement('div');
+        board.className = 'player-board';
+        board.id = `player-${player.id}-board`;
+        
+        board.innerHTML = `
+            <h2 id="player-${player.id}-name">${player.name} <span class="level-display">Lv. <span id="p${player.id}-level">0</span></span> <span class="score-display">Score: <span id="p${player.id}-score">${player.score}</span></span></h2>
+            <div class="resources">
+                <div class="resource">
+                    <span class="resource-icon money">$</span>
+                    <span class="resource-value" id="p${player.id}-money">${player.resources.money}</span>
+                    <span class="resource-max">/15</span>
+                </div>
+                <div class="resource">
+                    <span class="resource-icon exp">EXP</span>
+                    <span class="resource-value" id="p${player.id}-exp">${player.resources.exp}</span>
+                    <span class="resource-max">/15</span>
+                </div>
+                <div class="resource hp">
+                    <span class="resource-icon hp">HP</span>
+                    <span class="resource-value" id="p${player.id}-hp">${player.resources.hp}</span>
+                    <span class="resource-max">/${player.maxResources.hp}</span>
+                </div>
+                <div class="resource ep">
+                    <span class="resource-icon ep">EP</span>
+                    <span class="resource-value" id="p${player.id}-ep">${player.resources.ep}</span>
+                    <span class="resource-max">/${player.maxResources.ep}</span>
+                </div>
+            </div>
+            <div class="upgrade-progress">
+                <div class="upgrade-item">
+                    <div class="upgrade-header">
+                        <span>EP Upgrade:</span>
+                        <span class="progress" id="p${player.id}-ep-progress">${player.upgradeProgress.ep}/4</span>
+                        <button class="small-btn" id="p${player.id}-ep-upgrade-btn" onclick="game.addToUpgrade(${player.id}, 'ep')">+🍺</button>
+                    </div>
+                    <div class="upgrade-milestones">
+                        <label class="milestone-checkbox">
+                            <input type="checkbox" id="p${player.id}-ep-milestone-8" disabled>
+                            <span>Max:8 2 points</span>
+                        </label>
+                        <label class="milestone-checkbox">
+                            <input type="checkbox" id="p${player.id}-ep-milestone-10" disabled>
+                            <span>Max:10 4 points</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="upgrade-item">
+                    <div class="upgrade-header">
+                        <span>HP Upgrade:</span>
+                        <span class="progress" id="p${player.id}-hp-progress">${player.upgradeProgress.hp}/3</span>
+                        <button class="small-btn" id="p${player.id}-hp-upgrade-btn" onclick="game.addToUpgrade(${player.id}, 'hp')">+🩸</button>
+                    </div>
+                    <div class="upgrade-milestones">
+                        <label class="milestone-checkbox">
+                            <input type="checkbox" id="p${player.id}-hp-milestone-8" disabled>
+                            <span>Max:8 2 points</span>
+                        </label>
+                        <label class="milestone-checkbox">
+                            <input type="checkbox" id="p${player.id}-hp-milestone-10" disabled>
+                            <span>Max:10 4 points</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="inventory-section">
+                <h4>Inventory</h4>
+                <div class="inventory-items" id="p${player.id}-inventory">
+                    <!-- Inventory items will be displayed here -->
+                </div>
+            </div>
+            <div class="weapon-info">
+                <h4 id="p${player.id}-weapon-name">${player.weapon.name}</h4>
+                <div class="weapon-stats">
+                    <div class="stat">
+                        <span>Attack Dice:</span>
+                        <span id="p${player.id}-attack-dice">${player.weapon.currentAttackDice}</span>
+                        <button class="small-btn" onclick="game.upgradeWeapon(${player.id}, 'attack')" title="Upgrade attack dice">⚔️</button>
+                        <span class="upgrade-cost">(<span id="p${player.id}-req-exp-attack">${player.weapon.reqExpAttack}</span> EXP)</span>
+                    </div>
+                    <div class="stat">
+                        <span>Defense Dice:</span>
+                        <span id="p${player.id}-defense-dice">${player.weapon.currentDefenseDice}</span>
+                        <button class="small-btn" onclick="game.upgradeWeapon(${player.id}, 'defense')" title="Upgrade defense dice">🛡️</button>
+                        <span class="upgrade-cost">(<span id="p${player.id}-req-exp-defense">3</span> EXP)</span>
+                    </div>
+                    <div class="stat">
+                        <span>Hit Rate:</span>
+                        <div class="damage-grid" id="p${player.id}-damage-grid">
+                            <!-- Damage grid will be populated by JavaScript -->
+                        </div>
+                    </div>
+                    <div class="stat">
+                        <span>Capacity:</span>
+                        <span id="p${player.id}-capacity">${player.weapon.capacity}</span>
+                    </div>
+                    <div class="stat rifle-bullets" id="p${player.id}-bullets-stat" style="display: ${player.weapon.name === 'Rifle' ? 'flex' : 'none'};">
+                        <span>Bullets:</span>
+                        <span id="p${player.id}-bullet-count">0/6</span>
+                    </div>
+                    <div class="stat plasma-batteries" id="p${player.id}-batteries-stat" style="display: ${player.weapon.name === 'Plasma' ? 'flex' : 'none'};">
+                        <span>Batteries:</span>
+                        <span id="p${player.id}-battery-count">0/6</span>
+                    </div>
+                </div>
+                <div class="weapon-power-area">
+                    <h5>Weapon Power</h5>
+                    <div class="weapon-power-track">
+                        <div class="track-space" data-position="1"></div>
+                        <div class="track-space" data-position="2"></div>
+                        <div class="track-space upgrade-space" data-position="3">⬆️</div>
+                        <div class="track-space" data-position="4"></div>
+                        <div class="track-space" data-position="5"></div>
+                        <div class="track-space" data-position="6"></div>
+                        <div class="track-space upgrade-space" data-position="7">⬆️</div>
+                        <div class="track-token" id="p${player.id}-power-token"></div>
+                    </div>
+                    <div class="weapon-powers">
+                        <div class="power-level active" id="p${player.id}-power-lv1">
+                            <div class="power-title">Lv.1</div>
+                            <div class="power-desc" id="p${player.id}-power-desc-1">${player.weapon.lv1Power}</div>
+                        </div>
+                        <div class="power-level" id="p${player.id}-power-lv2">
+                            <div class="power-title">Lv.2</div>
+                            <div class="power-desc" id="p${player.id}-power-desc-2">${player.weapon.lv2Power}</div>
+                        </div>
+                        <div class="power-level" id="p${player.id}-power-lv3">
+                            <div class="power-title">Lv.3</div>
+                            <div class="power-desc" id="p${player.id}-power-desc-3">${player.weapon.lv3Power}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="popularity-track-section">
+                <h4>Popularity Track</h4>
+                <div class="popularity-track" id="p${player.id}-popularity-track">
+                    <!-- Popularity track will be displayed here -->
+                </div>
+            </div>
+            <div class="pet-section">
+                <h4>Pets</h4>
+                <div class="pet-items" id="p${player.id}-pets">
+                    <!-- Pet tokens will be displayed here -->
+                </div>
+            </div>
+        `;
+        
+        return board;
     }
     
     getRandomWeapons(count) {
@@ -201,19 +393,22 @@ class Game {
         // Add small delay to ensure DOM is fully ready
         setTimeout(() => {
             console.log('Init - Players:', this.players);
-            console.log('Player 1 inventory:', this.players[0].inventory);
-            console.log('Player 2 inventory:', this.players[1].inventory);
+            this.players.forEach(player => {
+                console.log(`Player ${player.id} inventory:`, player.inventory);
+            });
             this.createLocationCards();
-            // Initialize displays for both players
+            // Initialize displays for all players
             this.updateInventoryDisplayOld(); // Update weapon displays
-            this.updateInventoryDisplay(1);
-            this.updateInventoryDisplay(2);
+            this.players.forEach(player => {
+                this.updateInventoryDisplay(player.id);
+            });
             this.updatePetDisplay();
             // Apply player colors to name headers
             this.applyPlayerNameColors();
-            // Initialize popularity track displays
-            this.updatePopularityTrackDisplay(1);
-            this.updatePopularityTrackDisplay(2);
+            // Initialize popularity track displays for all players
+            this.players.forEach(player => {
+                this.updatePopularityTrackDisplay(player.id);
+            });
             // Initialize dummy token display
             this.updateDummyTokenDisplay();
         }, 100);
@@ -320,8 +515,8 @@ class Game {
         return card;
     }
     
-    getRandomPlayerColors() {
-        // Define available color palette
+    getRandomPlayerColors(playerCount = 2) {
+        // Define available color palette - ensure we have enough colors
         const colorPalette = [
             { background: '#e67e22', border: '#d35400', name: 'Orange' },
             { background: '#27ae60', border: '#229954', name: 'Green' },
@@ -332,31 +527,48 @@ class Game {
             { background: '#000000', border: '#333333', name: 'Black' }
         ];
         
-        console.log('Original palette:', colorPalette.map(c => c.name));
-        
-        // Randomly select 2 different colors for players
-        const shuffledColors = [...colorPalette];
-        
-        // Shuffle array using Fisher-Yates algorithm
-        for (let i = shuffledColors.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            console.log(`Swapping index ${i} with ${j}`);
-            [shuffledColors[i], shuffledColors[j]] = [shuffledColors[j], shuffledColors[i]];
+        // Ensure we have enough colors for the player count
+        if (playerCount > colorPalette.length) {
+            console.error(`Not enough colors for ${playerCount} players! Max supported: ${colorPalette.length}`);
+            playerCount = colorPalette.length;
         }
         
-        console.log('Shuffled palette:', shuffledColors.map(c => c.name));
-        console.log('Player 1 gets:', shuffledColors[0].name);
-        console.log('Player 2 gets:', shuffledColors[1].name);
+        console.log(`Assigning ${playerCount} unique colors from palette:`, colorPalette.map(c => c.name));
         
-        return {
-            1: shuffledColors[0], // Player 1 gets first randomly selected color
-            2: shuffledColors[1]  // Player 2 gets second randomly selected color
-        };
+        // Use a more robust method to ensure unique colors
+        const selectedColors = [];
+        const availableColors = [...colorPalette];
+        
+        // Select random colors without replacement
+        for (let i = 0; i < playerCount; i++) {
+            const randomIndex = Math.floor(Math.random() * availableColors.length);
+            const selectedColor = availableColors.splice(randomIndex, 1)[0];
+            selectedColors.push(selectedColor);
+            console.log(`Player ${i + 1} assigned:`, selectedColor.name);
+        }
+        
+        // Build the player colors object
+        const playerColors = {};
+        for (let i = 0; i < playerCount; i++) {
+            playerColors[i + 1] = selectedColors[i];
+        }
+        
+        // Final verification (this should always pass now)
+        const assignedColorNames = selectedColors.map(c => c.name);
+        const uniqueColorNames = [...new Set(assignedColorNames)];
+        
+        if (assignedColorNames.length !== uniqueColorNames.length) {
+            console.error('❌ CRITICAL ERROR: Duplicate colors detected!');
+            console.error('This should never happen with the new algorithm');
+        } else {
+            console.log('✅ All players guaranteed unique colors:', assignedColorNames);
+        }
+        
+        return playerColors;
     }
     
     getPlayerColors(playerId) {
         // Return the randomly assigned colors for this game
-        console.log(`Getting colors for player ${playerId}:`, this.playerColors[playerId]);
         return this.playerColors[playerId] || {
             background: '#f39c12',
             border: '#e67e22'
@@ -600,19 +812,19 @@ class Game {
     }
     
     resetMilestoneCheckboxes() {
-        // Reset all milestone checkboxes
-        const checkboxIds = [
-            'p1-ep-milestone-8', 'p1-ep-milestone-10',
-            'p1-hp-milestone-8', 'p1-hp-milestone-10',
-            'p2-ep-milestone-8', 'p2-ep-milestone-10',
-            'p2-hp-milestone-8', 'p2-hp-milestone-10'
-        ];
-        
-        checkboxIds.forEach(id => {
-            const checkbox = document.getElementById(id);
-            if (checkbox) {
-                checkbox.checked = false;
-            }
+        // Reset all milestone checkboxes for all players
+        this.players.forEach(player => {
+            const checkboxIds = [
+                `p${player.id}-ep-milestone-8`, `p${player.id}-ep-milestone-10`,
+                `p${player.id}-hp-milestone-8`, `p${player.id}-hp-milestone-10`
+            ];
+            
+            checkboxIds.forEach(id => {
+                const checkbox = document.getElementById(id);
+                if (checkbox) {
+                    checkbox.checked = false;
+                }
+            });
         });
     }
     
@@ -993,8 +1205,9 @@ class Game {
         
         this.updateResourceDisplay();
         this.updateInventoryDisplayOld();
-        this.updateInventoryDisplay(1);
-        this.updateInventoryDisplay(2);
+        this.players.forEach(player => {
+            this.updateInventoryDisplay(player.id);
+        });
     }
     
     updateInventoryDisplayOld() {
@@ -1295,8 +1508,9 @@ class Game {
             
             // Update all displays
             this.updateInventoryDisplayOld();
-            this.updateInventoryDisplay(1);
-            this.updateInventoryDisplay(2);
+            this.players.forEach(player => {
+                this.updateInventoryDisplay(player.id);
+            });
             this.updateResourceDisplay();
             
             // Update store capacity display if in store phase
@@ -1321,8 +1535,9 @@ class Game {
                 player.resources.beer--;
                 this.modifyResource(playerId, 'ep', 1);
                 this.updateInventoryDisplayOld();
-        this.updateInventoryDisplay(1);
-        this.updateInventoryDisplay(2);
+                this.players.forEach(p => {
+                    this.updateInventoryDisplay(p.id);
+                });
                 alert(`${player.name} used beer and recovered 1 EP!`);
             } else {
                 alert(`${player.name}'s EP is already at maximum!`);
@@ -1333,8 +1548,9 @@ class Game {
                 player.resources.bloodBag--;
                 this.modifyResource(playerId, 'hp', 1);
                 this.updateInventoryDisplayOld();
-        this.updateInventoryDisplay(1);
-        this.updateInventoryDisplay(2);
+                this.players.forEach(p => {
+                    this.updateInventoryDisplay(p.id);
+                });
                 alert(`${player.name} used blood bag and recovered 1 HP!`);
             } else {
                 alert(`${player.name}'s HP is already at maximum!`);
@@ -1451,8 +1667,9 @@ class Game {
                 player.weapon.currentAttackDice++;
                 this.updateResourceDisplay();
                 this.updateInventoryDisplayOld();
-        this.updateInventoryDisplay(1);
-        this.updateInventoryDisplay(2); // Update weapon display immediately
+                this.players.forEach(player => {
+                    this.updateInventoryDisplay(player.id);
+                }); // Update weapon display immediately
                 alert(`${player.name}'s attack dice upgraded to ${player.weapon.currentAttackDice}!`);
                 return true;
             } else {
@@ -1472,8 +1689,9 @@ class Game {
                 player.weapon.currentDefenseDice++;
                 this.updateResourceDisplay();
                 this.updateInventoryDisplayOld();
-        this.updateInventoryDisplay(1);
-        this.updateInventoryDisplay(2); // Update weapon display immediately
+                this.players.forEach(player => {
+                    this.updateInventoryDisplay(player.id);
+                }); // Update weapon display immediately
                 alert(`${player.name}'s defense dice upgraded to ${player.weapon.currentDefenseDice}!`);
                 return true;
             } else {
@@ -2418,8 +2636,9 @@ class Game {
         
         this.updateResourceDisplay();
         this.updateInventoryDisplayOld();
-        this.updateInventoryDisplay(1);
-        this.updateInventoryDisplay(2);
+        this.players.forEach(player => {
+            this.updateInventoryDisplay(player.id);
+        });
     }
     
     advanceWeaponPowerTrack(playerId, monsterLevel) {
@@ -2743,8 +2962,9 @@ class Game {
         this.showStore();
         this.updateResourceDisplay();
         this.updateInventoryDisplayOld();
-        this.updateInventoryDisplay(1);
-        this.updateInventoryDisplay(2);
+        this.players.forEach(player => {
+            this.updateInventoryDisplay(player.id);
+        });
         
         // alert(`${player.name} bought ${item.name}!`); // Removed popup as requested
     }
@@ -2810,16 +3030,19 @@ class Game {
         this.showStore();
         this.updateResourceDisplay();
         this.updateInventoryDisplayOld();
-        this.updateInventoryDisplay(1);
-        this.updateInventoryDisplay(2);
+        this.players.forEach(player => {
+            this.updateInventoryDisplay(player.id);
+        });
         
-        // Update bullet displays
-        this.updateBulletDisplay(1);
-        this.updateBulletDisplay(2);
+        // Update bullet displays for all players
+        this.players.forEach(player => {
+            this.updateBulletDisplay(player.id);
+        });
         
-        // Update battery displays
-        this.updateBatteryDisplay(1);
-        this.updateBatteryDisplay(2);
+        // Update battery displays for all players
+        this.players.forEach(player => {
+            this.updateBatteryDisplay(player.id);
+        });
         
         // alert(`${player.name} bought ${itemName}!`); // Removed popup as requested
     }
@@ -2965,8 +3188,9 @@ class Game {
         
         this.updateResourceDisplay();
         this.updateInventoryDisplayOld();
-        this.updateInventoryDisplay(1);
-        this.updateInventoryDisplay(2);
+        this.players.forEach(player => {
+            this.updateInventoryDisplay(player.id);
+        });
         
         // Now handle Station choices
         this.handleStationChoices();
@@ -3150,8 +3374,9 @@ class Game {
         
         // Update displays after applying round start effects
         this.updateResourceDisplay();
-        this.updateInventoryDisplay(1);
-        this.updateInventoryDisplay(2);
+        this.players.forEach(player => {
+            this.updateInventoryDisplay(player.id);
+        });
         
         // Reset for next round
         this.roundPhase = 'selection';
@@ -3309,8 +3534,9 @@ class Game {
         
         // Update displays
         this.updateInventoryDisplayOld();
-        this.updateInventoryDisplay(1);
-        this.updateInventoryDisplay(2);
+        this.players.forEach(player => {
+            this.updateInventoryDisplay(player.id);
+        });
         this.updateResourceDisplay();
         
         // Update store capacity display if in store phase
@@ -3351,8 +3577,9 @@ class Game {
         
         this.updateResourceDisplay();
         this.updateInventoryDisplayOld();
-        this.updateInventoryDisplay(1);
-        this.updateInventoryDisplay(2);
+        this.players.forEach(player => {
+            this.updateInventoryDisplay(player.id);
+        });
         
         alert(`${player.name} used ${item.name}!`);
     }
