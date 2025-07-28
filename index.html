@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hunter & Apprentice Board Game</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="game-container">
+        <div class="game-header">
+            <button id="new-game-btn" class="new-game-button">Start a New Game</button>
+            <h1>Hunter & Apprentice</h1>
+        </div>
+        
+        <!-- Player Boards -->
+        <div class="player-boards">
+            <div class="player-board" id="player-1-board">
+                <h2 id="player-1-name">Player 1 <span class="level-display">Lv. <span id="p1-level">0</span></span> <span class="score-display">Score: <span id="p1-score">0</span></span></h2>
+                <div class="resources">
+                    <div class="resource">
+                        <span class="resource-icon money">$</span>
+                        <span class="resource-value" id="p1-money">0</span>
+                        <span class="resource-max">/15</span>
+                    </div>
+                    <div class="resource">
+                        <span class="resource-icon exp">EXP</span>
+                        <span class="resource-value" id="p1-exp">0</span>
+                        <span class="resource-max">/15</span>
+                    </div>
+                    <div class="resource hp">
+                        <span class="resource-icon hp">HP</span>
+                        <span class="resource-value" id="p1-hp">4</span>
+                        <span class="resource-max">/4</span>
+                    </div>
+                    <div class="resource ep">
+                        <span class="resource-icon ep">EP</span>
+                        <span class="resource-value" id="p1-ep">6</span>
+                        <span class="resource-max">/6</span>
+                    </div>
+                </div>
+                <div class="upgrade-progress">
+                    <div class="upgrade-item">
+                        <div class="upgrade-header">
+                            <span>EP Upgrade:</span>
+                            <span class="progress" id="p1-ep-progress">0/4</span>
+                            <button class="small-btn" id="p1-ep-upgrade-btn" onclick="game.addToUpgrade(1, 'ep')">+🍺</button>
+                        </div>
+                        <div class="upgrade-milestones">
+                            <label class="milestone-checkbox">
+                                <input type="checkbox" id="p1-ep-milestone-8" disabled>
+                                <span>Max:8 2 points</span>
+                            </label>
+                            <label class="milestone-checkbox">
+                                <input type="checkbox" id="p1-ep-milestone-10" disabled>
+                                <span>Max:10 4 points</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="upgrade-item">
+                        <div class="upgrade-header">
+                            <span>HP Upgrade:</span>
+                            <span class="progress" id="p1-hp-progress">0/3</span>
+                            <button class="small-btn" id="p1-hp-upgrade-btn" onclick="game.addToUpgrade(1, 'hp')">+🩸</button>
+                        </div>
+                        <div class="upgrade-milestones">
+                            <label class="milestone-checkbox">
+                                <input type="checkbox" id="p1-hp-milestone-8" disabled>
+                                <span>Max:8 2 points</span>
+                            </label>
+                            <label class="milestone-checkbox">
+                                <input type="checkbox" id="p1-hp-milestone-10" disabled>
+                                <span>Max:10 4 points</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="inventory-section">
+                    <h4>Inventory</h4>
+                    <div class="inventory-items" id="p1-inventory">
+                        <!-- Inventory items will be displayed here -->
+                    </div>
+                </div>
+                <div class="weapon-info">
+                    <h4 id="p1-weapon-name">Loading...</h4>
+                    <div class="weapon-stats">
+                        <div class="stat">
+                            <span>Attack Dice:</span>
+                            <span id="p1-attack-dice">0</span>
+                            <button class="small-btn" onclick="game.upgradeWeapon(1, 'attack')" title="Upgrade attack dice">⚔️</button>
+                            <span class="upgrade-cost">(<span id="p1-req-exp-attack">0</span> EXP)</span>
+                        </div>
+                        <div class="stat">
+                            <span>Defense Dice:</span>
+                            <span id="p1-defense-dice">0</span>
+                            <button class="small-btn" onclick="game.upgradeWeapon(1, 'defense')" title="Upgrade defense dice">🛡️</button>
+                            <span class="upgrade-cost">(<span id="p1-req-exp-defense">0</span> EXP)</span>
+                        </div>
+                        <div class="stat">
+                            <span>Hit Rate:</span>
+                            <div class="damage-grid" id="p1-damage-grid">
+                                <!-- Damage grid will be populated by JavaScript -->
+                            </div>
+                        </div>
+                        <div class="stat">
+                            <span>Capacity:</span>
+                            <span id="p1-capacity">0</span>
+                        </div>
+                        <div class="stat rifle-bullets" id="p1-bullets-stat" style="display: none;">
+                            <span>Bullets:</span>
+                            <span id="p1-bullet-count">0/6</span>
+                        </div>
+                        <div class="stat plasma-batteries" id="p1-batteries-stat" style="display: none;">
+                            <span>Batteries:</span>
+                            <span id="p1-battery-count">0/6</span>
+                        </div>
+                    </div>
+                    <div class="weapon-power-area">
+                        <h5>Weapon Power</h5>
+                        <div class="weapon-power-track">
+                            <div class="track-space" data-position="1"></div>
+                            <div class="track-space" data-position="2"></div>
+                            <div class="track-space upgrade-space" data-position="3">⬆️</div>
+                            <div class="track-space" data-position="4"></div>
+                            <div class="track-space" data-position="5"></div>
+                            <div class="track-space" data-position="6"></div>
+                            <div class="track-space upgrade-space" data-position="7">⬆️</div>
+                            <div class="track-token" id="p1-power-token"></div>
+                        </div>
+                        <div class="weapon-powers">
+                            <div class="power-level active" id="p1-power-lv1">
+                                <div class="power-title">Lv.1</div>
+                                <div class="power-desc" id="p1-power-desc-1">Loading...</div>
+                            </div>
+                            <div class="power-level" id="p1-power-lv2">
+                                <div class="power-title">Lv.2</div>
+                                <div class="power-desc" id="p1-power-desc-2">Loading...</div>
+                            </div>
+                            <div class="power-level" id="p1-power-lv3">
+                                <div class="power-title">Lv.3</div>
+                                <div class="power-desc" id="p1-power-desc-3">Loading...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="popularity-track-section">
+                    <h4>Popularity Track</h4>
+                    <div class="popularity-track" id="p1-popularity-track">
+                        <!-- Popularity track will be displayed here -->
+                    </div>
+                </div>
+                <div class="pet-section">
+                    <h4>Pets</h4>
+                    <div class="pet-items" id="p1-pets">
+                        <!-- Pet tokens will be displayed here -->
+                    </div>
+                </div>
+            </div>
+            
+            <div class="player-board" id="player-2-board">
+                <h2 id="player-2-name">Player 2 <span class="level-display">Lv. <span id="p2-level">0</span></span> <span class="score-display">Score: <span id="p2-score">0</span></span></h2>
+                <div class="resources">
+                    <div class="resource">
+                        <span class="resource-icon money">$</span>
+                        <span class="resource-value" id="p2-money">0</span>
+                        <span class="resource-max">/15</span>
+                    </div>
+                    <div class="resource">
+                        <span class="resource-icon exp">EXP</span>
+                        <span class="resource-value" id="p2-exp">0</span>
+                        <span class="resource-max">/15</span>
+                    </div>
+                    <div class="resource hp">
+                        <span class="resource-icon hp">HP</span>
+                        <span class="resource-value" id="p2-hp">4</span>
+                        <span class="resource-max">/4</span>
+                    </div>
+                    <div class="resource ep">
+                        <span class="resource-icon ep">EP</span>
+                        <span class="resource-value" id="p2-ep">6</span>
+                        <span class="resource-max">/6</span>
+                    </div>
+                </div>
+                <div class="upgrade-progress">
+                    <div class="upgrade-item">
+                        <div class="upgrade-header">
+                            <span>EP Upgrade:</span>
+                            <span class="progress" id="p2-ep-progress">0/4</span>
+                            <button class="small-btn" id="p2-ep-upgrade-btn" onclick="game.addToUpgrade(2, 'ep')">+🍺</button>
+                        </div>
+                        <div class="upgrade-milestones">
+                            <label class="milestone-checkbox">
+                                <input type="checkbox" id="p2-ep-milestone-8" disabled>
+                                <span>Max:8 2 points</span>
+                            </label>
+                            <label class="milestone-checkbox">
+                                <input type="checkbox" id="p2-ep-milestone-10" disabled>
+                                <span>Max:10 4 points</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="upgrade-item">
+                        <div class="upgrade-header">
+                            <span>HP Upgrade:</span>
+                            <span class="progress" id="p2-hp-progress">0/3</span>
+                            <button class="small-btn" id="p2-hp-upgrade-btn" onclick="game.addToUpgrade(2, 'hp')">+🩸</button>
+                        </div>
+                        <div class="upgrade-milestones">
+                            <label class="milestone-checkbox">
+                                <input type="checkbox" id="p2-hp-milestone-8" disabled>
+                                <span>Max:8 2 points</span>
+                            </label>
+                            <label class="milestone-checkbox">
+                                <input type="checkbox" id="p2-hp-milestone-10" disabled>
+                                <span>Max:10 4 points</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="inventory-section">
+                    <h4>Inventory</h4>
+                    <div class="inventory-items" id="p2-inventory">
+                        <!-- Inventory items will be displayed here -->
+                    </div>
+                </div>
+                <div class="weapon-info">
+                    <h4 id="p2-weapon-name">Loading...</h4>
+                    <div class="weapon-stats">
+                        <div class="stat">
+                            <span>Attack Dice:</span>
+                            <span id="p2-attack-dice">0</span>
+                            <button class="small-btn" onclick="game.upgradeWeapon(2, 'attack')" title="Upgrade attack dice">⚔️</button>
+                            <span class="upgrade-cost">(<span id="p2-req-exp-attack">0</span> EXP)</span>
+                        </div>
+                        <div class="stat">
+                            <span>Defense Dice:</span>
+                            <span id="p2-defense-dice">0</span>
+                            <button class="small-btn" onclick="game.upgradeWeapon(2, 'defense')" title="Upgrade defense dice">🛡️</button>
+                            <span class="upgrade-cost">(<span id="p2-req-exp-defense">0</span> EXP)</span>
+                        </div>
+                        <div class="stat">
+                            <span>Hit Rate:</span>
+                            <div class="damage-grid" id="p2-damage-grid">
+                                <!-- Damage grid will be populated by JavaScript -->
+                            </div>
+                        </div>
+                        <div class="stat">
+                            <span>Capacity:</span>
+                            <span id="p2-capacity">0</span>
+                        </div>
+                        <div class="stat rifle-bullets" id="p2-bullets-stat" style="display: none;">
+                            <span>Bullets:</span>
+                            <span id="p2-bullet-count">0/6</span>
+                        </div>
+                        <div class="stat plasma-batteries" id="p2-batteries-stat" style="display: none;">
+                            <span>Batteries:</span>
+                            <span id="p2-battery-count">0/6</span>
+                        </div>
+                    </div>
+                    <div class="weapon-power-area">
+                        <h5>Weapon Power</h5>
+                        <div class="weapon-power-track">
+                            <div class="track-space" data-position="1"></div>
+                            <div class="track-space" data-position="2"></div>
+                            <div class="track-space upgrade-space" data-position="3">⬆️</div>
+                            <div class="track-space" data-position="4"></div>
+                            <div class="track-space" data-position="5"></div>
+                            <div class="track-space" data-position="6"></div>
+                            <div class="track-space upgrade-space" data-position="7">⬆️</div>
+                            <div class="track-token" id="p2-power-token"></div>
+                        </div>
+                        <div class="weapon-powers">
+                            <div class="power-level active" id="p2-power-lv1">
+                                <div class="power-title">Lv.1</div>
+                                <div class="power-desc" id="p2-power-desc-1">Loading...</div>
+                            </div>
+                            <div class="power-level" id="p2-power-lv2">
+                                <div class="power-title">Lv.2</div>
+                                <div class="power-desc" id="p2-power-desc-2">Loading...</div>
+                            </div>
+                            <div class="power-level" id="p2-power-lv3">
+                                <div class="power-title">Lv.3</div>
+                                <div class="power-desc" id="p2-power-desc-3">Loading...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="popularity-track-section">
+                    <h4>Popularity Track</h4>
+                    <div class="popularity-track" id="p2-popularity-track">
+                        <!-- Popularity track will be displayed here -->
+                    </div>
+                </div>
+                <div class="pet-section">
+                    <h4>Pets</h4>
+                    <div class="pet-items" id="p2-pets">
+                        <!-- Pet tokens will be displayed here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Combat Section -->
+        <div class="combat-section" style="display: none;" id="combat-section">
+            <h3>Combat</h3>
+            <div class="combat-controls">
+                <button onclick="game.performCombat(1, 2)">Player 1 attacks Player 2</button>
+                <button onclick="game.performCombat(2, 1)">Player 2 attacks Player 1</button>
+            </div>
+            <div id="combat-results"></div>
+        </div>
+
+        <!-- Game Board -->
+        <div class="game-board">
+            <div class="location" data-location="1">
+                <h3>Work Site</h3>
+                <div class="reward-info">$6/4</div>
+                <div class="token-slots"></div>
+            </div>
+            <div class="location" data-location="2">
+                <h3>Bar</h3>
+                <div class="reward-info">Beer 6/4</div>
+                <div class="token-slots"></div>
+            </div>
+            <div class="location" data-location="3">
+                <h3>Station</h3>
+                <div class="reward-info">Wild Card</div>
+                <div class="token-slots"></div>
+            </div>
+            <div class="location" data-location="4">
+                <h3>Hospital</h3>
+                <div class="reward-info">Blood 4/2</div>
+                <div class="token-slots"></div>
+            </div>
+            <div class="location" data-location="5">
+                <h3>Dojo</h3>
+                <div class="reward-info">EXP 4/2</div>
+                <div class="token-slots"></div>
+            </div>
+            <div class="location" data-location="6">
+                <h3>Plaza</h3>
+                <div class="reward-info">Score 4/2</div>
+                <div class="token-slots"></div>
+            </div>
+            <div class="location" data-location="7">
+                <h3>Forest</h3>
+                <div class="reward-info">Monster Hunt</div>
+                <div class="token-slots"></div>
+            </div>
+        </div>
+
+        <!-- Player Area -->
+        <div class="player-area">
+            <div class="current-player">
+                <h2>Current Player: <span id="current-player-name">Player 1</span></h2>
+            </div>
+            
+            <!-- Card Selection Area -->
+            <div class="card-selection">
+                <div class="token-selection">
+                    <h3>Select Hunter Location</h3>
+                    <div class="hunter-cards cards-container" id="hunter-cards"></div>
+                </div>
+                <div class="token-selection">
+                    <h3>Select Apprentice Location</h3>
+                    <div class="apprentice-cards cards-container" id="apprentice-cards"></div>
+                </div>
+            </div>
+            
+            <!-- Store Area -->
+            <div class="store-area" id="store-area" style="display: none;">
+                <h3>Store - <span id="store-current-player">Player 1</span></h3>
+                <div class="store-info">
+                    <span>Money: $<span id="store-player-money">0</span></span>
+                    <span>Capacity: <span id="store-current-capacity">0</span>/<span id="store-max-capacity">0</span></span>
+                </div>
+                <div class="store-items-grid" id="store-items-grid">
+                    <!-- Store items will be added here -->
+                </div>
+                <button class="finish-shopping-btn" onclick="game.finishShopping()">Finish Shopping</button>
+            </div>
+            
+            <!-- Control Buttons -->
+            <div class="controls">
+                <button id="confirm-selection" disabled>Confirm Selection</button>
+                <button id="next-player" style="display: none;">Next Player</button>
+            </div>
+        </div>
+
+        <!-- Game Status -->
+        <div class="game-status">
+            <p id="status-message">Player 1: Select locations for your Hunter and Apprentice</p>
+        </div>
+        
+        <!-- Station Choice Modal -->
+        <div id="station-modal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <h3 id="station-modal-title">Player 1: Choose Station Resource</h3>
+                <div class="station-choices">
+                    <button class="station-choice" onclick="game.selectStationResource('money')">
+                        <span class="choice-icon">💰</span>
+                        <span>Money</span>
+                        <span class="choice-amount" id="money-amount">6</span>
+                    </button>
+                    <button class="station-choice" onclick="game.selectStationResource('beer')">
+                        <span class="choice-icon">🍺</span>
+                        <span>Beer</span>
+                        <span class="choice-amount" id="beer-amount">6</span>
+                    </button>
+                    <button class="station-choice" onclick="game.selectStationResource('bloodBag')">
+                        <span class="choice-icon">🩸</span>
+                        <span>Blood Bag</span>
+                        <span class="choice-amount" id="bloodBag-amount">4</span>
+                    </button>
+                    <button class="station-choice" onclick="game.selectStationResource('exp')">
+                        <span class="choice-icon">⭐</span>
+                        <span>Experience</span>
+                        <span class="choice-amount" id="exp-amount">4</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Monster Selection Modal -->
+        <div id="monster-modal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <h3 id="monster-modal-title">Choose Monster Level</h3>
+                <div class="monster-choices">
+                    <button class="monster-choice" onclick="game.selectMonsterLevel(game.currentMonsterPlayer, 1)">
+                        <span class="choice-icon">👹</span>
+                        <span>Level 1</span>
+                        <span class="choice-cost">2 EP</span>
+                    </button>
+                    <button class="monster-choice" onclick="game.selectMonsterLevel(game.currentMonsterPlayer, 2)">
+                        <span class="choice-icon">👺</span>
+                        <span>Level 2</span>
+                        <span class="choice-cost">3 EP</span>
+                    </button>
+                    <button class="monster-choice" onclick="game.selectMonsterLevel(game.currentMonsterPlayer, 3)">
+                        <span class="choice-icon">😈</span>
+                        <span>Level 3</span>
+                        <span class="choice-cost">4 EP</span>
+                    </button>
+                </div>
+                <div class="pet-selection-section">
+                    <h4>Select Pets to Join Battle (Optional)</h4>
+                    <div id="pet-selection-container">
+                        <!-- Pet selection options will be populated here -->
+                    </div>
+                    <div class="ep-cost-summary">
+                        <span>Total EP Cost: </span>
+                        <span id="total-ep-cost">0</span>
+                    </div>
+                    <button class="confirm-battle-btn" onclick="game.confirmBattleSelection()" style="display: none;">Confirm Battle</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Monster Battle UI -->
+        <div id="monster-battle" class="modal" style="display: none;">
+            <div class="battle-content">
+                <h3>Monster Battle</h3>
+                <div class="battle-info">
+                    <div class="battle-player">
+                        <h4 id="battle-player-name">Player 1</h4>
+                        <p>HP: <span id="battle-player-hp">4/4</span></p>
+                        <p>EP: <span id="battle-player-ep">6/6</span></p>
+                        <p id="battle-bullets-info" style="display: none;">Bullets: <span id="battle-bullet-count">0/6</span></p>
+                        <p id="battle-batteries-info" style="display: none;">Batteries: <span id="battle-battery-count">0/6</span></p>
+                        <div id="battle-pets-info" class="battle-pets-info">
+                            <!-- Pet info will be displayed here -->
+                        </div>
+                    </div>
+                    <div class="vs">VS</div>
+                    <div class="battle-monster">
+                        <h4>Level <span id="battle-monster-level">1</span> Monster</h4>
+                        <p>HP: <span id="battle-monster-hp">4/4</span></p>
+                        <p>ATT: <span id="battle-monster-att">2</span></p>
+                        <div class="monster-rewards">
+                            <p class="rewards-title">Rewards:</p>
+                            <p id="battle-monster-rewards">Loading...</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="battle-status">
+                    <p id="battle-turn">Your turn to attack!</p>
+                    <button id="battle-attack-btn" class="battle-btn">Attack!</button>
+                    <button id="battle-tame-btn" class="battle-btn" style="display: none;">Tame!</button>
+                    <button id="battle-defense-btn" class="battle-btn" style="display: none;">Defense!</button>
+                    <button id="battle-triple-damage-btn" class="battle-btn" style="display: none;">Triple Damage!</button>
+                </div>
+                <div class="battle-items">
+                    <h4>Use Items:</h4>
+                    <div id="battle-item-buttons" class="battle-item-buttons">
+                        <!-- Item buttons will be added here dynamically -->
+                    </div>
+                </div>
+                <div class="battle-log-container">
+                    <h4>Battle Log:</h4>
+                    <div id="battle-log" class="battle-log"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Store Modal -->
+        <div id="store-modal" class="modal" style="display: none;">
+            <div class="store-content">
+                <h3>Store</h3>
+                <div class="store-header">
+                    <div class="store-player-info">
+                        <span id="store-player-name">Player 1</span> | 
+                        Money: $<span id="store-player-money">0</span> | 
+                        Capacity: <span id="store-player-capacity">0/6</span>
+                    </div>
+                    <button class="finish-shopping-btn" onclick="game.finishShopping()">Finish Shopping</button>
+                </div>
+                <div class="store-grid">
+                    <div class="store-items-section">
+                        <h4>Available Items</h4>
+                        <div id="store-items" class="store-items"></div>
+                    </div>
+                    <div class="player-inventory-section">
+                        <h4>Your Inventory</h4>
+                        <div id="player-inventory" class="player-inventory"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Capacity Management Modal -->
+        <div id="capacity-modal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <h3>Capacity Overflow</h3>
+                <div class="capacity-info">
+                    <p><span id="capacity-player-name">Player 1</span>, your inventory is over capacity!</p>
+                    <p>Current: <span id="capacity-current">8</span> | Max: <span id="capacity-max">6</span> | Excess: <span id="capacity-excess">2</span></p>
+                    <p>Please remove items to fit within your capacity:</p>
+                </div>
+                <div id="capacity-items" class="capacity-items"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>
