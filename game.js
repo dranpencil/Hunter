@@ -12,7 +12,7 @@ class Game {
             { name: 'Chain', reqExpAttack: 4, reqExpDefense: 3, capacity: 6, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 1, 1, 1], priority: 6,
               lv1Power: '怪獸於血量3以下即可收服', lv2Power: '回合開始+2啤酒', lv3Power: '寵物攻擊x2' },
             { name: 'Axe', reqExpAttack: 4, reqExpDefense: 3, capacity: 6, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 1, 1, 1], priority: 4,
-              lv1Power: '玩家受傷時怪獸受一樣的傷害', lv2Power: '回合開始+2血袋', lv3Power: '玩家受傷時怪獸受2倍的傷害' },
+              lv1Power: '玩家受傷後若存活，自動反擊同等傷害', lv2Power: '回合開始+2血袋', lv3Power: '玩家受傷後若存活，自動反擊2倍傷害' },
             { name: 'Whip', reqExpAttack: 4, reqExpDefense: 3, capacity: 6, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 1, 1, 1], priority: 5,
               lv1Power: '寵物和收服怪獸體力-1', lv2Power: '回合開始+2啤酒', lv3Power: '寵物和收服不耗體力' },
             { name: 'Bow', reqExpAttack: 4, reqExpDefense: 3, capacity: 6, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 0, 0, 4], priority: 1,
@@ -2172,12 +2172,19 @@ class Game {
                 battle.glovesPowerLevel += finalDamage;
                 this.logBattleAction(`Gloves Lv1 Power: Damage values [4,5,6] increased to ${1 + battle.glovesPowerLevel}!`);
             }
-            
-            // Axe Level 1 & 3 Power: Monster takes damage when player takes damage
-            if (player.weapon.name === 'Axe' && player.weapon.powerTrackPosition >= 1) {
+        }
+        
+        // Check if player survives
+        if (player.resources.hp <= 0) {
+            // Player defeated!
+            this.logBattleAction(`${player.name} has been defeated!`);
+            this.playerDefeated(battle.playerId);
+        } else {
+            // Player survived - check for Axe retaliation
+            if (finalDamage > 0 && player.weapon.name === 'Axe' && player.weapon.powerTrackPosition >= 1) {
                 let axeDamageMultiplier = 1;
                 if (player.weapon.powerTrackPosition >= 7) {
-                    // Level 3: Monster takes 2x damage
+                    // Level 3: Player fights back with 2x damage
                     axeDamageMultiplier = 2;
                 }
                 
@@ -2185,28 +2192,21 @@ class Game {
                 battle.monster.hp -= axeDamageToMonster;
                 
                 if (axeDamageMultiplier === 1) {
-                    this.logBattleAction(`Axe Lv1 Power: Monster takes ${axeDamageToMonster} damage in return!`);
+                    this.logBattleAction(`Axe Lv1 Power: ${player.name} fights back for ${axeDamageToMonster} damage!`);
                 } else {
-                    this.logBattleAction(`Axe Lv3 Power: Monster takes ${axeDamageToMonster} damage (2x) in return!`);
+                    this.logBattleAction(`Axe Lv3 Power: ${player.name} fights back for ${axeDamageToMonster} damage (2x)!`);
                 }
                 
                 // Update monster HP display
                 document.getElementById('battle-monster-hp').textContent = `${battle.monster.hp}/${battle.monster.maxHp}`;
                 
-                // Check if monster is defeated by axe power
+                // Check if monster is defeated by axe retaliation
                 if (battle.monster.hp <= 0) {
-                    this.logBattleAction(`Monster defeated by Axe power!`);
+                    this.logBattleAction(`Monster defeated by Axe retaliation!`);
                     this.monsterDefeated();
                     return;
                 }
             }
-        }
-        
-        if (player.resources.hp <= 0) {
-            // Player defeated!
-            this.logBattleAction(`${player.name} has been defeated!`);
-            this.playerDefeated(battle.playerId);
-        } else {
             // Allow item usage before player's next attack
             battle.turn = 'player_items_after_monster';
             this.updateBattlePhase();
