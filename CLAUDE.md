@@ -221,4 +221,3 @@ When multiple hunters enter Forest, battle order is determined by:
 
 ## Memories
 - add to memory
-okok
