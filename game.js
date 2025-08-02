@@ -1102,6 +1102,11 @@ class Game {
         // Initialize the game UI
         this.roundPhase = 'selection';
         this.init();
+        
+        // Ensure location displays are updated after UI initialization
+        setTimeout(() => {
+            this.updateLocationDisplays();
+        }, 100);
     }
     
     getLocationRewards(locationName) {
@@ -1593,11 +1598,16 @@ class Game {
     
     getRewardText(location) {
         switch (location.resource) {
-            case 'money': return '$6/4';
-            case 'beer': return 'Beer 6/4';
-            case 'bloodBag': return 'Blood 4/2';
-            case 'exp': return 'EXP 4/2';
-            case 'score': return 'Score 4/2';
+            case 'money': 
+                return this.getRewardDisplayText('$', location.rewards);
+            case 'beer': 
+                return this.getRewardDisplayText('Beer', location.rewards);
+            case 'bloodBag': 
+                return this.getRewardDisplayText('Blood', location.rewards);
+            case 'exp': 
+                return this.getRewardDisplayText('EXP', location.rewards);
+            case 'score': 
+                return this.getRewardDisplayText('Score', location.rewards);
             case null:
                 if (location.id === 3) return 'Wild Card';
                 if (location.id === 7) return 'Monster Hunt';
@@ -3252,7 +3262,7 @@ class Game {
         // Continue to next battle or end battle phase
         setTimeout(() => {
             if (this.remainingForestHunters && this.remainingForestHunters.length > 0) {
-                this.startBattlePhase();
+                this.handleForestEncounters(this.remainingForestHunters);
             } else {
                 this.endRound();
             }
