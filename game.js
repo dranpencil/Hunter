@@ -984,15 +984,14 @@ class Game {
         ];
         
         this.locations = [
-            { id: 1, name: 'Work Site', resource: 'money', rewards: [6, 4] },
-            { id: 2, name: 'Bar', resource: 'beer', rewards: [6, 4] },
+            { id: 1, name: 'Work Site', resource: 'money', rewards: [6, 4] }, // Will be updated based on player count
+            { id: 2, name: 'Bar', resource: 'beer', rewards: [6, 4] }, // Will be updated based on player count
             { id: 3, name: 'Station', resource: null, rewards: [] },
-            { id: 4, name: 'Hospital', resource: 'bloodBag', rewards: [4, 2] },
-            { id: 5, name: 'Dojo', resource: 'exp', rewards: [4, 2] },
-            { id: 6, name: 'Plaza', resource: 'score', rewards: [4, 2] },
+            { id: 4, name: 'Hospital', resource: 'bloodBag', rewards: [4, 2] }, // Will be updated based on player count
+            { id: 5, name: 'Dojo', resource: 'exp', rewards: [4, 2] }, // Will be updated based on player count
+            { id: 6, name: 'Plaza', resource: 'score', rewards: [4, 2] }, // Will be updated based on player count
             { id: 7, name: 'Forest', resource: null, rewards: [] }
         ];
-        
         // Initialize game properties (will be set up when player count is selected)
         this.playerCount = 0;
         this.players = [];
@@ -1072,6 +1071,9 @@ class Game {
         // Log first round start
         this.addLogEntry(`🔄 <strong>Round ${this.currentRound} Started</strong>`, 'round-start');
         
+        // Update location rewards based on player count
+        this.updateLocationRewards();
+        
         // Set up dummy tokens based on player count
         this.setupDummyTokens(playerCount);
         
@@ -1100,6 +1102,160 @@ class Game {
         // Initialize the game UI
         this.roundPhase = 'selection';
         this.init();
+    }
+    
+    getLocationRewards(locationName) {
+        // Return default 2-player rewards if player count not set yet
+        if (!this.playerCount || this.playerCount === 2) {
+            switch (locationName) {
+                case 'work':
+                case 'bar':
+                    return [6, 4];
+                case 'hospital':
+                case 'dojo':
+                case 'plaza':
+                    return [4, 2];
+                default:
+                    return [];
+            }
+        }
+        
+        // 3-player rewards
+        if (this.playerCount === 3) {
+            switch (locationName) {
+                case 'work':
+                case 'bar':
+                    return [7, 5, 4]; // 7 with 1 token, 5 with 2 tokens, 4 with 3+ tokens
+                case 'hospital':
+                case 'dojo':
+                case 'plaza':
+                    return [5, 4, 3]; // 5 with 1 token, 4 with 2 tokens, 3 with 3+ tokens
+                default:
+                    return [];
+            }
+        }
+        
+        // 4-player and 5-player rewards
+        if (this.playerCount >= 4) {
+            switch (locationName) {
+                case 'work':
+                case 'bar':
+                    return [8, 6, 5, 4]; // 8 with 1 token, 6 with 2 tokens, 5 with 3 tokens, 4 with 4+ tokens
+                case 'hospital':
+                case 'dojo':
+                case 'plaza':
+                    return [6, 5, 4, 3]; // 6 with 1 token, 5 with 2 tokens, 4 with 3 tokens, 3 with 4+ tokens
+                default:
+                    return [];
+            }
+        }
+        
+        return [];
+    }
+    
+    updateLocationRewards() {
+        // Update rewards based on current player count
+        this.locations.forEach(location => {
+            switch (location.id) {
+                case 1: // Work Site
+                    location.rewards = this.getLocationRewards('work');
+                    break;
+                case 2: // Bar
+                    location.rewards = this.getLocationRewards('bar');
+                    break;
+                case 4: // Hospital
+                    location.rewards = this.getLocationRewards('hospital');
+                    break;
+                case 5: // Dojo
+                    location.rewards = this.getLocationRewards('dojo');
+                    break;
+                case 6: // Plaza
+                    location.rewards = this.getLocationRewards('plaza');
+                    break;
+            }
+        });
+        
+        // Update display text for each location
+        this.updateLocationDisplays();
+    }
+    
+    updateLocationDisplays() {
+        // Update reward display text based on current player count
+        this.locations.forEach(location => {
+            const rewardElement = document.querySelector(`[data-location="${location.id}"] .reward-info`);
+            if (!rewardElement) return;
+            
+            let displayText = '';
+            
+            switch (location.id) {
+                case 1: // Work Site
+                    displayText = this.getRewardDisplayText('$', location.rewards);
+                    break;
+                case 2: // Bar  
+                    displayText = this.getRewardDisplayText('Beer', location.rewards);
+                    break;
+                case 3: // Station
+                    displayText = 'Wild Card';
+                    break;
+                case 4: // Hospital
+                    displayText = this.getRewardDisplayText('Blood', location.rewards);
+                    break;
+                case 5: // Dojo
+                    displayText = this.getRewardDisplayText('EXP', location.rewards);
+                    break;
+                case 6: // Plaza
+                    displayText = this.getRewardDisplayText('Score', location.rewards);
+                    break;
+                case 7: // Forest
+                    displayText = 'Monster Hunt';
+                    break;
+            }
+            
+            rewardElement.textContent = displayText;
+        });
+    }
+    
+    getRewardDisplayText(resourceName, rewards) {
+        if (!rewards || rewards.length === 0) return resourceName;
+        
+        if (this.playerCount === 2) {
+            return `${resourceName} ${rewards[0]}/${rewards[1]}`;
+        } else if (this.playerCount === 3) {
+            return `${resourceName} ${rewards[0]}/${rewards[1]}/${rewards[2]}`;
+        } else if (this.playerCount >= 4) {
+            return `${resourceName} ${rewards[0]}/${rewards[1]}/${rewards[2]}/${rewards[3]}`;
+        }
+        
+        return resourceName;
+    }
+    
+    getRewardAmount(location, totalCount) {
+        // Handle player count-based reward calculation
+        const rewards = location.rewards;
+        if (!rewards || rewards.length === 0) return 0;
+        
+        // For 2 players: rewards[0] for 1 token, rewards[1] for 2+ tokens
+        if (this.playerCount === 2) {
+            return totalCount === 1 ? rewards[0] : rewards[1];
+        }
+        
+        // For 3 players: rewards[0] for 1 token, rewards[1] for 2 tokens, rewards[2] for 3+ tokens
+        if (this.playerCount === 3) {
+            if (totalCount === 1) return rewards[0];
+            if (totalCount === 2) return rewards[1];
+            return rewards[2];
+        }
+        
+        // For 4+ players: rewards[0] for 1 token, rewards[1] for 2 tokens, rewards[2] for 3 tokens, rewards[3] for 4+ tokens
+        if (this.playerCount >= 4) {
+            if (totalCount === 1) return rewards[0];
+            if (totalCount === 2) return rewards[1];
+            if (totalCount === 3) return rewards[2];
+            return rewards[3];
+        }
+        
+        // Fallback to 2-player logic
+        return totalCount === 1 ? rewards[0] : rewards[1];
     }
     
     setupDummyTokens(playerCount) {
@@ -3338,8 +3494,8 @@ class Game {
             
             if (hunterCount === 0) return; // No hunters, no resources
             
-            // Determine reward amount based on total count
-            const rewardAmount = totalCount === 1 ? location.rewards[0] : location.rewards[1];
+            // Determine reward amount based on total count and player count
+            const rewardAmount = this.getRewardAmount(location, totalCount);
             
             // Distribute resources to hunters only
             this.players.forEach(player => {
@@ -5586,8 +5742,8 @@ class Game {
             
             if (hunterCount === 0) return; // No hunters, no resources
             
-            // Determine reward amount based on total count (including dummy tokens)
-            const rewardAmount = totalCount === 1 ? location.rewards[0] : location.rewards[1];
+            // Determine reward amount based on total count (including dummy tokens) and player count
+            const rewardAmount = this.getRewardAmount(location, totalCount);
             
             // Distribute resources to hunters only
             this.players.forEach(player => {

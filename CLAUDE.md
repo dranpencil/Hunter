@@ -1,7 +1,7 @@
 # Hunter & Apprentice Board Game System Documentation
 
 ## Overview
-This is a digital board game for 2 players where each player controls a Hunter and an Apprentice token, placing them on 7 different locations to gather resources, fight monsters, and score points.
+This is a digital board game for 2-5 players where each player controls a Hunter and an Apprentice token, placing them on 7 different locations to gather resources, fight monsters, and score points.
 
 ## Game Flow
 1. **Location Selection Phase**: Each player secretly selects locations for their Hunter and Apprentice
@@ -12,6 +12,24 @@ This is a digital board game for 2 players where each player controls a Hunter a
 6. **Next Round Phase**: All tokens return to players, then start new round
 
 **Win Condition**: 1st player to reach 50 points wins the game.
+
+## Player Count Configuration
+
+The game supports 2-5 players with automatic scaling systems to maintain balance:
+
+### Game Mode Selection
+- **Quick Play**: Choose player count (2-5) and start immediately with all human players
+- **Solo Play**: Configure individual player slots as Human or Bot, minimum 2 players required
+
+### Automatic Scaling Systems
+1. **Location Rewards**: Higher rewards with more players to compensate for increased competition
+2. **Dummy Token Count**: Fewer dummy tokens with more players to maintain available locations
+3. **Visual Displays**: Location reward displays automatically update to show current scaling (e.g., "$ 8/6/5/4" for 4+ players)
+
+### Player Assignment
+- **Weapons**: Randomly assigned from available weapon pool
+- **Colors**: Unique colors automatically assigned to each player
+- **Turn Order**: Sequential based on player assignment order
 
 ## Player Resources
 Each player has the following resources with starting values and maximum limits:
@@ -35,37 +53,52 @@ Each player has the following resources with starting values and maximum limits:
 
 ## Locations
 
+Location rewards scale based on the number of players in the game to maintain balance across different player counts.
+
 ### 1. Work Site
 - **Resource**: Money
-- **Rewards**: 6$ with 1 token, 4$ with 2+ tokens
+- **Rewards (Player Count Based)**:
+  - **2 Players**: $6 with 1 token, $4 with 2+ tokens
+  - **3 Players**: $7 with 1 token, $5 with 2 tokens, $4 with 3+ tokens
+  - **4-5 Players**: $8 with 1 token, $6 with 2 tokens, $5 with 3 tokens, $4 with 4+ tokens
 - **Special**: Only hunters earn resources
 
 ### 2. Bar
 - **Resource**: Beer
-- **Rewards**: 6 beers with 1 token, 4 beers with 2+ tokens
+- **Rewards (Player Count Based)**:
+  - **2 Players**: 6 beers with 1 token, 4 beers with 2+ tokens
+  - **3 Players**: 7 beers with 1 token, 5 beers with 2 tokens, 4 beers with 3+ tokens
+  - **4-5 Players**: 8 beers with 1 token, 6 beers with 2 tokens, 5 beers with 3 tokens, 4 beers with 4+ tokens
 - **Special**: Only hunters earn resources
 
 ### 3. Station (Wild Card)
 - **Resource**: Player's choice
 - **Special**: Each hunter chooses what resource to collect (Money, Beer, Blood Bags, or EXP)
-- **Rewards**: Same as the chosen resource's location
+- **Rewards**: Same as the chosen resource's location based on current player count
 
 ### 4. Hospital
 - **Resource**: Blood Bags
-- **Rewards**: 4 blood bags with 1 token, 2 with 2+ tokens
+- **Rewards (Player Count Based)**:
+  - **2 Players**: 4 blood bags with 1 token, 2 blood bags with 2+ tokens
+  - **3 Players**: 5 blood bags with 1 token, 4 blood bags with 2 tokens, 3 blood bags with 3+ tokens
+  - **4-5 Players**: 6 blood bags with 1 token, 5 blood bags with 2 tokens, 4 blood bags with 3 tokens, 3 blood bags with 4+ tokens
 - **Special**: Only hunters earn resources
 
 ### 5. Dojo
 - **Resource**: Experience (EXP)
-- **Rewards**: 4 EXP with 1 token, 2 EXP with 2+ tokens
+- **Rewards (Player Count Based)**:
+  - **2 Players**: 4 EXP with 1 token, 2 EXP with 2+ tokens
+  - **3 Players**: 5 EXP with 1 token, 4 EXP with 2 tokens, 3 EXP with 3+ tokens
+  - **4-5 Players**: 6 EXP with 1 token, 5 EXP with 2 tokens, 4 EXP with 3 tokens, 3 EXP with 4+ tokens
 - **Special**: Only hunters earn resources
 
 ### 6. Plaza
 - **Resource**: Score (Victory Points)
-- **Entry Cost**: 1 EP for hunters (apprentices enter free)
-- **Rewards**: 3 points with 1 token, 0 points with 2+ tokens
+- **Rewards (Player Count Based)**:
+  - **2 Players**: 4 points with 1 token, 2 points with 2+ tokens
+  - **3 Players**: 5 points with 1 token, 4 points with 2 tokens, 3 points with 3+ tokens
+  - **4-5 Players**: 6 points with 1 token, 5 points with 2 tokens, 4 points with 3 tokens, 3 points with 4+ tokens
 - **Special**: Only hunters earn points
-- **Restriction**: Hunters cannot enter if player has less than 1 EP
 
 ### 7. Forest (Monster Hunt)
 - **Resource**: Various (from defeating monsters)
@@ -169,10 +202,13 @@ Each player has a popularity track with 6 levels (0-5), each having points and r
 
 ## Dummy Token System
 
-The game includes 3 dummy tokens that create strategic obstacles and affect resource distribution:
+The game includes dummy tokens that create strategic obstacles and affect resource distribution. The number of dummy tokens varies based on player count:
 
-### Initial Placement
-- 3 dummy tokens start at locations 2, 4, and 6 (Bar, Hospital, Plaza)
+### Initial Placement (Player Count Based)
+- **2 Players**: 3 dummy tokens at locations 2, 4, and 6 (Bar, Hospital, Plaza)
+- **3 Players**: 2 dummy tokens at locations 2 and 5 (Bar, Dojo)
+- **4 Players**: 1 dummy token at location 3 (Station)
+- **5 Players**: 0 dummy tokens
 
 ### Movement Rules
 - **Next Round Phase**: Dummy tokens move to the next location ID in sequence
@@ -208,16 +244,18 @@ When multiple hunters enter Forest, battle order is determined by:
 8. **Next Round**: Clear selections, move dummy tokens, and start again
 
 ## Key Strategic Elements
-- Plaza now provides guaranteed points (4 solo/2 crowded) with no EP cost
-- Dummy tokens create dynamic obstacles that force location adaptation
+- **Player Count Scaling**: Rewards increase with more players to maintain balance (e.g., Work Site: $6/4 for 2p, $8/6/5/4 for 4-5p)
+- **Dynamic Dummy Tokens**: Token count decreases as player count increases (3 tokens for 2p, 0 tokens for 5p)
+- **Location Competition**: More players means more competition for solo placement bonuses
+- **Reward Tier Strategy**: Understanding when you'll get tier 1 vs tier 2+ rewards based on player count
+- **Plaza Scaling**: Guaranteed points scale from 4/2 (2p) to 6/5/4/3 (4-5p)
 - Manage inventory capacity vs. item benefits
 - Time HP/EP upgrades for maximum benefit and milestone bonuses
-- Risk/reward of solo placement (more resources) vs. crowded locations
 - Combat items can turn difficult monster battles
 - Popularity track rewards for strategic hunter placement
 - Forest apprentice bonus for coordinated team placement
 - Consider weapon priority for Forest battle order advantage
-- Track dummy token movement patterns for future planning
+- Track dummy token movement patterns for future planning (when applicable)
 
 ## Game Log System
 The game features a comprehensive logging system that displays on the left side of the screen, providing a complete history of all game events.
