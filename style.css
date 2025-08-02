@@ -1790,3 +1790,385 @@ button {
     cursor: default;
     opacity: 0.8;
 }
+
+/* Location Card Styles */
+.cards-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+    margin: 10px 0;
+}
+
+.location-card {
+    background-color: #34495e;
+    border: 2px solid #7f8c8d;
+    border-radius: 8px;
+    width: 80px;
+    height: 100px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.location-card:hover {
+    background-color: #3c5c78;
+    border-color: #85a5cc;
+    transform: translateY(-2px);
+}
+
+.location-card.selected {
+    background-color: #2980b9;
+    border-color: #3498db;
+    color: #ecf0f1;
+}
+
+.location-card.disabled {
+    background-color: #7f8c8d;
+    border-color: #95a5a6;
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.location-card.disabled:hover {
+    transform: none;
+    background-color: #7f8c8d;
+    border-color: #95a5a6;
+}
+
+.card-header {
+    font-size: 11px;
+    font-weight: bold;
+    margin-bottom: 5px;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+    width: 100%;
+    padding: 0 2px;
+}
+
+.card-body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex-grow: 1;
+}
+
+.location-id {
+    font-size: 18px;
+    font-weight: bold;
+    color: #f39c12;
+    margin-bottom: 2px;
+}
+
+.reward-info {
+    font-size: 9px;
+    color: #bdc3c7;
+    text-align: center;
+    line-height: 1.2;
+}
+
+/* Card Selection Area */
+.card-selection {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin: 20px 0;
+}
+
+.token-selection h3 {
+    color: #f39c12;
+    margin-bottom: 10px;
+    text-align: center;
+    font-size: 16px;
+}
+
+/* Solo Play Mode Styles */
+.game-mode-buttons {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+.game-mode-btn {
+    background-color: #3498db;
+    color: white;
+    padding: 15px 30px;
+    border: none;
+    border-radius: 8px;
+    font-size: 18px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.game-mode-btn:hover {
+    background-color: #2980b9;
+    transform: translateY(-2px);
+}
+
+.mode-section {
+    margin-top: 20px;
+}
+
+.player-slots {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 20px 0;
+}
+
+.player-slot {
+    background-color: #2c3e50;
+    border: 2px solid #34495e;
+    border-radius: 8px;
+    padding: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: all 0.3s;
+}
+
+.player-slot.active {
+    background-color: #34495e;
+    border-color: #3498db;
+}
+
+.player-slot.closed {
+    background-color: #1a252f;
+    border-color: #2c3e50;
+    opacity: 0.6;
+}
+
+.slot-number {
+    font-size: 20px;
+    font-weight: bold;
+    color: #f39c12;
+    width: 30px;
+}
+
+.slot-type {
+    flex-grow: 1;
+    text-align: center;
+    font-size: 16px;
+    font-weight: bold;
+    color: #2ecc71;
+}
+
+.slot-status {
+    flex-grow: 1;
+    text-align: center;
+    font-size: 16px;
+    color: #95a5a6;
+}
+
+.slot-toggle {
+    background-color: #e74c3c;
+    color: white;
+    padding: 5px 15px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s;
+}
+
+.slot-toggle:hover {
+    background-color: #c0392b;
+}
+
+.slot-activate {
+    background-color: #27ae60;
+    color: white;
+    padding: 5px 15px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s;
+}
+
+.slot-activate:hover {
+    background-color: #229954;
+}
+
+.ready-btn {
+    display: block;
+    margin: 20px auto;
+    background-color: #f39c12;
+    color: white;
+    padding: 15px 40px;
+    border: none;
+    border-radius: 8px;
+    font-size: 20px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.ready-btn:hover:not(:disabled) {
+    background-color: #e67e22;
+    transform: translateY(-2px);
+}
+
+.ready-btn:disabled {
+    background-color: #7f8c8d;
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.back-btn {
+    display: block;
+    margin: 10px auto;
+    background-color: #95a5a6;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.back-btn:hover {
+    background-color: #7f8c8d;
+}
+
+.player-slot.bot .slot-type {
+    color: #e74c3c;
+}
+
+/* Player Color Indicator */
+.player-color-indicator {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 2px solid;
+    margin-right: 8px;
+    vertical-align: middle;
+}
+
+/* Game Log Section */
+.game-log-section {
+    position: fixed;
+    left: 20px;
+    top: 20px;
+    width: 300px;
+    height: calc(100vh - 40px);
+    background-color: #34495e;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+}
+
+.log-header {
+    background-color: #2c3e50;
+    padding: 15px;
+    border-radius: 10px 10px 0 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid #f39c12;
+}
+
+.log-header h3 {
+    color: #f39c12;
+    margin: 0;
+    font-size: 18px;
+}
+
+.clear-log-btn {
+    background-color: #e74c3c;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: background-color 0.3s;
+}
+
+.clear-log-btn:hover {
+    background-color: #c0392b;
+}
+
+.game-log {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+    background-color: #2c3e50;
+    border-radius: 0 0 10px 10px;
+}
+
+.log-entry {
+    margin: 5px 0;
+    padding: 8px 10px;
+    background-color: #34495e;
+    border-radius: 5px;
+    border-left: 3px solid #3498db;
+    font-size: 13px;
+    line-height: 1.4;
+    animation: fadeIn 0.3s ease-in;
+}
+
+.log-entry.round-start {
+    border-left-color: #f39c12;
+    background-color: #3e4e5e;
+    font-weight: bold;
+}
+
+.log-entry.selection {
+    border-left-color: #9b59b6;
+}
+
+.log-entry.resource-gain {
+    border-left-color: #27ae60;
+}
+
+.log-entry.store-purchase {
+    border-left-color: #e67e22;
+}
+
+.log-entry.battle {
+    border-left-color: #e74c3c;
+}
+
+.log-entry.system {
+    border-left-color: #95a5a6;
+    font-style: italic;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Adjust main game container to make room for log */
+.game-container {
+    margin-left: 340px;
+}
+
+/* Hide log on smaller screens */
+@media (max-width: 1400px) {
+    .game-log-section {
+        display: none !important;
+    }
+    
+    .game-container {
+        margin-left: 0;
+    }
+}

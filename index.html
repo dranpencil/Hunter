@@ -13,16 +13,66 @@
             <h1>Hunter & Apprentice</h1>
         </div>
         
+        <!-- Game Log Section -->
+        <div id="game-log-section" class="game-log-section" style="display: none;">
+            <div class="log-header">
+                <h3>Game Log</h3>
+                <button id="clear-log-btn" class="clear-log-btn" onclick="game.clearGameLog()">Clear</button>
+            </div>
+            <div id="game-log" class="game-log">
+                <div class="log-entry">Welcome to Hunter & Apprentice!</div>
+            </div>
+        </div>
+        
         <!-- Player Count Selection Screen -->
         <div id="player-count-selection" class="player-count-selection" style="display: none;">
             <div class="selection-content">
-                <h2>Select Number of Players</h2>
-                <div class="player-count-buttons">
-                    <button class="player-count-btn" onclick="game.startGameWithPlayers(2)">2 Players</button>
-                    <button class="player-count-btn" onclick="game.startGameWithPlayers(3)">3 Players</button>
-                    <button class="player-count-btn" onclick="game.startGameWithPlayers(4)">4 Players</button>
-                    <button class="player-count-btn" onclick="game.startGameWithPlayers(5)">5 Players</button>
+                <h2>Select Game Mode</h2>
+                <div class="game-mode-buttons">
+                    <button class="game-mode-btn" onclick="game.showQuickPlayMode()">Quick Play</button>
+                    <button class="game-mode-btn" onclick="game.showSoloPlayMode()">Solo Play</button>
                 </div>
+                <div id="quick-play-section" class="mode-section" style="display: none;">
+                    <h3>Select Number of Players</h3>
+                    <div class="player-count-buttons">
+                        <button class="player-count-btn" onclick="game.startGameWithPlayers(2)">2 Players</button>
+                        <button class="player-count-btn" onclick="game.startGameWithPlayers(3)">3 Players</button>
+                        <button class="player-count-btn" onclick="game.startGameWithPlayers(4)">4 Players</button>
+                        <button class="player-count-btn" onclick="game.startGameWithPlayers(5)">5 Players</button>
+                    </div>
+                </div>
+                <div id="solo-play-section" class="mode-section" style="display: none;">
+                    <h3>Configure Players</h3>
+                    <div class="player-slots">
+                        <div class="player-slot active" data-slot="0">
+                            <span class="slot-number">1</span>
+                            <span class="slot-type">Player</span>
+                            <button class="slot-toggle" onclick="game.toggleSlotType(0)">Change to Bot</button>
+                        </div>
+                        <div class="player-slot closed" data-slot="1">
+                            <span class="slot-number">2</span>
+                            <span class="slot-status">Closed</span>
+                            <button class="slot-activate" onclick="game.activateSlot(1)">Add Player</button>
+                        </div>
+                        <div class="player-slot closed" data-slot="2">
+                            <span class="slot-number">3</span>
+                            <span class="slot-status">Closed</span>
+                            <button class="slot-activate" onclick="game.activateSlot(2)">Add Player</button>
+                        </div>
+                        <div class="player-slot closed" data-slot="3">
+                            <span class="slot-number">4</span>
+                            <span class="slot-status">Closed</span>
+                            <button class="slot-activate" onclick="game.activateSlot(3)">Add Player</button>
+                        </div>
+                        <div class="player-slot closed" data-slot="4">
+                            <span class="slot-number">5</span>
+                            <span class="slot-status">Closed</span>
+                            <button class="slot-activate" onclick="game.activateSlot(4)">Add Player</button>
+                        </div>
+                    </div>
+                    <button class="ready-btn" id="solo-ready-btn" onclick="game.startSoloGame()" disabled>Ready</button>
+                </div>
+                <button class="back-btn" onclick="game.backToModeSelection()">Back</button>
             </div>
         </div>
         

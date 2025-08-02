@@ -219,5 +219,185 @@ When multiple hunters enter Forest, battle order is determined by:
 - Consider weapon priority for Forest battle order advantage
 - Track dummy token movement patterns for future planning
 
+## Game Log System
+The game features a comprehensive logging system that displays on the left side of the screen, providing a complete history of all game events.
+
+### Log Features
+- **Fixed Position**: 300px wide panel on the left side of the screen
+- **Auto-Scroll**: Automatically scrolls to show newest entries
+- **Color-Coded Categories**: Different border colors for easy identification
+- **Entry Limit**: Maintains last 100 entries to prevent memory issues
+- **Clear Function**: Players can clear the log at any time
+- **Responsive Design**: Hides on screens smaller than 1400px width
+
+### Message Categories
+1. **🔄 Round Start** (Orange border)
+   - New game initialization
+   - Round number announcements
+
+2. **📍 Selection** (Purple border)
+   - Hunter and apprentice location selections
+   - Shows both human player and bot choices
+
+3. **💰 Resource Gain** (Green border)
+   - Resources earned from locations
+   - Station resource choices
+   - Popularity track rewards
+
+4. **🛒 Store Purchase** (Orange border)
+   - Human player item purchases with prices
+   - Bot purchasing decisions and item lists
+
+5. **⚔️ Battle** (Red border)
+   - All monster combat messages
+   - Attack rolls, damage dealt, defeats
+   - Battle outcomes and rewards
+
+6. **📝 System** (Gray border)
+   - General system messages
+   - Game state changes
+
+### Technical Implementation
+- **HTML**: Fixed position panel with scrollable content area
+- **CSS**: Color-coded styling with fade-in animations
+- **JavaScript**: `addLogEntry(message, category)` function integrates throughout game code
+- **Memory Management**: Automatic cleanup of old entries
+- **Integration**: All major game events automatically logged
+
+The game log provides players with a complete audit trail of all game actions, making it easier to track resource changes, strategic decisions, and battle outcomes throughout the entire game.
+
+## Bot System
+The game features a comprehensive AI bot system that enables solo play with intelligent virtual opponents. Bots make strategic decisions using probabilistic algorithms and stage-based progression.
+
+### Bot Player Architecture
+The bot system is implemented through the `BotPlayer` class with four integrated subsystems:
+
+#### 1. Hunter Subsystem (Location Selection)
+**Purpose**: Decides where the bot's hunter token should be placed each round.
+
+**Decision Algorithm**:
+- **Base Entries**: Each available location starts with 5 entries
+- **Weapon Preferences**: +2 entries for weapon's preferred location (from Weapon.csv)
+- **Resource Shortages**: Adjustments based on bot's current resource needs
+- **Unavailable Locations**: -100 entries (effectively removes from consideration)
+
+**Resource-Based Adjustments**:
+- **Hospital**: +2 entries if HP ≤ half, +1 if below max, 0 if full
+- **Bar**: +2 entries if EP below stage requirement, +1 if below max, 0 if full
+- **Work Site**: +1 entry if capacity 3-4, +2 entries if capacity 4+
+- **Dojo**: Uses CSV lookup tables based on current attack/defense dice and stage
+- **Plaza**: +2 entries if bot hasn't visited Plaza for 2+ rounds
+- **Forest**: Complex calculation using CSV tables, HP thresholds, and combat items
+
+**Probability Calculation**: All entry values are summed to create weighted probability distribution for final location selection.
+
+#### 2. Apprentice Subsystem (Social Placement)
+**Purpose**: Decides where the bot's apprentice token should be placed after hunter placement.
+
+**Decision Logic**:
+- **Base Entries**: 5 entries for all locations except hunter's chosen location
+- **Social Awareness**: +2 entries for other players' weapon preferred locations
+- **Highest Scorer Bonus**: +1 additional entry for the leading player's preferred location
+- **Forest Coordination**: +1 entry for Forest if hunter is also going to Forest
+- **Probability Selection**: Uses same weighted random selection as hunter subsystem
+
+#### 3. Resource Management Subsystem
+**Money Management**:
+- **Weapon-Specific Priorities**: Rifle/Plasma bots prioritize bullets/batteries (minimum 3)
+- **Standard Priority Order**: Dynamite > Bomb > Grenade > Fake Blood > Blood Bag > Beer
+- **Budget Constraints**: Only purchases items the bot can afford
+- **Capacity Awareness**: Considers inventory space when making purchases
+
+**Resource Usage**:
+- **EP Management**: Uses beer to maintain stage-appropriate EP levels, excess goes to upgrades
+- **HP Management**: Uses blood bags for recovery first, then upgrades
+- **EXP Management**: Alternates between attack and defense dice upgrades with preference tracking
+
+**Automatic Capacity Overflow Handling**:
+1. Use blood bags for HP recovery (if HP < max)
+2. Use beer for EP recovery (if EP < max)  
+3. Upgrade HP with 3 blood bags (if max HP < 10)
+4. Upgrade EP with 4 beers (if max EP < 10)
+5. Discard items as last resort (largest first, non-combat preferred)
+
+#### 4. Battle Management Subsystem
+**Monster Selection**:
+- **Stage-Based Progression**: 
+  - Stage 1: Fight Level 1 monsters (advance after defeating 2)
+  - Stage 2: Fight Level 2 monsters (advance after defeating 2)
+  - Stage 3: Fight Level 3 monsters
+- **EP Budget Management**: Selects highest affordable level if insufficient EP
+- **Pet Integration**: Chain/Whip bots automatically bring their highest level pet
+
+**Combat Strategy**:
+- **Item Optimization**: Uses minimal combat items for sure kills (Dynamite > Bomb > Grenade)
+- **Fake Blood Usage**: Always uses all Fake Blood for bonus points
+- **Battle Simulation**: Full turn-based combat with dice rolling
+- **Weapon Powers**: Handles all weapon abilities (Axe retaliation, etc.)
+
+**Post-Battle Management**:
+- **Automatic Recovery**: Uses items to restore HP/EP to maximum
+- **Automatic Upgrades**: Uses excess resources for HP/EP/dice upgrades
+- **Milestone Bonuses**: Automatically detects and applies milestone rewards
+- **Pet Taming**: Chain/Whip bots attempt to tame defeated monsters
+
+### Stage Progression System
+Bots track their progression through three distinct stages:
+
+- **Stage 1**: Target Level 1 monsters, focus on basic resource accumulation
+- **Stage 2**: Target Level 2 monsters, intermediate resource management  
+- **Stage 3**: Target Level 3 monsters, advanced optimization strategies
+
+Stage advancement occurs automatically after defeating 2 monsters of the current stage's level.
+
+### Solo Play Mode
+**UI Features**:
+- **5 Player Slots**: First slot defaults to human player, others start closed
+- **Flexible Configuration**: Each slot can be toggled between Player/Bot/Closed
+- **Minimum Requirement**: At least 2 players required to start
+- **Ready Button**: Disabled until minimum player count is met
+
+**Game Integration**:
+- **Automatic Decisions**: Bots make all decisions without human intervention
+- **UI Hiding**: Bot-specific UI elements are hidden during bot turns
+- **Status Messages**: Clear indication when bots are making decisions
+- **Comprehensive Logging**: All bot actions are logged to the game log
+
+### Bot Behavior Examples
+
+**Early Game Bot (Stage 1)**:
+- Prioritizes resource accumulation locations (Work Site, Bar, Hospital)
+- Fights Level 1 monsters when EP allows
+- Uses basic resource management
+- Focuses on building up attack/defense dice
+
+**Mid Game Bot (Stage 2)**:  
+- More strategic location selection based on current needs
+- Fights Level 2 monsters consistently
+- Efficient item usage and capacity management
+- Begins serious HP/EP upgrade investments
+
+**Late Game Bot (Stage 3)**:
+- Optimized decision-making with full CSV table utilization
+- Targets Level 3 monsters exclusively
+- Advanced resource optimization
+- Maximizes milestone bonuses and scoring opportunities
+
+### Technical Implementation
+- **CSV Integration**: Uses data tables for probabilistic decision making
+- **Weapon-Specific Logic**: Each weapon type has customized behavior patterns
+- **Memory Management**: Bots track their own progression and preferences
+- **Error Handling**: Robust fallback systems prevent bot decision failures
+- **Performance Optimization**: Efficient algorithms minimize processing time
+
+### Bot vs Human Balance
+Bots are designed to provide challenging but fair opponents:
+- **Strategic Depth**: Use same game rules and constraints as human players
+- **Probabilistic Decisions**: Avoid perfect play through weighted randomization
+- **Adaptive Difficulty**: Stage progression provides natural difficulty scaling
+- **Transparency**: All bot actions are logged for player visibility
+
+The bot system transforms the game from multiplayer-only to a comprehensive single-player experience with intelligent AI opponents that provide meaningful strategic challenges.
+
 ## Memories
 - add to memory

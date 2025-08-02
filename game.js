@@ -1,3 +1,961 @@
+// Bot system for AI players
+class BotPlayer {
+    constructor(playerId, weapon) {
+        this.playerId = playerId;
+        this.weapon = weapon;
+        this.stage = 1; // 1: before 2nd lv1 monster, 2: before 2nd lv2 monster, 3: after 2nd lv2 monster
+        this.monstersDefeated = { lv1: 0, lv2: 0, lv3: 0 };
+        this.roundsSinceLastPlaza = 0;
+        this.preferAttackDiceNext = false; // Track EXP upgrade preference
+        
+        // CSV data tables for decision making
+        this.weaponPreferences = {};
+        this.dojoTable = {};
+        this.forestTable = {};
+        
+        this.loadCSVData();
+    }
+    
+    loadCSVData() {
+        // Load weapon preferences from CSV data
+        const weaponData = {
+            'Bat': 'plaza',
+            'Katana': 'dojo', 
+            'Rifle': 'work site',
+            'Plasma': 'work site',
+            'Chain': 'bar',
+            'Axe': 'hospital',
+            'Whip': 'bar',
+            'Bow': 'plaza',
+            'Sword': 'dojo',
+            'Knife': 'dojo',
+            'Gloves': 'hospital'
+        };
+        this.weaponPreferences = weaponData;
+        
+        // Load dojo requirement tables (attack dice as rows, defense dice as columns)
+        this.dojoTable = {
+            1: { // Level 1 (exp需求組合(lv1).csv)
+                2: [1, 1, 0, 0, 0, 0, 0], // Attack dice 2
+                3: [0, 0, 0, 0, 0, 0, 0], // Attack dice 3
+                4: [0, 0, 0, 0, 0, 0, 0], // Attack dice 4
+                5: [0, 0, 0, 0, 0, 0, 0], // Attack dice 5
+                6: [0, 0, 0, 0, 0, 0, 0], // Attack dice 6
+                7: [0, 0, 0, 0, 0, 0, 0]  // Attack dice 7
+            },
+            2: { // Level 2 (exp需求組合(lv2).csv)
+                2: [1, 1, 1, 1, 0, 0, 0],
+                3: [1, 1, 1, 1, 0, 0, 0],
+                4: [1, 1, 1, 1, 0, 0, 0],
+                5: [0, 0, 0, 0, 0, 0, 0],
+                6: [0, 0, 0, 0, 0, 0, 0],
+                7: [0, 0, 0, 0, 0, 0, 0]
+            },
+            3: { // Level 3 (exp需求組合(lv3).csv)
+                2: [1, 1, 1, 1, 1, 1, 0],
+                3: [1, 1, 1, 1, 1, 1, 0],
+                4: [1, 1, 1, 1, 1, 1, 0],
+                5: [1, 1, 1, 1, 1, 1, 0],
+                6: [1, 1, 1, 1, 1, 1, 0],
+                7: [0, 0, 0, 0, 0, 0, 0]
+            }
+        };
+        
+        // Load forest requirement tables (attack dice as rows, defense dice as columns)
+        this.forestTable = {
+            1: { // Level 1 (森林需求組合(lv1).csv)
+                2: [-1, 0, 0, 1, 2, 3, 4],
+                3: [0, 1, 1, 2, 3, 4, 5],
+                4: [1, 2, 3, 4, 5, 6, 7],
+                5: [2, 3, 4, 5, 6, 7, 8],
+                6: [3, 4, 5, 6, 7, 8, 9],
+                7: [4, 5, 6, 7, 8, 9, 10]
+            },
+            2: { // Level 2 (森林需求組合(lv2).csv)
+                2: [-4, -2, 0, 1, 1, 1, 1],
+                3: [-2, 0, 1, 1, 2, 2, 2],
+                4: [0, 1, 1, 2, 3, 3, 3],
+                5: [1, 2, 3, 4, 4, 4, 4],
+                6: [2, 3, 4, 5, 5, 5, 5],
+                7: [3, 4, 5, 6, 6, 6, 6]
+            },
+            3: { // Level 3 (森林需求組合(lv3).csv)
+                2: [-6, -4, -2, -1, -1, -1, -1],
+                3: [-4, -2, -1, 0, 0, 0, 0],
+                4: [-2, -1, 0, 1, 1, 1, 1],
+                5: [-1, 0, 1, 2, 2, 2, 2],
+                6: [0, 1, 2, 2, 2, 2, 2],
+                7: [1, 2, 2, 3, 3, 3, 3]
+            }
+        };
+    }
+    
+    updateStage(monsterLevel) {
+        this.monstersDefeated[`lv${monsterLevel}`]++;
+        
+        // Update stage based on defeated monsters
+        if (this.monstersDefeated.lv1 < 2) {
+            this.stage = 1;
+        } else if (this.monstersDefeated.lv2 < 2) {
+            this.stage = 2;
+        } else {
+            this.stage = 3;
+        }
+    }
+    
+    getRequiredEP() {
+        // Base EP requirement for forest based on stage
+        let baseRequirement = this.stage + 1; // Stage 1 = 2EP, Stage 2 = 3EP, Stage 3 = 4EP
+        
+        // Chain/Whip weapons need extra EP for pet summoning
+        if (this.weapon.name === 'Chain' || this.weapon.name === 'Whip') {
+            baseRequirement += 1; // Extra EP for bringing a pet
+        }
+        
+        return baseRequirement;
+    }
+    
+    // Hunter subsystem: probabilistic location selection
+    selectHunterLocation(gameState, availableLocations) {
+        const player = gameState.players[this.playerId];
+        const entries = {};
+        
+        // Initialize all locations with 5 base entries
+        for (let i = 1; i <= 7; i++) {
+            entries[i] = 5;
+        }
+        
+        // Apply availability check (-100 for unavailable locations)
+        for (let locationId = 1; locationId <= 7; locationId++) {
+            if (!availableLocations.includes(locationId)) {
+                entries[locationId] -= 100;
+            }
+        }
+        
+        // Weapon preference (+2 entries)
+        const preferredLocation = this.getLocationIdByName(this.weaponPreferences[this.weapon.name]);
+        if (preferredLocation && entries[preferredLocation] > -95) {
+            entries[preferredLocation] += 2;
+        }
+        
+        // Resource-based adjustments
+        this.adjustEntriesForResources(entries, player);
+        
+        // Calculate probabilities and select location
+        return this.selectLocationByProbability(entries);
+    }
+    
+    adjustEntriesForResources(entries, player) {
+        // Hospital adjustments based on HP
+        const hpRatio = player.resources.hp / player.maxResources.hp;
+        if (hpRatio <= 0.5) {
+            entries[4] += 2; // Hospital
+        } else if (hpRatio < 1.0) {
+            entries[4] += 1;
+        }
+        
+        // Bar adjustments based on EP
+        const requiredEP = this.getRequiredEP();
+        if (player.resources.ep < requiredEP) {
+            entries[2] += 2; // Bar
+        } else if (player.resources.ep < player.maxResources.ep) {
+            entries[2] += 1;
+        }
+        
+        // Work Site adjustments based on capacity
+        const availableCapacity = this.weapon.capacity - this.calculateUsedCapacity(player);
+        if (availableCapacity <= 2) {
+            // No change
+        } else if (availableCapacity < 4) {
+            entries[1] += 1; // Work Site
+        } else {
+            entries[1] += 2;
+        }
+        
+        // Dojo adjustments based on attack/defense dice and stage
+        const dojoEntries = this.getTableValue(this.dojoTable, player.weapon.currentAttackDice, player.weapon.currentDefenseDice);
+        if (dojoEntries > 0) {
+            entries[5] += dojoEntries; // Dojo
+        }
+        
+        // Plaza adjustments based on rounds since last visit
+        if (this.roundsSinceLastPlaza >= 2) {
+            entries[6] += 2; // Plaza
+        }
+        
+        // Forest adjustments
+        this.adjustForestEntries(entries, player);
+    }
+    
+    adjustForestEntries(entries, player) {
+        // Full EP bonus
+        if (player.resources.ep === player.maxResources.ep) {
+            entries[7] += 1;
+        }
+        
+        // Combat item bonuses
+        const grenades = player.inventory.filter(item => item.name === 'Grenade').length;
+        const bombs = player.inventory.filter(item => item.name === 'Bomb').length;
+        const dynamites = player.inventory.filter(item => item.name === 'Dynamite').length;
+        
+        if (grenades > 0) entries[7] += Math.floor(1 / this.stage);
+        if (bombs > 0) entries[7] += Math.floor(2 / this.stage);
+        if (dynamites > 0) entries[7] += Math.floor(3 / this.stage);
+        
+        // HP penalty
+        if (player.resources.hp / player.maxResources.hp < 0.5) {
+            entries[7] -= 3;
+        }
+        
+        // Table-based adjustment
+        const forestEntries = this.getTableValue(this.forestTable, player.weapon.currentAttackDice, player.weapon.currentDefenseDice);
+        entries[7] += forestEntries;
+    }
+    
+    getTableValue(table, attackDice, defenseDice) {
+        const stageTable = table[this.stage];
+        if (!stageTable || !stageTable[attackDice]) {
+            return 0;
+        }
+        
+        const defenseIndex = Math.min(defenseDice, stageTable[attackDice].length - 1);
+        return stageTable[attackDice][defenseIndex] || 0;
+    }
+    
+    selectLocationByProbability(entries) {
+        // Calculate total valid entries (ignore negative values)
+        let totalEntries = 0;
+        const validEntries = {};
+        
+        for (const [locationId, entryCount] of Object.entries(entries)) {
+            if (entryCount > 0) {
+                validEntries[locationId] = entryCount;
+                totalEntries += entryCount;
+            }
+        }
+        
+        if (totalEntries === 0) {
+            // Fallback: select any available location
+            const availableLocations = Object.keys(entries).filter(id => entries[id] > -95);
+            return availableLocations.length > 0 ? parseInt(availableLocations[0]) : 1;
+        }
+        
+        // Select based on probability
+        let random = Math.random() * totalEntries;
+        for (const [locationId, entryCount] of Object.entries(validEntries)) {
+            random -= entryCount;
+            if (random <= 0) {
+                return parseInt(locationId);
+            }
+        }
+        
+        // Fallback
+        return parseInt(Object.keys(validEntries)[0]);
+    }
+    
+    getLocationIdByName(locationName) {
+        const locationMap = {
+            'work site': 1,
+            'bar': 2,
+            'station': 3,
+            'hospital': 4,
+            'dojo': 5,
+            'plaza': 6,
+            'forest': 7
+        };
+        return locationMap[locationName.toLowerCase()];
+    }
+    
+    calculateUsedCapacity(player) {
+        return player.inventory.reduce((total, item) => total + (item.size || 1), 0);
+    }
+    
+    updateRoundsSinceLastPlaza(selectedLocation) {
+        if (selectedLocation === 6) { // Plaza
+            this.roundsSinceLastPlaza = 0;
+        } else {
+            this.roundsSinceLastPlaza++;
+        }
+    }
+    
+    // Apprentice subsystem: social-aware location selection
+    selectApprenticeLocation(gameState, availableLocations, hunterLocation) {
+        const entries = {};
+        
+        // Initialize all available locations (except hunter's location) with 5 base entries
+        for (let i = 1; i <= 7; i++) {
+            if (i !== hunterLocation && availableLocations.includes(i)) {
+                entries[i] = 5;
+            } else {
+                entries[i] = 0; // Not available or hunter's location
+            }
+        }
+        
+        // Apply availability check (-100 for completely unavailable locations)
+        for (let locationId = 1; locationId <= 7; locationId++) {
+            if (!availableLocations.includes(locationId)) {
+                entries[locationId] = -100;
+            }
+        }
+        
+        // Check all other players' preferred locations (+2 entries each)
+        this.adjustEntriesForOtherPlayersPreferences(entries, gameState);
+        
+        // Highest score player gets +1 additional entry for their preferred location
+        this.adjustEntriesForHighestScorePlayer(entries, gameState);
+        
+        // If bot's hunter is in forest, +1 entry for forest
+        if (hunterLocation === 7 && entries[7] > -95) { // Forest
+            entries[7] += 1;
+        }
+        
+        // Calculate probabilities and select location
+        return this.selectLocationByProbability(entries);
+    }
+    
+    adjustEntriesForOtherPlayersPreferences(entries, gameState) {
+        // Loop through all players except this bot
+        for (let i = 0; i < gameState.players.length; i++) {
+            if (i === this.playerId) {
+                continue; // Skip self
+            }
+            
+            const otherPlayer = gameState.players[i];
+            const otherWeapon = otherPlayer.weapon;
+            
+            if (otherWeapon && this.weaponPreferences[otherWeapon.name]) {
+                const preferredLocationName = this.weaponPreferences[otherWeapon.name];
+                const preferredLocationId = this.getLocationIdByName(preferredLocationName);
+                
+                // +2 entries for each other player's preferred location (skip unavailable)
+                if (preferredLocationId && entries[preferredLocationId] > -95) {
+                    entries[preferredLocationId] += 2;
+                }
+            }
+        }
+    }
+    
+    adjustEntriesForHighestScorePlayer(entries, gameState) {
+        // Find the player with the highest score
+        let highestScore = -1;
+        let highestScorePlayer = null;
+        
+        for (let i = 0; i < gameState.players.length; i++) {
+            if (i === this.playerId) {
+                continue; // Skip self
+            }
+            
+            const player = gameState.players[i];
+            if (player.score > highestScore) {
+                highestScore = player.score;
+                highestScorePlayer = player;
+            }
+        }
+        
+        // Give +1 additional entry to highest scoring player's preferred location
+        if (highestScorePlayer && highestScorePlayer.weapon) {
+            const preferredLocationName = this.weaponPreferences[highestScorePlayer.weapon.name];
+            const preferredLocationId = this.getLocationIdByName(preferredLocationName);
+            
+            if (preferredLocationId && entries[preferredLocationId] > -95) {
+                entries[preferredLocationId] += 1;
+            }
+        }
+    }
+    
+    // Resource Management subsystem
+    manageResources(gameState) {
+        const player = gameState.players[this.playerId];
+        
+        // Manage resources in order: Money → EP → HP → EXP
+        this.manageMoney(player, gameState);
+        this.manageEP(player);
+        this.manageHP(player);
+        this.manageEXP(player);
+    }
+    
+    manageMoney(player, gameState) {
+        let itemPriority = [];
+        
+        // Weapon-specific item priorities
+        if (this.weapon.name === 'Rifle') {
+            // Rifle: Bullet highest priority, buy at least 3
+            const currentBullets = player.inventory.filter(item => item.name === 'Bullet').length;
+            if (currentBullets < 3) {
+                // Prioritize bullets until we have at least 3
+                itemPriority = [
+                    { name: 'Bullet', price: 2, size: 1 },
+                    { name: 'Dynamite', price: 6, size: 4 },
+                    { name: 'Bomb', price: 4, size: 3 },
+                    { name: 'Grenade', price: 2, size: 2 },
+                    { name: 'Fake Blood', price: 2, size: 2 },
+                    { name: 'Blood Bag', price: 2, size: 1 },
+                    { name: 'Beer', price: 2, size: 1 }
+                ];
+            } else {
+                // After having 3+ bullets, use normal priority
+                itemPriority = [
+                    { name: 'Dynamite', price: 6, size: 4 },
+                    { name: 'Bomb', price: 4, size: 3 },
+                    { name: 'Grenade', price: 2, size: 2 },
+                    { name: 'Fake Blood', price: 2, size: 2 },
+                    { name: 'Bullet', price: 2, size: 1 },
+                    { name: 'Blood Bag', price: 2, size: 1 },
+                    { name: 'Beer', price: 2, size: 1 }
+                ];
+            }
+        } else if (this.weapon.name === 'Plasma') {
+            // Plasma: Battery highest priority, buy at least 3
+            const currentBatteries = player.inventory.filter(item => item.name === 'Battery').length;
+            if (currentBatteries < 3) {
+                // Prioritize batteries until we have at least 3
+                itemPriority = [
+                    { name: 'Battery', price: 3, size: 1 },
+                    { name: 'Dynamite', price: 6, size: 4 },
+                    { name: 'Bomb', price: 4, size: 3 },
+                    { name: 'Grenade', price: 2, size: 2 },
+                    { name: 'Fake Blood', price: 2, size: 2 },
+                    { name: 'Blood Bag', price: 2, size: 1 },
+                    { name: 'Beer', price: 2, size: 1 }
+                ];
+            } else {
+                // After having 3+ batteries, use normal priority
+                itemPriority = [
+                    { name: 'Dynamite', price: 6, size: 4 },
+                    { name: 'Bomb', price: 4, size: 3 },
+                    { name: 'Grenade', price: 2, size: 2 },
+                    { name: 'Fake Blood', price: 2, size: 2 },
+                    { name: 'Battery', price: 3, size: 1 },
+                    { name: 'Blood Bag', price: 2, size: 1 },
+                    { name: 'Beer', price: 2, size: 1 }
+                ];
+            }
+        } else {
+            // Default priority for other weapons
+            itemPriority = [
+                { name: 'Dynamite', price: 6, size: 4 },
+                { name: 'Bomb', price: 4, size: 3 },
+                { name: 'Grenade', price: 2, size: 2 },
+                { name: 'Fake Blood', price: 2, size: 2 },
+                { name: 'Blood Bag', price: 2, size: 1 },
+                { name: 'Beer', price: 2, size: 1 }
+            ];
+        }
+        
+        // Calculate available capacity
+        let availableCapacity = this.weapon.capacity - this.calculateUsedCapacity(player);
+        
+        // Try to buy items in priority order
+        for (const item of itemPriority) {
+            // Special handling for Rifle/Plasma minimum requirements
+            let shouldBuy = true;
+            if (this.weapon.name === 'Rifle' && item.name === 'Bullet') {
+                const currentBullets = player.inventory.filter(i => i.name === 'Bullet').length;
+                if (currentBullets >= 3 && itemPriority.indexOf(item) === 0) {
+                    // Skip buying more bullets if we already have 3+ and this is the priority phase
+                    continue;
+                }
+            } else if (this.weapon.name === 'Plasma' && item.name === 'Battery') {
+                const currentBatteries = player.inventory.filter(i => i.name === 'Battery').length;
+                if (currentBatteries >= 3 && itemPriority.indexOf(item) === 0) {
+                    // Skip buying more batteries if we already have 3+ and this is the priority phase
+                    continue;
+                }
+            }
+            
+            while (player.resources.money >= item.price && availableCapacity >= item.size && shouldBuy) {
+                // Buy the item
+                player.resources.money -= item.price;
+                player.inventory.push({
+                    name: item.name,
+                    size: item.size,
+                    type: this.getItemType(item.name)
+                });
+                availableCapacity -= item.size;
+                
+                console.log(`Bot ${this.playerId + 1} bought ${item.name}`);
+                
+                // For Rifle/Plasma, stop after reaching minimum requirement in priority phase
+                if (this.weapon.name === 'Rifle' && item.name === 'Bullet') {
+                    const bulletCount = player.inventory.filter(i => i.name === 'Bullet').length;
+                    if (bulletCount >= 3 && itemPriority.indexOf(item) === 0) {
+                        break;
+                    }
+                } else if (this.weapon.name === 'Plasma' && item.name === 'Battery') {
+                    const batteryCount = player.inventory.filter(i => i.name === 'Battery').length;
+                    if (batteryCount >= 3 && itemPriority.indexOf(item) === 0) {
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    
+    manageEP(player) {
+        const requiredEP = this.getRequiredEP();
+        let beerCount = player.resources.beer;
+        
+        // First priority: recover EP to at least stage requirement
+        const epNeeded = Math.max(0, requiredEP - player.resources.ep);
+        const epRecovery = Math.min(epNeeded, Math.min(beerCount, player.maxResources.ep - player.resources.ep));
+        
+        if (epRecovery > 0) {
+            player.resources.ep += epRecovery;
+            player.resources.beer -= epRecovery;
+            beerCount -= epRecovery;
+            console.log(`Bot ${this.playerId + 1} used ${epRecovery} beer to recover EP`);
+        }
+        
+        // Second priority: upgrade EP with remaining beer
+        if (beerCount > 0 && player.maxResources.ep < 10) {
+            const upgradesNeeded = 4; // 4 beers per EP upgrade
+            const possibleUpgrades = Math.floor(beerCount / upgradesNeeded);
+            const maxUpgrades = 10 - player.maxResources.ep; // Can't exceed max of 10
+            const actualUpgrades = Math.min(possibleUpgrades, maxUpgrades);
+            
+            if (actualUpgrades > 0) {
+                const beersUsed = actualUpgrades * upgradesNeeded;
+                player.resources.beer -= beersUsed;
+                player.maxResources.ep += actualUpgrades;
+                player.resources.ep += actualUpgrades; // Also increase current EP
+                console.log(`Bot ${this.playerId + 1} upgraded max EP by ${actualUpgrades}`);
+            }
+        }
+    }
+    
+    manageHP(player) {
+        let bloodBagCount = player.resources.bloodBag;
+        
+        // First priority: recover HP to maximum
+        const hpRecovery = Math.min(bloodBagCount, player.maxResources.hp - player.resources.hp);
+        
+        if (hpRecovery > 0) {
+            player.resources.hp += hpRecovery;
+            player.resources.bloodBag -= hpRecovery;
+            bloodBagCount -= hpRecovery;
+            console.log(`Bot ${this.playerId + 1} used ${hpRecovery} blood bags to recover HP`);
+        }
+        
+        // Second priority: upgrade HP with remaining blood bags
+        if (bloodBagCount > 0 && player.maxResources.hp < 10) {
+            const upgradesNeeded = 3; // 3 blood bags per HP upgrade
+            const possibleUpgrades = Math.floor(bloodBagCount / upgradesNeeded);
+            const maxUpgrades = 10 - player.maxResources.hp; // Can't exceed max of 10
+            const actualUpgrades = Math.min(possibleUpgrades, maxUpgrades);
+            
+            if (actualUpgrades > 0) {
+                const bloodBagsUsed = actualUpgrades * upgradesNeeded;
+                player.resources.bloodBag -= bloodBagsUsed;
+                player.maxResources.hp += actualUpgrades;
+                player.resources.hp += actualUpgrades; // Also increase current HP
+                console.log(`Bot ${this.playerId + 1} upgraded max HP by ${actualUpgrades}`);
+            }
+        }
+    }
+    
+    manageEXP(player) {
+        const attackUpgradeCost = this.weapon.reqExpAttack;
+        const defenseUpgradeCost = this.weapon.reqExpDefense;
+        
+        // Determine upgrade choice based on EXP amount and preference flag
+        let shouldUpgradeAttack = false;
+        
+        if (this.preferAttackDiceNext) {
+            // Force attack dice upgrade regardless of EXP amount
+            shouldUpgradeAttack = true;
+            this.preferAttackDiceNext = false; // Reset flag after use
+        } else if (player.resources.exp > 3) {
+            shouldUpgradeAttack = true;
+        } else {
+            shouldUpgradeAttack = false;
+            this.preferAttackDiceNext = true; // Set flag for next time
+        }
+        
+        if (shouldUpgradeAttack) {
+            // Try to upgrade attack dice
+            if (player.resources.exp >= attackUpgradeCost && player.weapon.currentAttackDice < 7) {
+                player.resources.exp -= attackUpgradeCost;
+                player.weapon.currentAttackDice += 1;
+                console.log(`Bot ${this.playerId + 1} upgraded attack dice to ${player.weapon.currentAttackDice}`);
+            }
+        } else {
+            // Try to upgrade defense dice
+            if (player.resources.exp >= defenseUpgradeCost && player.weapon.currentDefenseDice < 6) {
+                player.resources.exp -= defenseUpgradeCost;
+                player.weapon.currentDefenseDice += 1;
+                console.log(`Bot ${this.playerId + 1} upgraded defense dice to ${player.weapon.currentDefenseDice}`);
+            }
+        }
+    }
+    
+    // Automatic capacity overflow handling for bots
+    handleBotCapacityOverflow(player, game) {
+        const getInventorySize = (player) => {
+            return player.inventory.reduce((total, item) => total + item.size, 0);
+        };
+        
+        const logActions = [];
+        
+        // Keep processing until capacity is met
+        while (getInventorySize(player) > player.maxInventoryCapacity) {
+            let actionTaken = false;
+            
+            // Priority 1: Use blood bags to recover HP if not at max
+            const bloodBags = player.inventory.filter(item => item.name === 'Blood Bag');
+            if (bloodBags.length > 0 && player.resources.hp < player.maxResources.hp) {
+                const bloodBagIndex = player.inventory.findIndex(item => item.name === 'Blood Bag');
+                const recoveryAmount = Math.min(1, player.maxResources.hp - player.resources.hp);
+                
+                player.resources.hp += recoveryAmount;
+                player.inventory.splice(bloodBagIndex, 1);
+                player.resources.bloodBag = Math.max(0, player.resources.bloodBag - 1);
+                
+                logActions.push(`used Blood Bag (+${recoveryAmount} HP)`);
+                actionTaken = true;
+                continue;
+            }
+            
+            // Priority 2: Use beer to recover EP if not at max
+            const beers = player.inventory.filter(item => item.name === 'Beer');
+            if (beers.length > 0 && player.resources.ep < player.maxResources.ep) {
+                const beerIndex = player.inventory.findIndex(item => item.name === 'Beer');
+                const recoveryAmount = Math.min(1, player.maxResources.ep - player.resources.ep);
+                
+                player.resources.ep += recoveryAmount;
+                player.inventory.splice(beerIndex, 1);
+                player.resources.beer = Math.max(0, player.resources.beer - 1);
+                
+                logActions.push(`used Beer (+${recoveryAmount} EP)`);
+                actionTaken = true;
+                continue;
+            }
+            
+            // Priority 3: Upgrade HP with blood bags (need 3 for upgrade)
+            const bloodBagsForUpgrade = player.inventory.filter(item => item.name === 'Blood Bag');
+            if (bloodBagsForUpgrade.length >= 3 && player.maxResources.hp < 10) {
+                // Remove 3 blood bags
+                for (let i = 0; i < 3; i++) {
+                    const bloodBagIndex = player.inventory.findIndex(item => item.name === 'Blood Bag');
+                    player.inventory.splice(bloodBagIndex, 1);
+                    player.resources.bloodBag = Math.max(0, player.resources.bloodBag - 1);
+                }
+                
+                // Upgrade HP
+                player.maxResources.hp++;
+                player.resources.hp++; // Also increase current HP
+                
+                // Check for milestone bonuses
+                if (player.maxResources.hp === 8 && !player.milestones.hp8) {
+                    player.resources.score += 2;
+                    player.milestones.hp8 = true;
+                    logActions.push(`upgraded max HP to ${player.maxResources.hp} (+2 milestone points)`);
+                } else if (player.maxResources.hp === 10 && !player.milestones.hp10) {
+                    player.resources.score += 4;
+                    player.milestones.hp10 = true;
+                    logActions.push(`upgraded max HP to ${player.maxResources.hp} (+4 milestone points)`);
+                } else {
+                    logActions.push(`upgraded max HP to ${player.maxResources.hp}`);
+                }
+                
+                actionTaken = true;
+                continue;
+            }
+            
+            // Priority 4: Upgrade EP with beer (need 4 for upgrade)
+            const beersForUpgrade = player.inventory.filter(item => item.name === 'Beer');
+            if (beersForUpgrade.length >= 4 && player.maxResources.ep < 10) {
+                // Remove 4 beers
+                for (let i = 0; i < 4; i++) {
+                    const beerIndex = player.inventory.findIndex(item => item.name === 'Beer');
+                    player.inventory.splice(beerIndex, 1);
+                    player.resources.beer = Math.max(0, player.resources.beer - 1);
+                }
+                
+                // Upgrade EP
+                player.maxResources.ep++;
+                player.resources.ep++; // Also increase current EP
+                
+                // Check for milestone bonuses
+                if (player.maxResources.ep === 8 && !player.milestones.ep8) {
+                    player.resources.score += 2;
+                    player.milestones.ep8 = true;
+                    logActions.push(`upgraded max EP to ${player.maxResources.ep} (+2 milestone points)`);
+                } else if (player.maxResources.ep === 10 && !player.milestones.ep10) {
+                    player.resources.score += 4;
+                    player.milestones.ep10 = true;
+                    logActions.push(`upgraded max EP to ${player.maxResources.ep} (+4 milestone points)`);
+                } else {
+                    logActions.push(`upgraded max EP to ${player.maxResources.ep}`);
+                }
+                
+                actionTaken = true;
+                continue;
+            }
+            
+            // Priority 5: Discard items (last resort) - prioritize largest items first
+            if (!actionTaken) {
+                // Find the largest item that's not essential (combat items last)
+                let itemToDiscard = null;
+                let maxSize = 0;
+                let discardIndex = -1;
+                
+                for (let i = 0; i < player.inventory.length; i++) {
+                    const item = player.inventory[i];
+                    // Prioritize non-combat items for discard
+                    if ((item.name === 'Beer' || item.name === 'Blood Bag') && item.size >= maxSize) {
+                        itemToDiscard = item;
+                        maxSize = item.size;
+                        discardIndex = i;
+                    }
+                }
+                
+                // If no beer/blood bags, discard any item
+                if (!itemToDiscard && player.inventory.length > 0) {
+                    for (let i = 0; i < player.inventory.length; i++) {
+                        const item = player.inventory[i];
+                        if (item.size >= maxSize) {
+                            itemToDiscard = item;
+                            maxSize = item.size;
+                            discardIndex = i;
+                        }
+                    }
+                }
+                
+                if (itemToDiscard && discardIndex >= 0) {
+                    player.inventory.splice(discardIndex, 1);
+                    
+                    // Update resource counts if applicable
+                    if (itemToDiscard.name === 'Beer') {
+                        player.resources.beer = Math.max(0, player.resources.beer - 1);
+                    } else if (itemToDiscard.name === 'Blood Bag') {
+                        player.resources.bloodBag = Math.max(0, player.resources.bloodBag - 1);
+                    }
+                    
+                    logActions.push(`discarded ${itemToDiscard.name}`);
+                    actionTaken = true;
+                }
+            }
+            
+            // Safety break - if no action could be taken, break to prevent infinite loop
+            if (!actionTaken) {
+                console.warn(`Bot ${player.name} couldn't resolve capacity overflow automatically`);
+                break;
+            }
+        }
+        
+        // Log all actions taken
+        if (logActions.length > 0) {
+            const actionsList = logActions.join(', ');
+            game.addLogEntry(
+                `🔧 <strong>${player.name}</strong> (Bot) resolved capacity overflow: ${actionsList}`,
+                'system'
+            );
+        }
+        
+        return logActions.length > 0;
+    }
+    
+    getItemType(itemName) {
+        const combatItems = ['Grenade', 'Bomb', 'Dynamite'];
+        const resourceItems = ['Beer', 'Blood Bag'];
+        const specialItems = ['Fake Blood'];
+        const ammoItems = ['Bullet', 'Battery'];
+        
+        if (combatItems.includes(itemName)) return 'combat';
+        if (resourceItems.includes(itemName)) return 'resource';
+        if (specialItems.includes(itemName)) return 'special';
+        if (ammoItems.includes(itemName)) return 'ammo';
+        return 'unknown';
+    }
+    
+    // Battle Management subsystem
+    manageBattle(gameState, monster) {
+        const player = gameState.players[this.playerId];
+        
+        console.log(`Bot ${this.playerId + 1} entering battle with ${monster.name} (HP: ${monster.hp})`);
+        
+        // Select and bring pet if using Chain/Whip
+        let selectedPet = null;
+        if (this.weapon.name === 'Chain' || this.weapon.name === 'Whip') {
+            selectedPet = this.selectPet(player);
+            if (selectedPet) {
+                console.log(`Bot ${this.playerId + 1} brought pet: ${selectedPet.name} (Damage: ${selectedPet.damage})`);
+            }
+        }
+        
+        // Calculate sure damage at battle start
+        let sureDamage = this.calculateSureDamage(player);
+        
+        // Pre-battle: use items if sure damage >= monster HP
+        if (sureDamage >= monster.hp) {
+            this.useCombatItems(player, monster, sureDamage);
+            this.useAllFakeBlood(player);
+            return { victory: true, usedItems: true };
+        }
+        
+        return {
+            victory: false,
+            usedItems: false,
+            selectedPet: selectedPet,
+            sureDamage: sureDamage
+        };
+    }
+    
+    // Called after each player attack to check if items can finish the monster
+    checkPostAttackItems(gameState, monster) {
+        const player = gameState.players[this.playerId];
+        let sureDamage = this.calculateSureDamage(player);
+        
+        if (sureDamage >= monster.hp) {
+            // Try taming first if using Chain/Whip
+            if ((this.weapon.name === 'Chain' || this.weapon.name === 'Whip') && this.canTameMonster(monster)) {
+                if (this.attemptTaming(player, monster)) {
+                    this.useAllFakeBlood(player);
+                    return { tamed: true, usedItems: true };
+                }
+            }
+            
+            // If taming failed or not applicable, use items to kill
+            this.useCombatItems(player, monster, sureDamage);
+            this.useAllFakeBlood(player);
+            return { victory: true, usedItems: true };
+        }
+        
+        return { victory: false, usedItems: false };
+    }
+    
+    calculateSureDamage(player) {
+        const grenades = player.inventory.filter(item => item.name === 'Grenade').length;
+        const bombs = player.inventory.filter(item => item.name === 'Bomb').length;
+        const dynamites = player.inventory.filter(item => item.name === 'Dynamite').length;
+        
+        return grenades * 1 + bombs * 2 + dynamites * 3;
+    }
+    
+    useCombatItems(player, monster, sureDamage) {
+        let remainingHP = monster.hp;
+        let itemsUsed = [];
+        
+        // Use minimal items to avoid waste
+        // Start with most efficient items (highest damage first)
+        
+        // Use dynamites first (3 damage each)
+        const dynamites = player.inventory.filter(item => item.name === 'Dynamite').length;
+        const dynamitesToUse = Math.min(dynamites, Math.ceil(remainingHP / 3));
+        
+        for (let i = 0; i < dynamitesToUse && remainingHP > 0; i++) {
+            const itemIndex = player.inventory.findIndex(item => item.name === 'Dynamite');
+            if (itemIndex >= 0) {
+                player.inventory.splice(itemIndex, 1);
+                remainingHP -= 3;
+                itemsUsed.push('Dynamite');
+            }
+        }
+        
+        // Use bombs next (2 damage each)
+        if (remainingHP > 0) {
+            const bombs = player.inventory.filter(item => item.name === 'Bomb').length;
+            const bombsToUse = Math.min(bombs, Math.ceil(remainingHP / 2));
+            
+            for (let i = 0; i < bombsToUse && remainingHP > 0; i++) {
+                const itemIndex = player.inventory.findIndex(item => item.name === 'Bomb');
+                if (itemIndex >= 0) {
+                    player.inventory.splice(itemIndex, 1);
+                    remainingHP -= 2;
+                    itemsUsed.push('Bomb');
+                }
+            }
+        }
+        
+        // Use grenades last (1 damage each)
+        if (remainingHP > 0) {
+            const grenades = player.inventory.filter(item => item.name === 'Grenade').length;
+            const grenadesToUse = Math.min(grenades, remainingHP);
+            
+            for (let i = 0; i < grenadesToUse && remainingHP > 0; i++) {
+                const itemIndex = player.inventory.findIndex(item => item.name === 'Grenade');
+                if (itemIndex >= 0) {
+                    player.inventory.splice(itemIndex, 1);
+                    remainingHP -= 1;
+                    itemsUsed.push('Grenade');
+                }
+            }
+        }
+        
+        monster.hp = Math.max(0, remainingHP);
+        
+        if (itemsUsed.length > 0) {
+            console.log(`Bot ${this.playerId + 1} used items: ${itemsUsed.join(', ')} - Monster HP now: ${monster.hp}`);
+        }
+    }
+    
+    useAllFakeBlood(player) {
+        const fakeBloodItems = player.inventory.filter(item => item.name === 'Fake Blood');
+        
+        if (fakeBloodItems.length > 0) {
+            // Remove all fake blood items from inventory
+            player.inventory = player.inventory.filter(item => item.name !== 'Fake Blood');
+            console.log(`Bot ${this.playerId + 1} used ${fakeBloodItems.length} Fake Blood for bonus points`);
+        }
+    }
+    
+    canTameMonster(monster) {
+        // Chain weapon can tame monsters with HP <= 3
+        if (this.weapon.name === 'Chain') {
+            return monster.hp <= 3;
+        }
+        
+        // Whip weapon has different taming rules (if applicable)
+        if (this.weapon.name === 'Whip') {
+            return monster.hp <= 3; // Assuming similar rule
+        }
+        
+        return false;
+    }
+    
+    attemptTaming(player, monster) {
+        if (this.canTameMonster(monster)) {
+            // Add monster as pet (simplified - actual implementation may vary)
+            console.log(`Bot ${this.playerId + 1} tamed ${monster.name}!`);
+            
+            // Add to pets collection (assuming player has pets array)
+            if (!player.pets) {
+                player.pets = [];
+            }
+            
+            player.pets.push({
+                name: monster.name,
+                damage: monster.att,
+                hp: monster.hp,
+                level: monster.level
+            });
+            
+            return true;
+        }
+        
+        return false;
+    }
+    
+    selectPet(player) {
+        if (!player.pets || player.pets.length === 0) {
+            return null;
+        }
+        
+        // Select pet with highest damage
+        let bestPet = null;
+        let highestDamage = 0;
+        
+        for (const pet of player.pets) {
+            if (pet.damage > highestDamage) {
+                highestDamage = pet.damage;
+                bestPet = pet;
+            }
+        }
+        
+        return bestPet;
+    }
+}
+
 class Game {
     constructor() {
         this.weapons = [
@@ -41,6 +999,7 @@ class Game {
         this.playerColors = null;
         this.dummyTokens = [];
         this.currentPlayerIndex = 0;
+        this.currentRound = 1;
         this.roundPhase = 'setup'; // 'setup', 'selection', 'distribution', 'station', 'store', 'battle', 'nextround'
         this.stationChoices = {}; // Store station choices for each player
         this.pendingStationPlayer = null; // Track which player needs to choose
@@ -49,6 +1008,17 @@ class Game {
         this.currentBattle = null; // Track ongoing monster battle
         this.storeItems = this.loadStoreItems(); // Load store items
         this.currentStorePlayer = null; // Track current shopping player
+        this.bots = []; // Array to hold bot instances
+        this.botCount = 0; // Number of bots in the game
+        
+        // Solo play mode configuration
+        this.soloModeSlots = [
+            { type: 'player', active: true },
+            { type: 'closed', active: false },
+            { type: 'closed', active: false },
+            { type: 'closed', active: false },
+            { type: 'closed', active: false }
+        ];
         
         this.showPlayerCountSelection();
     }
@@ -93,6 +1063,15 @@ class Game {
     }
     
     initializeGame(playerCount) {
+        // Show game log
+        this.showGameLog();
+        
+        // Log game start
+        this.addLogEntry(`🎮 <strong>New Game Started</strong> - ${playerCount} players`, 'round-start');
+        
+        // Log first round start
+        this.addLogEntry(`🔄 <strong>Round ${this.currentRound} Started</strong>`, 'round-start');
+        
         // Set up dummy tokens based on player count
         this.setupDummyTokens(playerCount);
         
@@ -104,8 +1083,12 @@ class Game {
         this.playerColors = this.getRandomPlayerColors(playerCount);
         console.log('Assigned colors:', this.playerColors);
         
+        // For now, create all human players (bot integration can be added later via UI)
+        // TODO: Add bot configuration UI
+        const botConfiguration = null; // Future: { humanPlayers: 1, botCount: playerCount - 1 }
+        
         // Create players
-        this.createPlayers(playerCount, assignedWeapons);
+        this.createPlayers(playerCount, assignedWeapons, botConfiguration);
         
         // Create player boards
         this.createPlayerBoards();
@@ -137,16 +1120,34 @@ class Game {
         console.log(`Initialized dummy tokens for ${playerCount} players at locations:`, this.dummyTokens);
     }
     
-    createPlayers(playerCount, assignedWeapons) {
+    createPlayers(playerCount, assignedWeapons, botConfiguration = null) {
         this.players = [];
+        this.bots = [];
+        this.botCount = botConfiguration ? botConfiguration.botCount : 0;
         
         for (let i = 0; i < playerCount; i++) {
-            const playerId = i + 1;
+            const playerId = i;
             const weapon = assignedWeapons[i];
+            let isBot = false;
+            let playerName = '';
+            
+            // Handle solo mode configuration
+            if (botConfiguration && botConfiguration.slotTypes) {
+                isBot = botConfiguration.slotTypes[i] === 'bot';
+                playerName = isBot ? `Bot ${i + 1}` : `Player ${i + 1}`;
+            } else if (botConfiguration && botConfiguration.humanPlayers !== undefined) {
+                // Legacy bot configuration
+                isBot = i >= botConfiguration.humanPlayers;
+                playerName = isBot ? `Bot ${playerId - botConfiguration.humanPlayers + 1}` : `Player ${playerId + 1}`;
+            } else {
+                // No bot configuration - all human players
+                playerName = `Player ${playerId + 1}`;
+            }
             
             const player = {
                 id: playerId,
-                name: `Player ${playerId}`,
+                name: playerName,
+                isBot: isBot,
                 tokens: {
                     hunter: null,
                     apprentice: null
@@ -195,7 +1196,7 @@ class Game {
                     rewardToken: 0, // Current level of reward token (0-5)
                     levelReached: [false, false, false, false, false, false] // Track which point levels have been collected
                 },
-                color: this.playerColors[playerId],
+                color: this.playerColors[playerId + 1],
                 pets: {
                     level1: 0,
                     level2: 0,
@@ -204,6 +1205,13 @@ class Game {
             };
             
             this.players.push(player);
+            
+            // Create bot instance if this player is a bot
+            if (isBot) {
+                const botInstance = new BotPlayer(playerId, weapon);
+                this.bots.push(botInstance);
+                console.log(`Created bot instance for player ${playerId + 1} with weapon ${weapon.name}`);
+            }
         }
         
         // Verify all players have unique colors (should always pass now)
@@ -211,6 +1219,680 @@ class Game {
         console.log('✅ Players created with unique colors:', playerColorNames);
         
         console.log('Created players:', this.players);
+        if (this.bots.length > 0) {
+            console.log(`Created ${this.bots.length} bot instances`);
+        }
+    }
+    
+    // Bot integration methods
+    getBotForPlayer(playerId) {
+        return this.bots.find(bot => bot.playerId === playerId);
+    }
+    
+    handleBotLocationSelection(playerId) {
+        const bot = this.getBotForPlayer(playerId);
+        if (!bot) return;
+        
+        const player = this.players[playerId];
+        
+        // Get available locations (not occupied by dummy tokens)
+        const availableLocations = [1, 2, 3, 4, 5, 6, 7].filter(locationId => 
+            !this.dummyTokens.includes(locationId)
+        );
+        
+        // Bot selects hunter location
+        const hunterLocation = bot.selectHunterLocation(this, availableLocations);
+        player.selectedCards.hunter = hunterLocation;
+        
+        // Update bot's plaza tracking
+        bot.updateRoundsSinceLastPlaza(hunterLocation);
+        
+        // Bot selects apprentice location
+        const apprenticeAvailableLocations = availableLocations.filter(id => 
+            id !== hunterLocation || id === 7 // Apprentice can't go to same location except Forest
+        );
+        const apprenticeLocation = bot.selectApprenticeLocation(this, apprenticeAvailableLocations, hunterLocation);
+        player.selectedCards.apprentice = apprenticeLocation;
+        
+        console.log(`Bot ${playerId + 1} selected: Hunter→${hunterLocation}, Apprentice→${apprenticeLocation}`);
+        
+        // Update UI to show bot selections
+        this.updateLocationCardStates();
+        this.updateSelectionDisplay();
+        this.checkSelectionComplete();
+        
+        // Show bot's selections in the status message
+        const statusElement = document.getElementById('status-message');
+        if (statusElement) {
+            const locationNames = {
+                1: 'Work Site',
+                2: 'Bar',
+                3: 'Station',
+                4: 'Hospital',
+                5: 'Dojo',
+                6: 'Plaza',
+                7: 'Forest'
+            };
+            statusElement.innerHTML = `<strong>${player.name}</strong> selected: Hunter → ${locationNames[hunterLocation]}, Apprentice → ${locationNames[apprenticeLocation]}`;
+        }
+    }
+    
+    handleBotResourceManagement(playerId) {
+        const bot = this.getBotForPlayer(playerId);
+        if (!bot) return;
+        
+        bot.manageResources(this);
+        console.log(`Bot ${playerId + 1} completed resource management`);
+        
+        // Update UI to reflect resource changes
+        this.updateResourceDisplay();
+    }
+    
+    handleBotBattle(playerId, monster) {
+        const bot = this.getBotForPlayer(playerId);
+        if (!bot) return null;
+        
+        const battleResult = bot.manageBattle(this, monster);
+        
+        if (battleResult.victory || battleResult.tamed) {
+            // Update bot's stage based on monster defeated
+            if (battleResult.victory) {
+                bot.updateStage(monster.level);
+            }
+        }
+        
+        return battleResult;
+    }
+    
+    handleBotPostAttack(playerId, monster) {
+        const bot = this.getBotForPlayer(playerId);
+        if (!bot) return null;
+        
+        return bot.checkPostAttackItems(this, monster);
+    }
+    
+    // Testing method: Enable bots for existing players
+    enableBotsForTesting(botPlayerIds = [1]) {
+        console.log('Enabling bot mode for testing...', botPlayerIds);
+        
+        for (const playerId of botPlayerIds) {
+            if (playerId < this.players.length) {
+                const player = this.players[playerId];
+                const weapon = player.weapon;
+                
+                // Mark player as bot
+                player.isBot = true;
+                player.name = `Bot ${playerId + 1}`;
+                
+                // Create bot instance
+                const botInstance = new BotPlayer(playerId, weapon);
+                this.bots.push(botInstance);
+                
+                console.log(`Enabled bot for player ${playerId + 1} with weapon ${weapon.name}`);
+                
+                // Update UI
+                const nameElement = document.getElementById(`player-${playerId}-name`);
+                if (nameElement) {
+                    nameElement.innerHTML = nameElement.innerHTML.replace(/Player \d+/, player.name);
+                }
+            }
+        }
+        
+        this.botCount = this.bots.length;
+        console.log(`Bot system active with ${this.botCount} bots`);
+    }
+    
+    // Initialize game UI after player creation
+    init() {
+        console.log('Initializing game UI...');
+        
+        // Initialize location cards
+        this.initializeLocationCards();
+        
+        // Set up event listeners
+        this.setupEventListeners();
+        
+        // Update displays
+        this.updateResourceDisplay();
+        this.updateCurrentPlayer();
+        this.updateLocationCardStates();
+        this.updateDummyTokenDisplay();
+        
+        // Update status message
+        this.updateStatusMessage();
+        
+        console.log('Game UI initialized successfully');
+    }
+    
+    setupEventListeners() {
+        // Confirm selection button
+        const confirmButton = document.getElementById('confirm-selection');
+        if (confirmButton) {
+            confirmButton.onclick = () => this.confirmSelection();
+        }
+        
+        // New game button  
+        const newGameButton = document.getElementById('new-game-btn');
+        if (newGameButton) {
+            newGameButton.onclick = () => {
+                // Reset game and show player count selection
+                this.showPlayerCountSelection();
+            };
+        }
+        
+        console.log('Event listeners set up');
+    }
+    
+    initializeLocationCards() {
+        // Create hunter location cards
+        const hunterCardsContainer = document.getElementById('hunter-cards');
+        const apprenticeCardsContainer = document.getElementById('apprentice-cards');
+        
+        if (!hunterCardsContainer || !apprenticeCardsContainer) {
+            console.error('Location card containers not found!');
+            return;
+        }
+        
+        // Clear existing cards
+        hunterCardsContainer.innerHTML = '';
+        apprenticeCardsContainer.innerHTML = '';
+        
+        // Create cards for each location
+        this.locations.forEach(location => {
+            // Create hunter card
+            const hunterCard = this.createLocationCard(location, 'hunter');
+            hunterCardsContainer.appendChild(hunterCard);
+            
+            // Create apprentice card
+            const apprenticeCard = this.createLocationCard(location, 'apprentice');
+            apprenticeCardsContainer.appendChild(apprenticeCard);
+        });
+        
+        console.log('Location cards created');
+    }
+    
+    createLocationCard(location, tokenType) {
+        const card = document.createElement('div');
+        card.className = 'location-card';
+        card.dataset.location = location.id;
+        card.dataset.tokenType = tokenType;
+        
+        card.innerHTML = `
+            <div class="card-header">
+                <span class="location-name">${location.name}</span>
+            </div>
+            <div class="card-body">
+                <div class="location-id">${location.id}</div>
+                <div class="reward-info">
+                    ${this.getRewardText(location)}
+                </div>
+            </div>
+        `;
+        
+        // Add click event
+        card.addEventListener('click', () => this.selectLocation(location.id, tokenType));
+        
+        return card;
+    }
+    
+    getRewardText(location) {
+        switch (location.resource) {
+            case 'money': return '$6/4';
+            case 'beer': return 'Beer 6/4';
+            case 'bloodBag': return 'Blood 4/2';
+            case 'exp': return 'EXP 4/2';
+            case 'score': return 'Score 4/2';
+            case null:
+                if (location.id === 3) return 'Wild Card';
+                if (location.id === 7) return 'Monster Hunt';
+                return '';
+            default: return '';
+        }
+    }
+    
+    selectLocation(locationId, tokenType) {
+        const currentPlayer = this.players[this.currentPlayerIndex];
+        
+        // Prevent manual selection for bots
+        if (currentPlayer.isBot) {
+            console.log('Cannot manually select locations for bots');
+            return;
+        }
+        
+        // Check if location is available
+        if (!this.isLocationAvailable(locationId, tokenType)) {
+            return;
+        }
+        
+        // Store selection
+        currentPlayer.selectedCards[tokenType] = locationId;
+        
+        // Update UI
+        this.updateLocationCardStates();
+        this.updateSelectionDisplay();
+        this.checkSelectionComplete();
+        
+        console.log(`Player ${currentPlayer.id + 1} selected ${tokenType} for location ${locationId}`);
+    }
+    
+    isLocationAvailable(locationId, tokenType) {
+        const currentPlayer = this.players[this.currentPlayerIndex];
+        
+        // Check dummy tokens
+        if (this.dummyTokens.includes(locationId)) {
+            return false;
+        }
+        
+        // Check if same player already selected this location with other token
+        const otherTokenType = tokenType === 'hunter' ? 'apprentice' : 'hunter';
+        if (currentPlayer.selectedCards[otherTokenType] === locationId && locationId !== 7) {
+            return false; // Can't select same location except Forest
+        }
+        
+        // Forest special rule - need 2+ EP for hunter
+        if (locationId === 7 && tokenType === 'hunter') {
+            if (currentPlayer.resources.ep < 2) {
+                return false;
+            }
+        }
+        
+        return true;
+    }
+    
+    updateLocationCardStates() {
+        const hunterCards = document.querySelectorAll('#hunter-cards .location-card');
+        const apprenticeCards = document.querySelectorAll('#apprentice-cards .location-card');
+        
+        [...hunterCards, ...apprenticeCards].forEach(card => {
+            const locationId = parseInt(card.dataset.location);
+            const tokenType = card.dataset.tokenType;
+            
+            // Reset classes
+            card.classList.remove('selected', 'disabled');
+            card.title = '';
+            
+            const currentPlayer = this.players[this.currentPlayerIndex];
+            
+            // Check if selected
+            if (currentPlayer.selectedCards[tokenType] === locationId) {
+                card.classList.add('selected');
+            }
+            
+            // Check if disabled
+            if (!this.isLocationAvailable(locationId, tokenType)) {
+                card.classList.add('disabled');
+                
+                if (this.dummyTokens.includes(locationId)) {
+                    card.title = 'Location occupied by dummy token';
+                } else if (locationId === 7 && tokenType === 'hunter' && currentPlayer.resources.ep < 2) {
+                    card.title = 'Need 2+ EP for Forest';
+                } else {
+                    card.title = 'Location not available';
+                }
+            }
+        });
+    }
+    
+    updateSelectionDisplay() {
+        const currentPlayer = this.players[this.currentPlayerIndex];
+        
+        // Update current player display
+        document.getElementById('current-player-name').textContent = currentPlayer.name;
+        
+        // Update selection status
+        const hunterSelection = currentPlayer.selectedCards.hunter;
+        const apprenticeSelection = currentPlayer.selectedCards.apprentice;
+        
+        console.log(`Player ${currentPlayer.id + 1} selections: Hunter=${hunterSelection}, Apprentice=${apprenticeSelection}`);
+    }
+    
+    checkSelectionComplete() {
+        const currentPlayer = this.players[this.currentPlayerIndex];
+        const confirmButton = document.getElementById('confirm-selection');
+        
+        const isComplete = currentPlayer.selectedCards.hunter !== null && 
+                          currentPlayer.selectedCards.apprentice !== null;
+        
+        confirmButton.disabled = !isComplete;
+        
+        if (isComplete) {
+            confirmButton.textContent = 'Confirm Selection';
+        } else {
+            confirmButton.textContent = 'Select Both Locations';
+        }
+    }
+    
+    updateCurrentPlayer() {
+        const currentPlayer = this.players[this.currentPlayerIndex];
+        document.getElementById('current-player-name').textContent = currentPlayer.name;
+        
+        // Check if current player is a bot
+        if (currentPlayer.isBot) {
+            console.log(`${currentPlayer.name} is a bot, making automatic selections...`);
+            
+            // Hide location cards for bot turns
+            this.hideLocationCardsForBot();
+            
+            // Delay slightly for visual feedback
+            setTimeout(() => {
+                this.handleBotLocationSelection(this.currentPlayerIndex);
+                // Auto-confirm after selections are made
+                setTimeout(() => {
+                    this.confirmSelection();
+                }, 500);
+            }, 1000);
+        } else {
+            // Show location cards for human players
+            this.showLocationCardsForHuman();
+        }
+    }
+    
+    hideLocationCardsForBot() {
+        const cardSelection = document.querySelector('.card-selection');
+        const confirmButton = document.getElementById('confirm-selection');
+        
+        if (cardSelection) {
+            cardSelection.style.display = 'none';
+        }
+        
+        if (confirmButton) {
+            confirmButton.style.display = 'none';
+        }
+        
+        // Show a message that bot is selecting
+        const statusElement = document.getElementById('status-message');
+        if (statusElement) {
+            statusElement.innerHTML = `<strong>${this.players[this.currentPlayerIndex].name}</strong> is thinking...`;
+        }
+    }
+    
+    showLocationCardsForHuman() {
+        const cardSelection = document.querySelector('.card-selection');
+        const confirmButton = document.getElementById('confirm-selection');
+        
+        if (cardSelection) {
+            cardSelection.style.display = 'grid';
+        }
+        
+        if (confirmButton) {
+            confirmButton.style.display = 'inline-block';
+        }
+    }
+    
+    updateStatusMessage() {
+        const currentPlayer = this.players[this.currentPlayerIndex];
+        const statusElement = document.getElementById('status-message');
+        
+        if (statusElement) {
+            if (currentPlayer.isBot) {
+                statusElement.textContent = `${currentPlayer.name} (Bot) is selecting locations...`;
+            } else {
+                statusElement.textContent = `${currentPlayer.name}: Select locations for your Hunter and Apprentice`;
+            }
+        }
+    }
+    
+    updateDummyTokenDisplay() {
+        // Clear existing dummy tokens from board
+        document.querySelectorAll('.dummy-token').forEach(token => token.remove());
+        
+        // Add dummy tokens to board locations
+        this.dummyTokens.forEach(locationId => {
+            const locationElement = document.querySelector(`[data-location="${locationId}"] .token-slots`);
+            if (locationElement) {
+                const dummyToken = document.createElement('div');
+                dummyToken.className = 'dummy-token';
+                dummyToken.textContent = 'DUMMY';
+                locationElement.appendChild(dummyToken);
+            }
+        });
+        
+        console.log('Dummy tokens displayed at locations:', this.dummyTokens);
+    }
+    
+    updateResourceDisplay() {
+        this.players.forEach(player => {
+            const playerId = player.id;
+            
+            // Update resource values
+            const elements = {
+                money: document.getElementById(`p${playerId}-money`),
+                exp: document.getElementById(`p${playerId}-exp`),
+                hp: document.getElementById(`p${playerId}-hp`),
+                ep: document.getElementById(`p${playerId}-ep`),
+                score: document.getElementById(`p${playerId}-score`)
+            };
+            
+            Object.entries(elements).forEach(([resource, element]) => {
+                if (element) {
+                    if (resource === 'score') {
+                        element.textContent = player.score;
+                    } else {
+                        element.textContent = player.resources[resource];
+                    }
+                }
+            });
+            
+            // Update max resource displays
+            const maxElements = {
+                hp: document.querySelector(`#p${playerId}-hp + .resource-max`),
+                ep: document.querySelector(`#p${playerId}-ep + .resource-max`)
+            };
+            
+            if (maxElements.hp) {
+                maxElements.hp.textContent = `/${player.maxResources.hp}`;
+            }
+            if (maxElements.ep) {
+                maxElements.ep.textContent = `/${player.maxResources.ep}`;
+            }
+        });
+    }
+    
+    // Duplicate methods removed - using the main confirmSelection method below
+    
+    proceedToNextPhase() {
+        console.log('All players have selected locations, proceeding to next phase...');
+        this.roundPhase = 'distribution';
+        
+        // For now, just show a message that selection is complete
+        const statusElement = document.getElementById('status-message');
+        if (statusElement) {
+            statusElement.textContent = 'All players have selected locations! Game proceeding...';
+        }
+        
+        // Hide location selection UI
+        const confirmButton = document.getElementById('confirm-selection');
+        if (confirmButton) confirmButton.style.display = 'none';
+        
+        // TODO: Implement resource distribution phase
+        console.log('Selection phase complete. Resource distribution not yet implemented.');
+    }
+    
+    // Method to handle missing game state methods
+    loadMonsters() {
+        // Return basic monster data - this can be expanded later
+        return {
+            level1: [
+                { name: 'Goblin', hp: 3, att: 1, level: 1 },
+                { name: 'Rat', hp: 2, att: 2, level: 1 }
+            ],
+            level2: [
+                { name: 'Orc', hp: 6, att: 3, level: 2 },
+                { name: 'Wolf', hp: 5, att: 2, level: 2 }
+            ],
+            level3: [
+                { name: 'Dragon', hp: 12, att: 4, level: 3 },
+                { name: 'Demon', hp: 10, att: 5, level: 3 }
+            ]
+        };
+    }
+    
+    loadStoreItems() {
+        // Return basic store items - this can be expanded later
+        return [
+            { name: 'Beer', price: 2, size: 1 },
+            { name: 'Blood Bag', price: 2, size: 1 },
+            { name: 'Grenade', price: 2, size: 2 },
+            { name: 'Bomb', price: 4, size: 3 },
+            { name: 'Dynamite', price: 6, size: 4 },
+            { name: 'Fake Blood', price: 2, size: 2 },
+            { name: 'Bullet', price: 2, size: 1 },
+            { name: 'Battery', price: 3, size: 1 }
+        ];
+    }
+    
+    // Solo Play Mode Methods
+    showQuickPlayMode() {
+        document.getElementById('quick-play-section').style.display = 'block';
+        document.getElementById('solo-play-section').style.display = 'none';
+        document.querySelector('.game-mode-buttons').style.display = 'none';
+        document.querySelector('.back-btn').style.display = 'block';
+    }
+    
+    showSoloPlayMode() {
+        document.getElementById('quick-play-section').style.display = 'none';
+        document.getElementById('solo-play-section').style.display = 'block';
+        document.querySelector('.game-mode-buttons').style.display = 'none';
+        document.querySelector('.back-btn').style.display = 'block';
+        this.updateSoloModeUI();
+    }
+    
+    backToModeSelection() {
+        document.getElementById('quick-play-section').style.display = 'none';
+        document.getElementById('solo-play-section').style.display = 'none';
+        document.querySelector('.game-mode-buttons').style.display = 'flex';
+        document.querySelector('.back-btn').style.display = 'none';
+    }
+    
+    toggleSlotType(slotIndex) {
+        if (!this.soloModeSlots[slotIndex].active) return;
+        
+        const slot = this.soloModeSlots[slotIndex];
+        slot.type = slot.type === 'player' ? 'bot' : 'player';
+        
+        this.updateSoloModeUI();
+    }
+    
+    activateSlot(slotIndex) {
+        const slot = this.soloModeSlots[slotIndex];
+        
+        if (!slot.active) {
+            // Activate the slot
+            slot.active = true;
+            slot.type = 'player'; // Default to player when activated
+        } else {
+            // Deactivate the slot (close it)
+            slot.active = false;
+            slot.type = 'closed';
+        }
+        
+        this.updateSoloModeUI();
+    }
+    
+    updateSoloModeUI() {
+        const slots = document.querySelectorAll('.player-slot');
+        
+        slots.forEach((slotElement, index) => {
+            const slot = this.soloModeSlots[index];
+            
+            // Reset classes
+            slotElement.classList.remove('active', 'closed', 'bot');
+            
+            if (slot.active) {
+                slotElement.classList.add('active');
+                if (slot.type === 'bot') {
+                    slotElement.classList.add('bot');
+                }
+                
+                // Update content for active slot
+                slotElement.innerHTML = `
+                    <span class="slot-number">${index + 1}</span>
+                    <span class="slot-type">${slot.type === 'player' ? 'Player' : 'Bot'}</span>
+                    <button class="slot-toggle" onclick="game.toggleSlotType(${index})">
+                        Change to ${slot.type === 'player' ? 'Bot' : 'Player'}
+                    </button>
+                    ${index > 0 ? `<button class="slot-activate" onclick="game.activateSlot(${index})">Remove</button>` : ''}
+                `;
+            } else {
+                slotElement.classList.add('closed');
+                
+                // Update content for closed slot
+                slotElement.innerHTML = `
+                    <span class="slot-number">${index + 1}</span>
+                    <span class="slot-status">Closed</span>
+                    <button class="slot-activate" onclick="game.activateSlot(${index})">Add Player</button>
+                `;
+            }
+        });
+        
+        // Update ready button state
+        const activeSlots = this.soloModeSlots.filter(slot => slot.active);
+        const readyButton = document.getElementById('solo-ready-btn');
+        
+        if (activeSlots.length >= 2) {
+            readyButton.disabled = false;
+            readyButton.textContent = `Ready (${activeSlots.length} Players)`;
+        } else {
+            readyButton.disabled = true;
+            readyButton.textContent = 'Ready (Need at least 2 players)';
+        }
+    }
+    
+    startSoloGame() {
+        // Count active slots and determine configuration
+        const activeSlots = this.soloModeSlots.filter(slot => slot.active);
+        const playerCount = activeSlots.length;
+        
+        // Create bot configuration
+        const humanPlayers = activeSlots.filter(slot => slot.type === 'player').length;
+        const botCount = activeSlots.filter(slot => slot.type === 'bot').length;
+        
+        console.log(`Starting solo game: ${playerCount} total players (${humanPlayers} human, ${botCount} bots)`);
+        
+        // Hide solo play UI
+        const selectionScreen = document.getElementById('player-count-selection');
+        selectionScreen.style.display = 'none';
+        
+        // Show game log
+        this.showGameLog();
+        
+        // Show main game area
+        const playerBoards = document.getElementById('player-boards-container');
+        const gameBoard = document.querySelector('.game-board');
+        const playerArea = document.querySelector('.player-area');
+        const gameStatus = document.querySelector('.game-status');
+        
+        if (playerBoards) playerBoards.style.display = 'grid';
+        if (gameBoard) gameBoard.style.display = 'grid';
+        if (playerArea) playerArea.style.display = 'block';
+        if (gameStatus) gameStatus.style.display = 'block';
+        
+        // Initialize the game with bot configuration
+        this.playerCount = playerCount;
+        this.setupDummyTokens(playerCount);
+        
+        const assignedWeapons = this.getRandomWeapons(playerCount);
+        console.log('Assigned weapons:', assignedWeapons);
+        
+        this.playerColors = this.getRandomPlayerColors(playerCount);
+        console.log('Assigned colors:', this.playerColors);
+        
+        // Create bot configuration based on slot types
+        const botConfiguration = {
+            humanPlayers: 0,
+            botCount: 0,
+            slotTypes: activeSlots.map(slot => slot.type)
+        };
+        
+        // Create players with proper bot configuration
+        this.createPlayers(playerCount, assignedWeapons, botConfiguration);
+        this.createPlayerBoards();
+        
+        const playerBoardsContainer = document.getElementById('player-boards-container');
+        playerBoardsContainer.className = `player-boards players-${playerCount}`;
+        
+        this.roundPhase = 'selection';
+        this.init();
     }
     
     createPlayerBoards() {
@@ -228,8 +1910,19 @@ class Game {
         board.className = 'player-board';
         board.id = `player-${player.id}-board`;
         
+        // Add player color as a border
+        if (player.color) {
+            board.style.borderColor = player.color.border;
+            board.style.borderWidth = '3px';
+        }
+        
         board.innerHTML = `
-            <h2 id="player-${player.id}-name">${player.name} <span class="level-display">Lv. <span id="p${player.id}-level">0</span></span> <span class="score-display">Score: <span id="p${player.id}-score">${player.score}</span></span></h2>
+            <h2 id="player-${player.id}-name">
+                ${player.color ? `<span class="player-color-indicator" style="background-color: ${player.color.background}; border-color: ${player.color.border};"></span>` : ''}
+                ${player.name} 
+                <span class="level-display">Lv. <span id="p${player.id}-level">0</span></span> 
+                <span class="score-display">Score: <span id="p${player.id}-score">${player.score}</span></span>
+            </h2>
             <div class="resources">
                 <div class="resource">
                     <span class="resource-icon money">$</span>
@@ -569,7 +2262,8 @@ class Game {
     
     getPlayerColors(playerId) {
         // Return the randomly assigned colors for this game
-        return this.playerColors[playerId] || {
+        // Note: playerColors uses 1-based indexing while playerId is 0-based
+        return this.playerColors[playerId + 1] || {
             background: '#f39c12',
             border: '#e67e22'
         };
@@ -679,6 +2373,13 @@ class Game {
             return;
         }
         
+        // Log player selections
+        const hunterLocationName = this.getLocationName(this.currentPlayer.selectedCards.hunter);
+        const apprenticeLocationName = this.getLocationName(this.currentPlayer.selectedCards.apprentice);
+        this.addLogEntry(
+            `📍 <strong>${this.currentPlayer.name}</strong> selected: Hunter → ${hunterLocationName}, Apprentice → ${apprenticeLocationName}`,
+            'selection'
+        );
         
         // Move to next player
         this.currentPlayerIndex++;
@@ -692,7 +2393,9 @@ class Game {
             this.currentPlayer.selectedCards.hunter = null;
             this.currentPlayer.selectedCards.apprentice = null;
             this.createLocationCards();
-            this.updateUI();
+            this.updateCurrentPlayer();  // This will handle bot/human UI switching
+            this.updateLocationCardStates();
+            this.updateStatusMessage();
         }
     }
     
@@ -1086,6 +2789,13 @@ class Game {
         this.remainingForestHunters = forestHunters.slice(1);
         
         const player = this.players.find(p => p.id === this.currentMonsterPlayer);
+        
+        // Check if current player is a bot
+        if (player.isBot) {
+            this.handleBotMonsterSelection(player);
+            return;
+        }
+        
         document.getElementById('monster-modal-title').textContent = `${player.name}: Choose Monster to Fight`;
         
         // Reset selected pets and monster level
@@ -1101,6 +2811,472 @@ class Game {
         this.updatePetSelectionUI();
         
         document.getElementById('monster-modal').style.display = 'flex';
+    }
+    
+    handleBotMonsterSelection(player) {
+        // Initialize bot stage if not set
+        if (!player.stage) {
+            player.stage = 1;
+            player.monstersDefeated = { level1: 0, level2: 0, level3: 0 };
+        }
+        
+        // Determine monster level based on bot stage progression
+        let selectedLevel;
+        if (player.stage === 1) {
+            // Stage 1: Fight level 1 monsters (need to defeat 2 to progress)
+            selectedLevel = 1;
+        } else if (player.stage === 2) {
+            // Stage 2: Fight level 2 monsters (need to defeat 2 to progress)
+            selectedLevel = 2;
+        } else {
+            // Stage 3: Fight level 3 monsters
+            selectedLevel = 3;
+        }
+        
+        // Check EP requirements
+        const epRequirement = selectedLevel + 1; // Level 1 = 2 EP, Level 2 = 3 EP, Level 3 = 4 EP
+        if (player.resources.ep < epRequirement) {
+            // Bot doesn't have enough EP, select highest level it can afford
+            if (player.resources.ep >= 4) selectedLevel = 3;
+            else if (player.resources.ep >= 3) selectedLevel = 2;
+            else if (player.resources.ep >= 2) selectedLevel = 1;
+            else {
+                // Not enough EP for any monster - this shouldn't happen
+                console.warn(`Bot ${player.name} doesn't have enough EP for any monster`);
+                selectedLevel = 1;
+            }
+        }
+        
+        // Set selections
+        this.selectedMonsterLevel = selectedLevel;
+        this.selectedPets = { level1: 0, level2: 0, level3: 0 };
+        
+        // Select pets if bot has Chain/Whip weapon
+        if (player.weapon.name === 'Chain' || player.weapon.name === 'Whip') {
+            // Bring highest level pet available
+            const availablePets = player.pets;
+            if (availablePets.level3 > 0) {
+                this.selectedPets.level3 = 1;
+            } else if (availablePets.level2 > 0) {
+                this.selectedPets.level2 = 1;
+            } else if (availablePets.level1 > 0) {
+                this.selectedPets.level1 = 1;
+            }
+        }
+        
+        // Calculate total EP cost
+        const monsterEPCost = selectedLevel + 1;
+        let petEPCost = 0;
+        
+        // Calculate pet costs (considering Whip power levels)
+        if (player.weapon.name === 'Whip' && player.weapon.powerTrackPosition >= 7) {
+            petEPCost = 0; // Level 3 Whip: pets cost 0 EP
+        } else {
+            petEPCost += this.selectedPets.level1 * 2;
+            petEPCost += this.selectedPets.level2 * 3;
+            petEPCost += this.selectedPets.level3 * 4;
+        }
+        
+        const totalEPCost = monsterEPCost + petEPCost;
+        
+        // Log bot's selection
+        const petInfo = [];
+        if (this.selectedPets.level1 > 0) petInfo.push(`${this.selectedPets.level1} Level 1 Pet`);
+        if (this.selectedPets.level2 > 0) petInfo.push(`${this.selectedPets.level2} Level 2 Pet`);
+        if (this.selectedPets.level3 > 0) petInfo.push(`${this.selectedPets.level3} Level 3 Pet`);
+        
+        const petText = petInfo.length > 0 ? ` with ${petInfo.join(', ')}` : '';
+        this.addLogEntry(
+            `⚔️ <strong>${player.name}</strong> (Bot) chose Level ${selectedLevel} Monster${petText} (${totalEPCost} EP)`,
+            'battle'
+        );
+        
+        // Deduct EP
+        this.modifyResource(player.id, 'ep', -totalEPCost);
+        
+        // Select random monster from the level
+        const monsters = this.monsters.filter(m => m.level === selectedLevel);
+        const selectedMonster = monsters[Math.floor(Math.random() * monsters.length)];
+        
+        // Start battle immediately
+        this.startMonsterBattle(player.id, selectedMonster, this.selectedPets);
+    }
+    
+    handleBotBattle(player, battle) {
+        // Hide battle UI for bot
+        document.getElementById('monster-battle').style.display = 'none';
+        
+        // Show status message
+        const statusElement = document.getElementById('status-message');
+        if (statusElement) {
+            statusElement.innerHTML = `<strong>${player.name}</strong> (Bot) is battling Level ${battle.monster.level} Monster...`;
+        }
+        
+        // Log battle start
+        this.addLogEntry(
+            `⚔️ <strong>${player.name}</strong> (Bot) enters battle vs Level ${battle.monster.level} ${battle.monster.name} (${battle.monster.hp} HP, ${battle.monster.att} ATT)`,
+            'battle'
+        );
+        
+        // Auto-battle with delay for visualization
+        setTimeout(() => {
+            this.executeBotBattle(player, battle);
+        }, 1000);
+    }
+    
+    executeBotBattle(player, battle) {
+        const monster = battle.monster;
+        let battleActions = [];
+        
+        // Calculate sure damage from combat items
+        let sureKillDamage = 0;
+        const grenades = player.inventory.filter(item => item.name === 'Grenade').length;
+        const bombs = player.inventory.filter(item => item.name === 'Bomb').length;
+        const dynamites = player.inventory.filter(item => item.name === 'Dynamite').length;
+        
+        sureKillDamage = grenades * 1 + bombs * 2 + dynamites * 3;
+        
+        // Use combat items strategically
+        if (sureKillDamage >= monster.hp) {
+            // Can kill with items alone - use minimal items
+            let remainingHP = monster.hp;
+            let itemsUsed = [];
+            
+            // Use items efficiently (largest first to minimize waste)
+            while (remainingHP > 0 && dynamites > 0 && remainingHP >= 3) {
+                const dynamiteIndex = player.inventory.findIndex(item => item.name === 'Dynamite');
+                if (dynamiteIndex >= 0) {
+                    player.inventory.splice(dynamiteIndex, 1);
+                    remainingHP -= 3;
+                    itemsUsed.push('Dynamite');
+                    dynamites--;
+                }
+            }
+            
+            while (remainingHP > 0 && bombs > 0 && remainingHP >= 2) {
+                const bombIndex = player.inventory.findIndex(item => item.name === 'Bomb');
+                if (bombIndex >= 0) {
+                    player.inventory.splice(bombIndex, 1);
+                    remainingHP -= 2;
+                    itemsUsed.push('Bomb');
+                    bombs--;
+                }
+            }
+            
+            while (remainingHP > 0 && grenades > 0) {
+                const grenadeIndex = player.inventory.findIndex(item => item.name === 'Grenade');
+                if (grenadeIndex >= 0) {
+                    player.inventory.splice(grenadeIndex, 1);
+                    remainingHP -= 1;
+                    itemsUsed.push('Grenade');
+                    grenades--;
+                }
+            }
+            
+            // Use all Fake Blood for bonus points
+            const fakeBloodCount = player.inventory.filter(item => item.name === 'Fake Blood').length;
+            for (let i = 0; i < fakeBloodCount; i++) {
+                const fakeBloodIndex = player.inventory.findIndex(item => item.name === 'Fake Blood');
+                if (fakeBloodIndex >= 0) {
+                    player.inventory.splice(fakeBloodIndex, 1);
+                    battle.bonusPts += monster.level;
+                    itemsUsed.push('Fake Blood');
+                }
+            }
+            
+            battleActions.push(`used ${itemsUsed.join(', ')} to kill monster instantly`);
+            
+            // Apply victory rewards
+            this.applyBotVictoryRewards(player, monster, battle, battleActions);
+            return;
+        }
+        
+        // Simulate full battle
+        let currentPlayerHP = player.resources.hp;
+        let currentMonsterHP = monster.hp;
+        let battleRound = 1;
+        
+        while (currentPlayerHP > 0 && currentMonsterHP > 0) {
+            battleActions.push(`--- Round ${battleRound} ---`);
+            
+            // Bot's turn - attack first
+            const attackDice = player.weapon.currentAttackDice;
+            const attackRolls = [];
+            for (let i = 0; i < attackDice; i++) {
+                attackRolls.push(Math.floor(Math.random() * 6) + 1);
+            }
+            
+            let playerDamage = this.calculateDamage(player.id, attackRolls);
+            
+            // Add pet damage if present
+            let petDamage = 0;
+            Object.entries(battle.petsUsed).forEach(([level, count]) => {
+                if (count > 0) {
+                    const levelNum = parseInt(level.replace('level', ''));
+                    petDamage += count * levelNum;
+                }
+            });
+            
+            const totalDamage = playerDamage + petDamage;
+            currentMonsterHP -= totalDamage;
+            
+            battleActions.push(`${player.name} attacks: [${attackRolls.join(', ')}] = ${playerDamage} damage${petDamage > 0 ? ` + ${petDamage} pet damage` : ''} = ${totalDamage} total`);
+            
+            if (currentMonsterHP <= 0) {
+                battleActions.push(`Monster defeated!`);
+                break;
+            }
+            
+            // Monster's turn
+            const monsterDamage = monster.att;
+            
+            // Bot defense
+            const defenseDice = player.weapon.currentDefenseDice;
+            const defenseRolls = [];
+            for (let i = 0; i < defenseDice; i++) {
+                defenseRolls.push(Math.floor(Math.random() * 6) + 1);
+            }
+            
+            let defense = 0;
+            defenseRolls.forEach(roll => {
+                if (roll >= 4) defense++; // 4, 5, 6 = 1 defense each
+            });
+            
+            const finalDamage = Math.max(0, monsterDamage - defense);
+            currentPlayerHP -= finalDamage;
+            
+            battleActions.push(`Monster attacks for ${monsterDamage} damage. ${player.name} defends: [${defenseRolls.join(', ')}] = ${defense} defense. Final damage: ${finalDamage}`);
+            
+            // Axe retaliation (if player survives)
+            if (player.weapon.name === 'Axe' && finalDamage > 0 && currentPlayerHP > 0) {
+                let retaliationDamage = finalDamage;
+                if (player.weapon.powerTrackPosition >= 7) {
+                    retaliationDamage *= 2; // Level 3: double retaliation damage
+                }
+                currentMonsterHP -= retaliationDamage;
+                battleActions.push(`${player.name}'s Axe retaliates for ${retaliationDamage} damage!`);
+                
+                if (currentMonsterHP <= 0) {
+                    battleActions.push(`Monster defeated by retaliation!`);
+                    break;
+                }
+            }
+            
+            battleRound++;
+            
+            // Safety break to prevent infinite battles
+            if (battleRound > 20) {
+                battleActions.push(`Battle timeout - monster wins`);
+                currentPlayerHP = 0;
+                break;
+            }
+        }
+        
+        // Apply battle results
+        if (currentPlayerHP <= 0) {
+            // Bot lost
+            player.resources.hp = 1; // Set HP to 1 on defeat
+            battleActions.push(`${player.name} was defeated but survives with 1 HP`);
+        } else {
+            // Bot won
+            this.applyBotVictoryRewards(player, monster, battle, battleActions);
+        }
+        
+        // Log all battle actions
+        battleActions.forEach(action => {
+            if (!action.includes('---')) {
+                this.addLogEntry(`⚔️ ${action}`, 'battle');
+            }
+        });
+        
+        // Update displays
+        this.updateResourceDisplay();
+        this.updateInventoryDisplay(player.id);
+        
+        // Continue to next battle or end battle phase
+        setTimeout(() => {
+            if (this.remainingForestHunters && this.remainingForestHunters.length > 0) {
+                this.startBattlePhase();
+            } else {
+                this.endRound();
+            }
+        }, 2000);
+    }
+    
+    applyBotVictoryRewards(player, monster, battle, battleActions) {
+        // Update stage progression
+        if (!player.monstersDefeated) {
+            player.monstersDefeated = { level1: 0, level2: 0, level3: 0 };
+        }
+        
+        player.monstersDefeated[`level${monster.level}`]++;
+        
+        // Check stage progression
+        if (player.stage === 1 && player.monstersDefeated.level1 >= 2) {
+            player.stage = 2;
+            battleActions.push(`${player.name} advances to Stage 2!`);
+        } else if (player.stage === 2 && player.monstersDefeated.level2 >= 2) {
+            player.stage = 3;
+            battleActions.push(`${player.name} advances to Stage 3!`);
+        }
+        
+        // Apply monster rewards
+        player.resources.money += monster.money;
+        player.resources.beer += monster.beer;
+        player.resources.bloodBag += monster.bloodBag;
+        player.resources.score += monster.score + battle.bonusPts;
+        
+        // Add items to inventory
+        if (monster.beer > 0) {
+            for (let i = 0; i < monster.beer; i++) {
+                player.inventory.push({ name: 'Beer', size: 1, effect: 'gain_1_energy' });
+            }
+        }
+        if (monster.bloodBag > 0) {
+            for (let i = 0; i < monster.bloodBag; i++) {
+                player.inventory.push({ name: 'Blood Bag', size: 1, effect: 'gain_1_blood' });
+            }
+        }
+        
+        let rewardText = `Victory! Gained: ${monster.money}$`;
+        if (monster.beer > 0) rewardText += `, ${monster.beer} beer`;
+        if (monster.bloodBag > 0) rewardText += `, ${monster.bloodBag} blood bags`;
+        rewardText += `, ${monster.score + battle.bonusPts} points`;
+        
+        battleActions.push(rewardText);
+        
+        // Try to tame monster if Chain/Whip weapon
+        if ((player.weapon.name === 'Chain' || player.weapon.name === 'Whip') && this.canTameMonster(player, monster)) {
+            if (!player.pets) {
+                player.pets = { level1: 0, level2: 0, level3: 0 };
+            }
+            player.pets[`level${monster.level}`]++;
+            battleActions.push(`${player.name} tamed the Level ${monster.level} monster as a pet!`);
+        }
+        
+        // Auto-use items for recovery and upgrades
+        this.handleBotItemUsage(player, battleActions);
+    }
+    
+    handleBotItemUsage(player, battleActions) {
+        const actions = [];
+        
+        // Priority 1: Recover HP with blood bags
+        while (player.resources.hp < player.maxResources.hp) {
+            const bloodBagIndex = player.inventory.findIndex(item => item.name === 'Blood Bag');
+            if (bloodBagIndex >= 0) {
+                player.inventory.splice(bloodBagIndex, 1);
+                player.resources.bloodBag = Math.max(0, player.resources.bloodBag - 1);
+                player.resources.hp = Math.min(player.maxResources.hp, player.resources.hp + 1);
+                actions.push('used Blood Bag (+1 HP)');
+            } else {
+                break;
+            }
+        }
+        
+        // Priority 2: Recover EP with beer
+        while (player.resources.ep < player.maxResources.ep) {
+            const beerIndex = player.inventory.findIndex(item => item.name === 'Beer');
+            if (beerIndex >= 0) {
+                player.inventory.splice(beerIndex, 1);
+                player.resources.beer = Math.max(0, player.resources.beer - 1);
+                player.resources.ep = Math.min(player.maxResources.ep, player.resources.ep + 1);
+                actions.push('used Beer (+1 EP)');
+            } else {
+                break;
+            }
+        }
+        
+        // Priority 3: Upgrade HP (need 3 blood bags)
+        const bloodBags = player.inventory.filter(item => item.name === 'Blood Bag');
+        while (bloodBags.length >= 3 && player.maxResources.hp < 10) {
+            // Remove 3 blood bags
+            for (let i = 0; i < 3; i++) {
+                const bloodBagIndex = player.inventory.findIndex(item => item.name === 'Blood Bag');
+                if (bloodBagIndex >= 0) {
+                    player.inventory.splice(bloodBagIndex, 1);
+                    player.resources.bloodBag = Math.max(0, player.resources.bloodBag - 1);
+                }
+            }
+            
+            player.maxResources.hp++;
+            player.resources.hp++;
+            
+            // Check for milestone bonuses
+            if (player.maxResources.hp === 8 && !player.milestones.hp8) {
+                player.resources.score += 2;
+                player.milestones.hp8 = true;
+                actions.push(`upgraded max HP to ${player.maxResources.hp} (+2 milestone points)`);
+            } else if (player.maxResources.hp === 10 && !player.milestones.hp10) {
+                player.resources.score += 4;
+                player.milestones.hp10 = true;
+                actions.push(`upgraded max HP to ${player.maxResources.hp} (+4 milestone points)`);
+            } else {
+                actions.push(`upgraded max HP to ${player.maxResources.hp}`);
+            }
+            
+            bloodBags.splice(0, 3); // Update local array
+        }
+        
+        // Priority 4: Upgrade EP (need 4 beers)
+        const beers = player.inventory.filter(item => item.name === 'Beer');
+        while (beers.length >= 4 && player.maxResources.ep < 10) {
+            // Remove 4 beers
+            for (let i = 0; i < 4; i++) {
+                const beerIndex = player.inventory.findIndex(item => item.name === 'Beer');
+                if (beerIndex >= 0) {
+                    player.inventory.splice(beerIndex, 1);
+                    player.resources.beer = Math.max(0, player.resources.beer - 1);
+                }
+            }
+            
+            player.maxResources.ep++;
+            player.resources.ep++;
+            
+            // Check for milestone bonuses
+            if (player.maxResources.ep === 8 && !player.milestones.ep8) {
+                player.resources.score += 2;
+                player.milestones.ep8 = true;
+                actions.push(`upgraded max EP to ${player.maxResources.ep} (+2 milestone points)`);
+            } else if (player.maxResources.ep === 10 && !player.milestones.ep10) {
+                player.resources.score += 4;
+                player.milestones.ep10 = true;
+                actions.push(`upgraded max EP to ${player.maxResources.ep} (+4 milestone points)`);
+            } else {
+                actions.push(`upgraded max EP to ${player.maxResources.ep}`);
+            }
+            
+            beers.splice(0, 4); // Update local array
+        }
+        
+        // Priority 5: Upgrade attack/defense dice with EXP
+        const botPlayer = new BotPlayer(player.weapon);
+        botPlayer.manageEXP(player);
+        
+        // Log all actions
+        if (actions.length > 0) {
+            battleActions.push(`Auto-managed resources: ${actions.join(', ')}`);
+        }
+    }
+    
+    canTameMonster(player, monster) {
+        // Chain weapon can tame monsters with HP <= 3
+        if (player.weapon.name === 'Chain') {
+            return monster.hp <= 3;
+        }
+        
+        // Whip weapon can tame monsters based on power level
+        if (player.weapon.name === 'Whip') {
+            if (player.weapon.powerTrackPosition >= 7) {
+                return monster.hp <= 6; // Level 3: Can tame monsters with HP <= 6
+            } else if (player.weapon.powerTrackPosition >= 4) {
+                return monster.hp <= 4; // Level 2: Can tame monsters with HP <= 4
+            } else if (player.weapon.powerTrackPosition >= 1) {
+                return monster.hp <= 2; // Level 1: Can tame monsters with HP <= 2
+            }
+        }
+        
+        return false;
     }
     
     showStationModal() {
@@ -1170,11 +3346,25 @@ class Game {
                 if (player.tokens.hunter === location.id) {
                     if (location.resource === 'money' || location.resource === 'exp') {
                         this.modifyResource(player.id, location.resource, rewardAmount);
+                        this.addLogEntry(
+                            `💰 <strong>${player.name}</strong> gained ${rewardAmount} ${location.resource} at ${location.name}`,
+                            'resource-gain'
+                        );
                     } else if (location.resource === 'beer' || location.resource === 'bloodBag') {
                         player.resources[location.resource] += rewardAmount;
+                        this.addLogEntry(
+                            `💰 <strong>${player.name}</strong> gained ${rewardAmount} ${location.resource} at ${location.name}`,
+                            'resource-gain'
+                        );
                     } else if (location.resource === 'score') {
                         // Plaza scoring: 3 points if alone, 0 if crowded
                         player.score += rewardAmount;
+                        if (rewardAmount > 0) {
+                            this.addLogEntry(
+                                `🏆 <strong>${player.name}</strong> gained ${rewardAmount} points at ${location.name}`,
+                                'resource-gain'
+                            );
+                        }
                     }
                 }
             });
@@ -1195,11 +3385,19 @@ class Game {
             
             if (resourceType === 'money' || resourceType === 'exp') {
                 this.modifyResource(parseInt(playerId), resourceType, rewardAmount);
+                this.addLogEntry(
+                    `💰 <strong>${player.name}</strong> chose ${rewardAmount} ${resourceType} at Station`,
+                    'resource-gain'
+                );
             } else if (resourceType === 'beer' || resourceType === 'bloodBag') {
                 player.resources[resourceType] += rewardAmount;
                 // Also add items to inventory
                 const itemName = resourceType === 'beer' ? 'Beer' : 'Blood Bag';
                 this.addItemToInventory(parseInt(playerId), itemName, rewardAmount);
+                this.addLogEntry(
+                    `💰 <strong>${player.name}</strong> chose ${rewardAmount} ${resourceType} at Station`,
+                    'resource-gain'
+                );
             }
         });
         
@@ -1815,6 +4013,12 @@ class Game {
     showMonsterBattleUI() {
         const battle = this.currentBattle;
         const player = this.players.find(p => p.id === battle.playerId);
+        
+        // Check if player is a bot
+        if (player.isBot) {
+            this.handleBotBattle(player, battle);
+            return;
+        }
         
         document.getElementById('monster-battle').style.display = 'block';
         document.getElementById('battle-player-name').textContent = player.name;
@@ -2783,6 +4987,9 @@ class Game {
         logEntry.textContent = message;
         log.appendChild(logEntry);
         log.scrollTop = log.scrollHeight;
+        
+        // Also add to main game log
+        this.addLogEntry(`⚔️ ${message}`, 'battle');
     }
     
     loadStoreItems() {
@@ -2806,7 +5013,13 @@ class Game {
     showStore() {
         const player = this.players[this.currentStorePlayer];
         
-        // Hide card selection and show store area
+        // Check if current player is a bot
+        if (player.isBot) {
+            this.handleBotShopping(player);
+            return;
+        }
+        
+        // Hide card selection and show store area for human players
         document.querySelector('.card-selection').style.display = 'none';
         document.getElementById('store-area').style.display = 'block';
         
@@ -2906,6 +5119,226 @@ class Game {
         
         // Update player's resources display
         this.updateResourceDisplay();
+    }
+    
+    handleBotShopping(player) {
+        // Hide store UI for bot turns
+        document.querySelector('.card-selection').style.display = 'none';
+        document.getElementById('store-area').style.display = 'none';
+        document.querySelector('.current-player').style.display = 'none';
+        document.getElementById('confirm-selection').style.display = 'none';
+        
+        // Show status message that bot is shopping
+        const statusElement = document.getElementById('status-message');
+        if (statusElement) {
+            statusElement.innerHTML = `<strong>${player.name}</strong> is shopping...`;
+        }
+        
+        // Use the bot's money management logic to automatically purchase items
+        let purchasedItems = [];
+        let gameState = {
+            round: this.currentRound,
+            stage: player.stage || 1,
+            availableLocations: [1, 2, 3, 4, 5, 6, 7], // All locations available for context
+            otherPlayersData: this.players.filter(p => p.id !== player.id).map(p => ({
+                preferredLocation: p.weapon.preferredLocation,
+                score: p.resources.score
+            }))
+        };
+        
+        // Get bot's item priorities
+        const botPlayer = new BotPlayer(player.weapon);
+        let itemPriority = [];
+        
+        // Weapon-specific item priorities
+        if (player.weapon.name === 'Rifle') {
+            const currentBullets = player.inventory.filter(item => item.name === 'Bullet').length;
+            if (currentBullets < 3) {
+                itemPriority = [
+                    { name: 'Bullet', price: 2, size: 0 },
+                    { name: 'Dynamite', price: 6, size: 4 },
+                    { name: 'Bomb', price: 4, size: 3 },
+                    { name: 'Grenade', price: 2, size: 2 },
+                    { name: 'Fake Blood', price: 2, size: 2 },
+                    { name: 'Blood Bag', price: 2, size: 1 },
+                    { name: 'Beer', price: 2, size: 1 }
+                ];
+            } else {
+                itemPriority = [
+                    { name: 'Dynamite', price: 6, size: 4 },
+                    { name: 'Bomb', price: 4, size: 3 },
+                    { name: 'Grenade', price: 2, size: 2 },
+                    { name: 'Fake Blood', price: 2, size: 2 },
+                    { name: 'Blood Bag', price: 2, size: 1 },
+                    { name: 'Beer', price: 2, size: 1 }
+                ];
+            }
+        } else if (player.weapon.name === 'Plasma') {
+            const currentBatteries = player.inventory.filter(item => item.name === 'Battery').length;
+            if (currentBatteries < 3) {
+                itemPriority = [
+                    { name: 'Battery', price: 3, size: 1 },
+                    { name: 'Dynamite', price: 6, size: 4 },
+                    { name: 'Bomb', price: 4, size: 3 },
+                    { name: 'Grenade', price: 2, size: 2 },
+                    { name: 'Fake Blood', price: 2, size: 2 },
+                    { name: 'Blood Bag', price: 2, size: 1 },
+                    { name: 'Beer', price: 2, size: 1 }
+                ];
+            } else {
+                itemPriority = [
+                    { name: 'Dynamite', price: 6, size: 4 },
+                    { name: 'Bomb', price: 4, size: 3 },
+                    { name: 'Grenade', price: 2, size: 2 },
+                    { name: 'Fake Blood', price: 2, size: 2 },
+                    { name: 'Blood Bag', price: 2, size: 1 },
+                    { name: 'Beer', price: 2, size: 1 }
+                ];
+            }
+        } else {
+            // Default priority for other weapons
+            itemPriority = [
+                { name: 'Dynamite', price: 6, size: 4 },
+                { name: 'Bomb', price: 4, size: 3 },
+                { name: 'Grenade', price: 2, size: 2 },
+                { name: 'Fake Blood', price: 2, size: 2 },
+                { name: 'Blood Bag', price: 2, size: 1 },
+                { name: 'Beer', price: 2, size: 1 }
+            ];
+        }
+        
+        // Bot shopping logic - buy items according to priority and budget
+        for (let item of itemPriority) {
+            while (player.resources.money >= item.price) {
+                const currentSize = this.getInventorySize(player);
+                
+                // Check capacity constraints
+                if (currentSize + item.size > player.maxInventoryCapacity) {
+                    break; // Can't buy more due to capacity
+                }
+                
+                // Check special item limits
+                if (item.name === 'Bullet') {
+                    const bulletCount = player.inventory.filter(inv => inv.name === 'Bullet').length;
+                    if (bulletCount >= 6) break;
+                } else if (item.name === 'Battery') {
+                    const batteryCount = player.inventory.filter(inv => inv.name === 'Battery').length;
+                    if (batteryCount >= 6) break;
+                }
+                
+                // Apply weapon discounts
+                let actualPrice = item.price;
+                if (player.weapon.name === 'Rifle' && player.weapon.powerTrackPosition >= 7) {
+                    actualPrice = Math.max(1, item.price - 1);
+                }
+                
+                if (player.resources.money >= actualPrice) {
+                    // Purchase the item
+                    player.resources.money -= actualPrice;
+                    player.inventory.push({
+                        name: item.name,
+                        size: item.size,
+                        effect: this.getItemEffect(item.name)
+                    });
+                    purchasedItems.push(item.name);
+                } else {
+                    break;
+                }
+            }
+        }
+        
+        // Update displays
+        this.updateResourceDisplay();
+        this.updateInventoryDisplay(player.id);
+        
+        // Show what the bot bought
+        setTimeout(() => {
+            if (purchasedItems.length > 0) {
+                const itemCounts = {};
+                purchasedItems.forEach(item => {
+                    itemCounts[item] = (itemCounts[item] || 0) + 1;
+                });
+                
+                const itemList = Object.entries(itemCounts)
+                    .map(([item, count]) => count > 1 ? `${item} x${count}` : item)
+                    .join(', ');
+                
+                statusElement.innerHTML = `<strong>${player.name}</strong> bought: ${itemList}`;
+                
+                // Also add to game log
+                this.addLogEntry(
+                    `🛒 <strong>${player.name}</strong> (Bot) bought: ${itemList}`,
+                    'store-purchase'
+                );
+            } else {
+                statusElement.innerHTML = `<strong>${player.name}</strong> didn't buy anything`;
+                this.addLogEntry(
+                    `🛒 <strong>${player.name}</strong> (Bot) bought nothing`,
+                    'store-purchase'
+                );
+            }
+            
+            // Auto-proceed to next player after a short delay
+            setTimeout(() => {
+                this.finishShopping();
+            }, 1500);
+        }, 1000);
+    }
+    
+    getItemEffect(itemName) {
+        const effects = {
+            'Beer': 'gain_1_energy',
+            'Blood Bag': 'gain_1_blood',
+            'Grenade': 'reduce_1_monster_hp',
+            'Bomb': 'reduce_2_monster_hp',
+            'Dynamite': 'reduce_3_monster_hp',
+            'Fake Blood': 'bonus_points_on_kill',
+            'Bullet': 'rifle_ammo',
+            'Battery': 'plasma_power'
+        };
+        return effects[itemName] || 'unknown';
+    }
+    
+    // Game Log Management
+    addLogEntry(message, category = 'system') {
+        const logContainer = document.getElementById('game-log');
+        if (!logContainer) return;
+        
+        const logEntry = document.createElement('div');
+        logEntry.className = `log-entry ${category}`;
+        logEntry.innerHTML = message;
+        
+        logContainer.appendChild(logEntry);
+        
+        // Auto-scroll to bottom
+        logContainer.scrollTop = logContainer.scrollHeight;
+        
+        // Limit log entries to prevent memory issues (keep last 100 entries)
+        const logEntries = logContainer.querySelectorAll('.log-entry');
+        if (logEntries.length > 100) {
+            logEntries[0].remove();
+        }
+    }
+    
+    clearGameLog() {
+        const logContainer = document.getElementById('game-log');
+        if (logContainer) {
+            logContainer.innerHTML = '<div class="log-entry">Game log cleared.</div>';
+        }
+    }
+    
+    showGameLog() {
+        const logSection = document.getElementById('game-log-section');
+        if (logSection) {
+            logSection.style.display = 'flex';
+        }
+    }
+    
+    hideGameLog() {
+        const logSection = document.getElementById('game-log-section');
+        if (logSection) {
+            logSection.style.display = 'none';
+        }
     }
     
     getEffectDescription(effect) {
@@ -3044,6 +5477,12 @@ class Game {
             this.updateBatteryDisplay(player.id);
         });
         
+        // Log the purchase
+        this.addLogEntry(
+            `🛒 <strong>${player.name}</strong> bought ${itemName} for $${price}`,
+            'store-purchase'
+        );
+        
         // alert(`${player.name} bought ${itemName}!`); // Removed popup as requested
     }
     
@@ -3066,7 +5505,18 @@ class Game {
         
         this.players.forEach(player => {
             if (this.getInventorySize(player) > player.maxInventoryCapacity) {
-                playersWithOverflow.push(player.id);
+                // If player is a bot, handle overflow automatically
+                if (player.isBot) {
+                    const botPlayer = new BotPlayer(player.weapon);
+                    botPlayer.handleBotCapacityOverflow(player, this);
+                    
+                    // Update displays after bot handles overflow
+                    this.updateResourceDisplay();
+                    this.updateInventoryDisplay(player.id);
+                } else {
+                    // Human players need manual overflow handling
+                    playersWithOverflow.push(player.id);
+                }
             }
         });
         
@@ -3325,6 +5775,12 @@ class Game {
     startNewRound() {
         // Move dummy tokens to next locations
         this.moveDummyTokens();
+        
+        // Increment round counter
+        this.currentRound++;
+        
+        // Log round start
+        this.addLogEntry(`🔄 <strong>Round ${this.currentRound} Started</strong>`, 'round-start');
         
         // Apply weapon power effects at round start
         this.players.forEach(player => {
