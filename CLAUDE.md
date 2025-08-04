@@ -243,20 +243,6 @@ When multiple hunters enter Forest, battle order is determined by:
 7. **Resource Distribution**: Collect resources from standard locations
 8. **Next Round**: Clear selections, move dummy tokens, and start again
 
-## Key Strategic Elements
-- **Player Count Scaling**: Rewards increase with more players to maintain balance (e.g., Work Site: $6/4 for 2p, $8/6/5/4 for 4-5p)
-- **Dynamic Dummy Tokens**: Token count decreases as player count increases (3 tokens for 2p, 0 tokens for 5p)
-- **Location Competition**: More players means more competition for solo placement bonuses
-- **Reward Tier Strategy**: Understanding when you'll get tier 1 vs tier 2+ rewards based on player count
-- **Plaza Scaling**: Guaranteed points scale from 4/2 (2p) to 6/5/4/3 (4-5p)
-- Manage inventory capacity vs. item benefits
-- Time HP/EP upgrades for maximum benefit and milestone bonuses
-- Combat items can turn difficult monster battles
-- Popularity track rewards for strategic hunter placement
-- Forest apprentice bonus for coordinated team placement
-- Consider weapon priority for Forest battle order advantage
-- Track dummy token movement patterns for future planning (when applicable)
-
 ## Game Log System
 The game features a comprehensive logging system that displays on the left side of the screen, providing a complete history of all game events.
 
@@ -302,8 +288,6 @@ The game features a comprehensive logging system that displays on the left side 
 - **Memory Management**: Automatic cleanup of old entries
 - **Integration**: All major game events automatically logged
 
-The game log provides players with a complete audit trail of all game actions, making it easier to track resource changes, strategic decisions, and battle outcomes throughout the entire game.
-
 ## Bot System
 The game features a comprehensive AI bot system that enables solo play with intelligent virtual opponents. Bots make strategic decisions using probabilistic algorithms and stage-based progression.
 
@@ -337,6 +321,7 @@ The bot system is implemented through the `BotPlayer` class with four integrated
 - **Social Awareness**: +2 entries for other players' weapon preferred locations
 - **Highest Scorer Bonus**: +1 additional entry for the leading player's preferred location
 - **Forest Coordination**: +1 entry for Forest if hunter is also going to Forest
+- **Forest Restriction**: -100 entries for Forest if hunter is NOT going to Forest (prevents solo apprentice)
 - **Probability Selection**: Uses same weighted random selection as hunter subsystem
 
 #### 3. Resource Management Subsystem
@@ -435,7 +420,99 @@ Bots are designed to provide challenging but fair opponents:
 - **Adaptive Difficulty**: Stage progression provides natural difficulty scaling
 - **Transparency**: All bot actions are logged for player visibility
 
-The bot system transforms the game from multiplayer-only to a comprehensive single-player experience with intelligent AI opponents that provide meaningful strategic challenges.
+## Recent System Updates
+
+### Bot Display and UI Updates (Latest Session)
+
+#### 1. Capacity Display Updates
+- **Issue**: Bot inventory changes (gaining/using items) didn't update capacity numbers in player boards
+- **Fix**: Added `updateInventoryDisplayOld()` calls to bot shopping, battle victory, and capacity overflow handling
+- **Locations Updated**:
+  - Bot shopping function: After resource management
+  - Bot battle victory: After applying rewards and item usage
+  - Bot capacity overflow: After automatic overflow resolution
+- **Result**: Capacity displays now show current inventory size vs max capacity for bots
+
+#### 2. Ammunition Display Updates
+- **Issue**: Bot ammunition usage (bullets/batteries) didn't update player board displays
+- **Fix**: Added `updateBulletDisplay()` and `updateBatteryDisplay()` calls to bot battle ammunition consumption
+- **Affected Weapons**: Rifle (bullets) and Plasma (batteries)
+- **Result**: Ammunition counts now update properly for both human players and bots
+
+#### 3. Apprentice Forest Coordination Logic
+- **Issue**: Bots could send apprentices to Forest alone, violating team coordination strategy
+- **Fix**: Updated apprentice subsystem decision logic
+- **Change**: If bot hunter is NOT selecting Forest, apprentice gets -100 entries for Forest (effectively preventing solo Forest apprentice)
+- **Result**: Bots never let apprentices go to Forest alone, maintaining team coordination
+
+#### 4. Bot Score Display Updates
+- **Issue**: Bot score gains weren't reflected in player board displays
+- **Fix**: Standardized score property usage throughout codebase
+- **Changes**:
+  - Fixed bot functions to use `player.score` instead of incorrect `player.resources.score`
+  - Updated monster victory rewards, milestone bonuses, and capacity overflow functions
+  - Ensured `updateResourceDisplay()` properly updates score displays
+- **Result**: Bot scores now update immediately when gaining points
+
+#### 5. Bot Milestone Checkbox Updates
+- **Issue**: Bot milestone achievements didn't check the milestone checkboxes in player boards
+- **Fix**: Added checkbox updates to all bot milestone achievement locations
+- **Updated Functions**:
+  - Bot battle victory HP/EP upgrades
+  - Bot store phase HP/EP upgrades  
+  - Bot capacity overflow HP/EP upgrades
+- **Result**: Milestone checkboxes now properly check when bots achieve max HP/EP milestones
+
+#### 6. Bot Weapon Power System
+- **Issue**: Bots didn't gain weapon power when defeating monsters; weapon power track tokens didn't move
+- **Fix**: Added weapon power advancement to bot victory rewards
+- **Implementation**: Called `advanceWeaponPowerTrack(player.id, monster.level, battleActions)` in bot victory function
+- **Result**: Bots now gain weapon power equal to monster level, unlock power abilities, and advance weapon power track
+
+#### 7. Bot Battle Log Order Fix
+- **Issue**: Weapon power advancement appeared in logs before battle actions, causing confusion
+- **Fix**: Modified weapon power functions to use battleActions array for bots instead of immediate logging
+- **Changes**:
+  - Updated `advanceWeaponPowerTrack()` to accept optional battleActions parameter
+  - Updated `activateWeaponPower()` and weapon power application functions
+  - Made bot weapon power messages part of chronological battle log
+- **Result**: Battle events now appear in correct chronological order
+
+#### 8. Bot Battle Infinite Loop Fix
+- **Issue**: Bot battles got stuck due to infinite loops in combat item usage
+- **Fix**: Added break statements in while loops when items aren't found in inventory
+- **Problem**: Loops continued forever when `findIndex()` returned -1 but loop variables weren't updated
+- **Solution**: Exit loops gracefully when required items aren't available
+- **Result**: Bot battles complete properly without hanging
+
+#### 9. Monster Name Display Fix
+- **Issue**: Battle logs showed "undefined" for monster names
+- **Fix**: Removed monster name from log messages since monster objects don't have name property
+- **Change**: Updated log message from "vs Level X undefined" to "vs Level X Monster"
+- **Result**: Clean battle log messages without undefined values
+
+### Technical Implementation Notes
+- All display updates maintain consistency between human players and bots
+- Bot decision-making preserves strategic gameplay while ensuring UI accuracy
+- Weapon power system fully integrated with bot progression tracking
+- Battle logging maintains chronological order for better user experience
+- Error handling prevents infinite loops and game freezing
+
+## Key Strategic Elements
+- **Player Count Scaling**: Rewards increase with more players to maintain balance (e.g., Work Site: $6/4 for 2p, $8/6/5/4 for 4-5p)
+- **Dynamic Dummy Tokens**: Token count decreases as player count increases (3 tokens for 2p, 0 tokens for 5p)
+- **Location Competition**: More players means more competition for solo placement bonuses
+- **Reward Tier Strategy**: Understanding when you'll get tier 1 vs tier 2+ rewards based on player count
+- **Plaza Scaling**: Guaranteed points scale from 4/2 (2p) to 6/5/4/3 (4-5p)
+- Manage inventory capacity vs. item benefits
+- Time HP/EP upgrades for maximum benefit and milestone bonuses
+- Combat items can turn difficult monster battles
+- Popularity track rewards for strategic hunter placement
+- Forest apprentice bonus for coordinated team placement
+- Consider weapon priority for Forest battle order advantage
+- Track dummy token movement patterns for future planning (when applicable)
 
 ## Memories
-- add to memory
+- Complete system documentation consolidated into single comprehensive reference
+- All bot system improvements and fixes documented
+- Technical implementation details preserved for future development

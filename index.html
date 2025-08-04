@@ -27,22 +27,8 @@
         <!-- Player Count Selection Screen -->
         <div id="player-count-selection" class="player-count-selection" style="display: none;">
             <div class="selection-content">
-                <h2>Select Game Mode</h2>
-                <div class="game-mode-buttons">
-                    <button class="game-mode-btn" onclick="game.showQuickPlayMode()">Quick Play</button>
-                    <button class="game-mode-btn" onclick="game.showSoloPlayMode()">Solo Play</button>
-                </div>
-                <div id="quick-play-section" class="mode-section" style="display: none;">
-                    <h3>Select Number of Players</h3>
-                    <div class="player-count-buttons">
-                        <button class="player-count-btn" onclick="game.startGameWithPlayers(2)">2 Players</button>
-                        <button class="player-count-btn" onclick="game.startGameWithPlayers(3)">3 Players</button>
-                        <button class="player-count-btn" onclick="game.startGameWithPlayers(4)">4 Players</button>
-                        <button class="player-count-btn" onclick="game.startGameWithPlayers(5)">5 Players</button>
-                    </div>
-                </div>
-                <div id="solo-play-section" class="mode-section" style="display: none;">
-                    <h3>Configure Players</h3>
+                <h2>Configure Players</h2>
+                <div id="solo-play-section" class="mode-section" style="display: block;">
                     <div class="player-slots">
                         <div class="player-slot active" data-slot="0">
                             <span class="slot-number">1</span>
