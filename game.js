@@ -28,7 +28,7 @@ class BotPlayer {
             'Whip': 'bar',
             'Bow': 'plaza',
             'Sword': 'dojo',
-            'Knife': 'dojo',
+            'Knife': 'plaza',
             'Gloves': 'hospital'
         };
         this.weaponPreferences = weaponData;
@@ -120,9 +120,9 @@ class BotPlayer {
         const player = gameState.players[this.playerId];
         const entries = {};
         
-        // Initialize all locations with 5 base entries
+        // Initialize all locations with 4 base entries
         for (let i = 1; i <= 7; i++) {
-            entries[i] = 5;
+            entries[i] = 4;
         }
         
         // Apply availability check (-100 for unavailable locations)
@@ -133,7 +133,7 @@ class BotPlayer {
         }
         
         // Weapon preference (+2 entries)
-        const preferredLocation = this.getLocationIdByName(this.weaponPreferences[this.weapon.name]);
+        const preferredLocation = this.getLocationIdByName(this.weapon.preferLocation);
         if (preferredLocation) {
             if (entries[preferredLocation] > -95) {
                 // Preferred location is available, apply bonus normally
@@ -289,10 +289,10 @@ class BotPlayer {
     selectApprenticeLocation(gameState, availableLocations, hunterLocation) {
         const entries = {};
         
-        // Initialize all available locations (except hunter's location) with 5 base entries
+        // Initialize all available locations (except hunter's location) with 4 base entries
         for (let i = 1; i <= 7; i++) {
             if (i !== hunterLocation && availableLocations.includes(i)) {
-                entries[i] = 5;
+                entries[i] = 4;
             } else {
                 entries[i] = 0; // Not available or hunter's location
             }
@@ -332,8 +332,8 @@ class BotPlayer {
             const otherPlayer = gameState.players[i];
             const otherWeapon = otherPlayer.weapon;
             
-            if (otherWeapon && this.weaponPreferences[otherWeapon.name]) {
-                const preferredLocationName = this.weaponPreferences[otherWeapon.name];
+            if (otherWeapon && otherWeapon.preferLocation) {
+                const preferredLocationName = otherWeapon.preferLocation;
                 const preferredLocationId = this.getLocationIdByName(preferredLocationName);
                 
                 // +2 entries for each other player's preferred location (skip unavailable)
@@ -363,7 +363,7 @@ class BotPlayer {
         
         // Give +1 additional entry to highest scoring player's preferred location
         if (highestScorePlayer && highestScorePlayer.weapon) {
-            const preferredLocationName = this.weaponPreferences[highestScorePlayer.weapon.name];
+            const preferredLocationName = highestScorePlayer.weapon.preferLocation;
             const preferredLocationId = this.getLocationIdByName(preferredLocationName);
             
             if (preferredLocationId && entries[preferredLocationId] > -95) {
@@ -566,6 +566,17 @@ class BotPlayer {
         const attackUpgradeCost = this.weapon.reqExpAttack;
         const defenseUpgradeCost = this.weapon.reqExpDefense;
         
+        // Special case: If attack dice is maxed at 7, spend ALL EXP on defense dice
+        if (player.weapon.currentAttackDice >= 7) {
+            while (player.resources.exp >= defenseUpgradeCost && player.weapon.currentDefenseDice < 6) {
+                player.resources.exp -= defenseUpgradeCost;
+                player.weapon.currentDefenseDice += 1;
+                console.log(`Bot ${this.playerId + 1} upgraded defense dice to ${player.weapon.currentDefenseDice} (attack maxed)`);
+            }
+            return; // Don't proceed with normal logic
+        }
+        
+        // Normal logic when attack dice is not maxed
         // Determine upgrade choice based on EXP amount and preference flag
         let shouldUpgradeAttack = false;
         
@@ -973,27 +984,27 @@ class Game {
     constructor() {
         this.weapons = [
             { name: 'Bat', reqExpAttack: 4, reqExpDefense: 3, capacity: 6, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 1, 1, 1], priority: 3, 
-              lv1Power: '徒弟在資源區域撞其他獵人+1區域資源', lv2Power: '回合開始+1血袋+1體力', lv3Power: '命中的骰子再骰，直到沒有骰子命中，傷害為所有傷害加總' },
+              lv1Power: '徒弟在資源區域撞其他獵人+1區域資源', lv2Power: '回合開始+1血袋+1體力', lv3Power: '命中的骰子再骰，直到沒有骰子命中，傷害為所有傷害加總', preferLocation: 'plaza' },
             { name: 'Katana', reqExpAttack: 5, reqExpDefense: 3, capacity: 4, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 1, 1, 1, 1], priority: 8,
-              lv1Power: '1血袋換1體力', lv2Power: '打敗怪獸+2經驗', lv3Power: '攻擊骰總點數大於27則一擊必殺' },
+              lv1Power: '1血袋換1體力', lv2Power: '回合開始+1經驗', lv3Power: '攻擊骰總點數大於27則一擊必殺', preferLocation: 'dojo' },
             { name: 'Rifle', reqExpAttack: 6, reqExpDefense: 3, capacity: 8, initialMoney: 2, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 1, 2, 2], priority: 10,
-              lv1Power: '可購買子彈:2$，每次攻擊花費1子彈', lv2Power: '打敗怪獸+3$', lv3Power: '商店價格-1$' },
+              lv1Power: '可購買子彈:2$，每次攻擊花費1子彈', lv2Power: '回合開始+2$', lv3Power: '商店價格-1$', preferLocation: 'work site' },
             { name: 'Plasma', reqExpAttack: 7, reqExpDefense: 3, capacity: 8, initialMoney: 0, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 2, 2, 2], priority: 11,
-              lv1Power: '可購買電池:3$，每次攻擊花費1電池', lv2Power: '打敗怪獸+4$', lv3Power: '無限子彈' },
+              lv1Power: '可購買電池:3$，每次攻擊花費1電池', lv2Power: '回合開始+3$', lv3Power: '無限子彈', preferLocation: 'work site' },
             { name: 'Chain', reqExpAttack: 4, reqExpDefense: 3, capacity: 6, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 1, 1, 1], priority: 6,
-              lv1Power: '怪獸於血量3以下即可收服', lv2Power: '回合開始+2啤酒', lv3Power: '寵物攻擊x2' },
+              lv1Power: '怪獸於血量3以下即可收服', lv2Power: '回合開始+2啤酒', lv3Power: '寵物攻擊x2', preferLocation: 'bar' },
             { name: 'Axe', reqExpAttack: 4, reqExpDefense: 3, capacity: 6, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 1, 1, 1], priority: 4,
-              lv1Power: '玩家受傷後若存活，自動反擊同等傷害', lv2Power: '回合開始+2血袋', lv3Power: '玩家受傷後若存活，自動反擊2倍傷害' },
+              lv1Power: '玩家受傷時反擊怪獸受1點傷害', lv2Power: '回合開始+2血袋', lv3Power: '玩家受傷時反擊怪獸受一樣的傷害', preferLocation: 'hospital' },
             { name: 'Whip', reqExpAttack: 4, reqExpDefense: 3, capacity: 6, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 1, 1, 1], priority: 5,
-              lv1Power: '寵物和收服怪獸體力-1', lv2Power: '回合開始+2啤酒', lv3Power: '寵物和收服不耗體力' },
+              lv1Power: '寵物和收服怪獸體力-1', lv2Power: '回合開始+2啤酒', lv3Power: '寵物和收服不耗體力', preferLocation: 'bar' },
             { name: 'Bow', reqExpAttack: 4, reqExpDefense: 3, capacity: 6, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 0, 0, 4], priority: 1,
-              lv1Power: '閃避率+16%', lv2Power: '回合開始+2經驗', lv3Power: '傷害x2' },
+              lv1Power: '閃避率+16%', lv2Power: '回合開始+2經驗', lv3Power: '傷害x2', preferLocation: 'plaza' },
             { name: 'Sword', reqExpAttack: 5, reqExpDefense: 3, capacity: 4, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 1, 1, 2], priority: 9,
-              lv1Power: '遊戲開始防禦力+1', lv2Power: '打敗怪獸+2經驗', lv3Power: '攻擊時每骰到1個1即+1分' },
+              lv1Power: '遊戲開始防禦力+1', lv2Power: '回合開始+1經驗', lv3Power: '攻擊時每骰到1個1即+1分', preferLocation: 'dojo' },
             { name: 'Knife', reqExpAttack: 3, reqExpDefense: 3, capacity: 10, initialMoney: 8, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 0, 1, 1], priority: 2,
-              lv1Power: '人氣獎勵token不下降', lv2Power: '可將一次的攻擊力x3', lv3Power: '打贏的獎勵x2' },
+              lv1Power: '人氣獎勵token不下降', lv2Power: '可將一次的攻擊力x3', lv3Power: '打贏的獎勵x2', preferLocation: 'plaza' },
             { name: 'Gloves', reqExpAttack: 4, reqExpDefense: 3, capacity: 6, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 0, 1, 1], priority: 7,
-              lv1Power: '基礎攻擊力=1，每受1傷害提升1', lv2Power: '回合開始+2血袋', lv3Power: '攻擊力=6時，殺死怪獸+6分' }
+              lv1Power: '基礎攻擊力=1，每受1傷害提升1', lv2Power: '回合開始+2血袋', lv3Power: '攻擊力=6時，殺死怪獸+6分', preferLocation: 'hospital' }
         ];
         
         this.locations = [
@@ -1093,6 +1104,7 @@ class Game {
         const playerBoardsContainer = document.getElementById('player-boards-container');
         playerBoardsContainer.className = `player-boards players-${playerCount}`;
         
+        
         // Initialize the game UI
         this.roundPhase = 'selection';
         this.init();
@@ -1101,6 +1113,14 @@ class Game {
         // Remove this one since we're calling it properly later
     }
     
+    
+    addScore(playerId, points) {
+        const player = this.players.find(p => p.id === playerId);
+        if (player) {
+            player.score += points;
+        }
+    }
+
     getLocationRewards(locationName) {
         // Return default 2-player rewards if player count not set yet
         if (!this.playerCount || this.playerCount === 2) {
@@ -1926,6 +1946,7 @@ class Game {
                 if (element) {
                     if (resource === 'score') {
                         element.textContent = player.score;
+                        // Update score token position when score changes
                     } else {
                         element.textContent = player.resources[resource];
                     }
@@ -2678,8 +2699,8 @@ class Game {
             }
         });
         
-        // Calculate and distribute resources
-        this.distributeResources();
+        // Resources already distributed in startResourceDistribution()
+        // this.distributeResources(); // REMOVED: This was causing double resource distribution
         
         // Update UI for resolution phase
         document.getElementById('confirm-selection').style.display = 'none';
@@ -3442,12 +3463,17 @@ class Game {
             
             // Axe retaliation (if player survives)
             if (player.weapon.name === 'Axe' && finalDamage > 0 && currentPlayerHP > 0) {
-                let retaliationDamage = finalDamage;
+                let retaliationDamage;
                 if (player.weapon.powerTrackPosition >= 7) {
-                    retaliationDamage *= 2; // Level 3: double retaliation damage
+                    // Level 3: Deal same damage to monster (overrides Level 1)
+                    retaliationDamage = finalDamage;
+                    battleActions.push(`${player.name}'s Axe Lv3 Power: retaliates for ${retaliationDamage} damage!`);
+                } else {
+                    // Level 1: Deal 1 damage to monster when HP decreases
+                    retaliationDamage = 1;
+                    battleActions.push(`${player.name}'s Axe Lv1 Power: retaliates for ${retaliationDamage} damage!`);
                 }
                 currentMonsterHP -= retaliationDamage;
-                battleActions.push(`${player.name}'s Axe retaliates for ${retaliationDamage} damage!`);
                 
                 if (currentMonsterHP <= 0) {
                     battleActions.push(`Monster defeated by retaliation!`);
@@ -3563,6 +3589,9 @@ class Game {
             }
             player.pets[`level${monster.level}`]++;
             battleActions.push(`${player.name} tamed the Level ${monster.level} monster as a pet!`);
+            
+            // Update pet display to show new pet
+            this.updatePetDisplay();
         }
         
         // Auto-use items for recovery and upgrades
@@ -3757,8 +3786,8 @@ class Game {
             5: 'exp'        // Dojo -> EXP
         };
         
-        if (player.weapon && player.weapon.preferredLocation) {
-            preferredResource = locationToResource[player.weapon.preferredLocation];
+        if (player.weapon && player.weapon.preferLocation) {
+            preferredResource = locationToResource[player.weapon.preferLocation];
         }
         
         let selectedResource;
@@ -4502,7 +4531,11 @@ class Game {
             turn: 'player_items', // Allow item usage at start, then attack
             bonusPts: 0, // Track Fake Blood bonus points
             petsUsed: selectedPets, // Track pets being used in this battle
-            glovesPowerLevel: 0 // Track Gloves power level (damage taken)
+            glovesPowerLevel: 0, // Track Gloves power level (damage taken)
+            hasAttacked: false, // Track if player has attacked this battle
+            tripleDamageUsed: false, // Track if Knife Lv2 triple damage was used
+            canUseTripleDamage: false, // Track if Knife Lv2 triple damage is available
+            lastAttackDamage: 0 // Track last attack damage for triple damage calculation
         };
         
         console.log('Current battle set up:', this.currentBattle);
@@ -4728,19 +4761,20 @@ class Game {
                 attackBtn.title = 'Attack the monster';
             }
             
-            // Knife Level 2 Power: Show triple damage button (can only be used once per battle)
-            if (player.weapon.name === 'Knife' && player.weapon.powerTrackPosition >= 3 && !battle.tripleDamageUsed) {
-                tripleDamageBtn.style.display = 'block';
-                tripleDamageBtn.onclick = () => this.useTripleDamage();
-            } else {
-                tripleDamageBtn.style.display = 'none';
-            }
+            // Hide triple damage button during attack phase
+            tripleDamageBtn.style.display = 'none';
             
             // Don't hide defense button if we just switched to defense phase due to no ammo
             if (!needsAmmoButHasNone) {
                 defenseBtn.style.display = 'none';
             }
         } else if (battle.turn === 'player_items') {
+            // Handle bot tactical item usage
+            if (player.isBot) {
+                this.handleBotTacticalItemUsage(player, battle);
+                return;
+            }
+            
             // Check if this is the first turn (no attack has happened yet)
             const hasAttacked = battle.hasAttacked || false;
             if (!hasAttacked) {
@@ -4767,6 +4801,15 @@ class Game {
                 attackBtn.style.display = 'none';
                 tameBtn.style.display = 'none';
                 defenseBtn.style.display = 'block';
+                
+                // Knife Level 2 Power: Show x3 damage button after attack
+                if (battle.canUseTripleDamage) {
+                    tripleDamageBtn.style.display = 'block';
+                    tripleDamageBtn.textContent = `x3 Damage (${battle.lastAttackDamage * 2} extra)`;
+                    tripleDamageBtn.onclick = () => this.useTripleDamage();
+                } else {
+                    tripleDamageBtn.style.display = 'none';
+                }
             }
         } else if (battle.turn === 'monster') {
             turnText.textContent = 'Monster attacks!';
@@ -4774,6 +4817,12 @@ class Game {
             tameBtn.style.display = 'none';
             defenseBtn.style.display = 'none';
         } else if (battle.turn === 'player_items_after_monster') {
+            // Handle bot tactical item usage
+            if (player.isBot) {
+                this.handleBotTacticalItemUsage(player, battle);
+                return;
+            }
+            
             // After monster attack, player can use items before attacking
             if (needsAmmoButHasNone) {
                 // Out of ammo - skip to next round
@@ -4800,6 +4849,163 @@ class Game {
                 defenseBtn.style.display = 'none';
             }
         }
+    }
+    
+    handleBotTacticalItemUsage(player, battle) {
+        console.log(`Bot ${player.name} evaluating tactical item usage...`);
+        
+        const monster = battle.monster;
+        let itemsUsed = [];
+        
+        // Check if bot can finish the monster with combat items
+        let damageNeeded = monster.hp;
+        
+        // Check for instant kill items and prioritize efficiency
+        const combatItems = [
+            { name: 'Dynamite', damage: 3, priority: 1 },
+            { name: 'Bomb', damage: 2, priority: 2 },
+            { name: 'Grenade', damage: 1, priority: 3 }
+        ];
+        
+        // Find optimal item combination to finish monster
+        let remainingDamage = damageNeeded;
+        let itemsToUse = [];
+        
+        // Sort by priority (lowest first - Dynamite has highest priority)
+        combatItems.sort((a, b) => a.priority - b.priority);
+        
+        for (const item of combatItems) {
+            if (remainingDamage <= 0) break;
+            
+            const availableCount = player.inventory.filter(inv => inv.name === item.name).length;
+            const neededCount = Math.min(availableCount, Math.ceil(remainingDamage / item.damage));
+            
+            if (neededCount > 0) {
+                // Only use items if they contribute to finishing the monster
+                const actualDamage = Math.min(neededCount * item.damage, remainingDamage);
+                itemsToUse.push({ name: item.name, count: neededCount, damage: actualDamage });
+                remainingDamage -= actualDamage;
+            }
+        }
+        
+        // Use items if they can kill the monster
+        if (remainingDamage <= 0 && itemsToUse.length > 0) {
+            console.log(`Bot ${player.name} using items to finish monster:`, itemsToUse);
+            
+            for (const itemUse of itemsToUse) {
+                for (let i = 0; i < itemUse.count; i++) {
+                    const itemIndex = player.inventory.findIndex(inv => inv.name === itemUse.name);
+                    if (itemIndex >= 0) {
+                        player.inventory.splice(itemIndex, 1);
+                        itemsUsed.push(itemUse.name);
+                        
+                        // Apply item effect
+                        if (itemUse.name === 'Dynamite') monster.hp -= 3;
+                        else if (itemUse.name === 'Bomb') monster.hp -= 2;
+                        else if (itemUse.name === 'Grenade') monster.hp -= 1;
+                    }
+                }
+            }
+            
+            monster.hp = Math.max(0, monster.hp);
+            this.logBattleAction(`${player.name} uses items: ${itemsUsed.join(', ')} - Monster HP now: ${monster.hp}`);
+            
+            // Update displays
+            this.updateResourceDisplay();
+            this.updateInventoryDisplayOld();
+            this.updateInventoryDisplay(player.id);
+            
+            // Check if monster is defeated
+            if (monster.hp <= 0) {
+                this.logBattleAction(`Monster defeated by items!`);
+                this.monsterDefeated();
+                return;
+            }
+        }
+        
+        // Use Fake Blood for bonus points if available
+        const fakeBloodCount = player.inventory.filter(item => item.name === 'Fake Blood').length;
+        if (fakeBloodCount > 0) {
+            console.log(`Bot ${player.name} using ${fakeBloodCount} Fake Blood for bonus points`);
+            for (let i = 0; i < fakeBloodCount; i++) {
+                const fakeBloodIndex = player.inventory.findIndex(item => item.name === 'Fake Blood');
+                if (fakeBloodIndex >= 0) {
+                    player.inventory.splice(fakeBloodIndex, 1);
+                    battle.bonusPts += monster.level; // Fake Blood gives bonus points equal to monster level
+                    itemsUsed.push('Fake Blood');
+                }
+            }
+            if (fakeBloodCount > 0) {
+                this.logBattleAction(`${player.name} uses ${fakeBloodCount} Fake Blood for +${fakeBloodCount * monster.level} bonus points`);
+                this.updateResourceDisplay();
+                this.updateInventoryDisplayOld();
+                this.updateInventoryDisplay(player.id);
+            }
+        }
+        
+        // Use recovery items if needed
+        this.botUseRecoveryItems(player, battle);
+        
+        // Proceed with battle flow based on current phase
+        setTimeout(() => {
+            if (battle.turn === 'player_items') {
+                // After using items in post-attack phase, proceed to monster turn
+                const hasAttacked = battle.hasAttacked || false;
+                if (hasAttacked) {
+                    battle.turn = 'monster';
+                    this.updateBattlePhase();
+                    setTimeout(() => this.monsterAttackPlayer(), 1000);
+                } else {
+                    // Bot hasn't attacked yet, proceed to attack
+                    this.botAttackMonster(player, battle);
+                }
+            } else if (battle.turn === 'player_items_after_monster') {
+                // After using items in post-monster phase, proceed to attack
+                this.botAttackMonster(player, battle);
+            }
+        }, itemsUsed.length > 0 ? 1500 : 500);
+    }
+    
+    botUseRecoveryItems(player, battle) {
+        let itemsUsed = [];
+        
+        // Use Blood Bags if HP is not at max
+        while (player.resources.hp < player.maxResources.hp) {
+            const bloodBagIndex = player.inventory.findIndex(item => item.name === 'Blood Bag');
+            if (bloodBagIndex === -1) break;
+            
+            player.inventory.splice(bloodBagIndex, 1);
+            player.resources.hp = Math.min(player.maxResources.hp, player.resources.hp + 1);
+            itemsUsed.push('Blood Bag');
+        }
+        
+        // Use Beer if EP is not at max
+        while (player.resources.ep < player.maxResources.ep) {
+            const beerIndex = player.inventory.findIndex(item => item.name === 'Beer');
+            if (beerIndex === -1) break;
+            
+            player.inventory.splice(beerIndex, 1);
+            player.resources.ep = Math.min(player.maxResources.ep, player.resources.ep + 1);
+            itemsUsed.push('Beer');
+        }
+        
+        if (itemsUsed.length > 0) {
+            this.logBattleAction(`${player.name} uses recovery items: ${itemsUsed.join(', ')}`);
+            this.updateResourceDisplay();
+            this.updateInventoryDisplayOld();
+            this.updateInventoryDisplay(player.id);
+        }
+    }
+    
+    botAttackMonster(player, battle) {
+        // Proceed with bot attack logic
+        battle.turn = 'player';
+        this.updateBattlePhase();
+        
+        // Trigger bot attack after a short delay
+        setTimeout(() => {
+            this.attackMonster();
+        }, 500);
     }
     
     updateBattleItemButtons() {
@@ -4897,13 +5103,17 @@ class Game {
         
         // Check for Bat Level 3 explosive dice
         if (player.weapon.name === 'Bat' && player.weapon.powerTrackPosition >= 7) {
-            // Explosive dice mechanic
+            // Explosive dice mechanic - reroll only dice that hit successfully
             let keepRolling = true;
             let explosionCount = 0;
+            let diceToRoll = player.weapon.currentAttackDice; // Start with full dice count
             
-            while (keepRolling) {
-                const attackRolls = this.rollDice(player.weapon.currentAttackDice);
+            while (keepRolling && diceToRoll > 0) {
+                const attackRolls = this.rollDice(diceToRoll);
                 const damage = this.calculateDamage(battle.playerId, attackRolls);
+                
+                // Count how many dice hit successfully (4, 5, or 6 for Bat)
+                const hitCount = attackRolls.filter(roll => roll >= 4).length;
                 
                 allRolls.push(`[${attackRolls.join(', ')}]`);
                 allAttackRolls.push(...attackRolls); // Track all rolls for other weapon powers
@@ -4911,13 +5121,17 @@ class Game {
                 totalDicePips += attackRolls.reduce((sum, roll) => sum + roll, 0);
                 explosionCount++;
                 
-                if (damage === 0) {
+                if (hitCount === 0) {
                     keepRolling = false;
-                    this.logBattleAction(`Bat Lv3 Power: Explosive dice ended after ${explosionCount} roll(s)`);
+                    this.logBattleAction(`Bat Lv3 Power: Explosive dice ended after ${explosionCount} roll(s) - no hits`);
                 } else if (explosionCount >= 10) {
                     // Safety limit to prevent infinite loops
                     keepRolling = false;
                     this.logBattleAction(`Bat Lv3 Power: Explosive dice capped at 10 explosions!`);
+                } else {
+                    // Next roll will be only the dice that hit
+                    diceToRoll = hitCount;
+                    this.logBattleAction(`Bat Lv3 Power: ${hitCount} dice hit - rolling ${hitCount} dice again`);
                 }
             }
         } else {
@@ -4929,12 +5143,6 @@ class Game {
             allAttackRolls.push(...attackRolls); // Track all rolls for other weapon powers
         }
         
-        // Knife Level 2 Power: Triple damage (once per battle)
-        if (battle.nextAttackTripled && playerDamage > 0) {
-            playerDamage *= 3;
-            battle.nextAttackTripled = false; // Reset the flag after use
-            this.logBattleAction(`Knife Lv2 Power: Damage tripled!`);
-        }
         
         // Bow Level 3 Power: Double player damage
         if (player.weapon.name === 'Bow' && player.weapon.powerTrackPosition >= 7 && playerDamage > 0) {
@@ -4987,6 +5195,14 @@ class Game {
         } else {
             // Move to item usage phase (post-attack)
             battle.turn = 'player_items';
+            
+            // Knife Level 2 Power: Show x3 damage button after attack if damage was dealt
+            if (player.weapon.name === 'Knife' && player.weapon.powerTrackPosition >= 3 && 
+                !battle.tripleDamageUsed && playerDamage > 0) {
+                battle.lastAttackDamage = playerDamage; // Store the damage for x3 calculation
+                battle.canUseTripleDamage = true;
+            }
+            
             this.updateBattlePhase();
             this.updateBattleItemButtons();
         }
@@ -5112,20 +5328,18 @@ class Game {
         } else {
             // Player survived - check for Axe retaliation
             if (finalDamage > 0 && player.weapon.name === 'Axe' && player.weapon.powerTrackPosition >= 1) {
-                let axeDamageMultiplier = 1;
+                let axeDamageToMonster;
                 if (player.weapon.powerTrackPosition >= 7) {
-                    // Level 3: Player fights back with 2x damage
-                    axeDamageMultiplier = 2;
-                }
-                
-                const axeDamageToMonster = finalDamage * axeDamageMultiplier;
-                battle.monster.hp -= axeDamageToMonster;
-                
-                if (axeDamageMultiplier === 1) {
-                    this.logBattleAction(`Axe Lv1 Power: ${player.name} fights back for ${axeDamageToMonster} damage!`);
+                    // Level 3: Deal same damage to monster (overrides Level 1)
+                    axeDamageToMonster = finalDamage;
+                    this.logBattleAction(`Axe Lv3 Power: ${player.name} fights back for ${axeDamageToMonster} damage!`);
                 } else {
-                    this.logBattleAction(`Axe Lv3 Power: ${player.name} fights back for ${axeDamageToMonster} damage (2x)!`);
+                    // Level 1: Deal 1 damage to monster when HP decreases
+                    axeDamageToMonster = 1;
+                    this.logBattleAction(`Axe Lv1 Power: ${player.name} fights back for ${axeDamageToMonster} damage!`);
                 }
+                
+                battle.monster.hp -= axeDamageToMonster;
                 
                 // Update monster HP display
                 document.getElementById('battle-monster-hp').textContent = `${battle.monster.hp}/${battle.monster.maxHp}`;
@@ -5145,19 +5359,31 @@ class Game {
     }
     
     useTripleDamage() {
-        if (!this.currentBattle || this.currentBattle.turn !== 'player') return;
+        if (!this.currentBattle || !this.currentBattle.canUseTripleDamage) return;
         
         const battle = this.currentBattle;
         const player = this.players.find(p => p.id === battle.playerId);
+        const extraDamage = battle.lastAttackDamage * 2; // Triple means original + 2x extra
+        
+        // Apply the extra damage immediately
+        battle.monster.hp -= extraDamage;
         
         // Mark triple damage as used for this battle
         battle.tripleDamageUsed = true;
-        battle.nextAttackTripled = true;
+        battle.canUseTripleDamage = false;
         
-        this.logBattleAction(`${player.name} activates Knife Lv2 Power: Next attack damage will be tripled!`);
+        this.logBattleAction(`${player.name} activates Knife Lv2 Power: x3 damage! ${extraDamage} extra damage dealt!`);
         
-        // Update battle phase to hide the button
-        this.updateBattlePhase();
+        // Update monster HP display
+        document.getElementById('battle-monster-hp').textContent = `${Math.max(0, battle.monster.hp)}/${battle.monster.maxHp}`;
+        
+        // Check if monster is defeated
+        if (battle.monster.hp <= 0) {
+            this.monsterDefeated();
+        } else {
+            // Update battle phase to hide the button
+            this.updateBattlePhase();
+        }
     }
 
     tameMonster() {
@@ -5699,7 +5925,7 @@ class Game {
             stage: player.stage || 1,
             availableLocations: [1, 2, 3, 4, 5, 6, 7], // All locations available for context
             otherPlayersData: this.players.filter(p => p.id !== player.id).map(p => ({
-                preferredLocation: p.weapon.preferredLocation,
+                preferredLocation: p.weapon.preferLocation,
                 score: p.score
             }))
         };
@@ -6519,6 +6745,30 @@ class Game {
                 player.resources.bloodBag += 2;
                 this.addItemToInventory(player.id, 'Blood Bag', 2);
                 console.log(`Gloves Lv2 Power: ${player.name} receives +2 blood bags at round start`);
+            }
+            
+            // Katana Level 2 Power: +1 EXP at round start
+            if (player.weapon.name === 'Katana' && player.weapon.powerTrackPosition >= 3) {
+                this.modifyResource(player.id, 'exp', 1);
+                console.log(`Katana Lv2 Power: ${player.name} receives +1 EXP at round start`);
+            }
+            
+            // Sword Level 2 Power: +1 EXP at round start
+            if (player.weapon.name === 'Sword' && player.weapon.powerTrackPosition >= 3) {
+                this.modifyResource(player.id, 'exp', 1);
+                console.log(`Sword Lv2 Power: ${player.name} receives +1 EXP at round start`);
+            }
+            
+            // Rifle Level 2 Power: +2$ at round start
+            if (player.weapon.name === 'Rifle' && player.weapon.powerTrackPosition >= 3) {
+                this.modifyResource(player.id, 'money', 2);
+                console.log(`Rifle Lv2 Power: ${player.name} receives +2$ at round start`);
+            }
+            
+            // Plasma Level 2 Power: +3$ at round start
+            if (player.weapon.name === 'Plasma' && player.weapon.powerTrackPosition >= 3) {
+                this.modifyResource(player.id, 'money', 3);
+                console.log(`Plasma Lv2 Power: ${player.name} receives +3$ at round start`);
             }
         });
         
