@@ -1004,7 +1004,7 @@ class Game {
             { name: 'Knife', reqExpAttack: 3, reqExpDefense: 3, capacity: 10, initialMoney: 8, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 0, 1, 1], priority: 2,
               lv1Power: '人氣獎勵token不下降', lv2Power: '可將一次的攻擊力x3', lv3Power: '打贏的獎勵x2', preferLocation: 'plaza' },
             { name: 'Gloves', reqExpAttack: 4, reqExpDefense: 3, capacity: 6, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 0, 1, 1], priority: 7,
-              lv1Power: '基礎攻擊力=1，每受1傷害提升1', lv2Power: '回合開始+2血袋', lv3Power: '攻擊力=6時，殺死怪獸+6分', preferLocation: 'hospital' }
+              lv1Power: '基礎攻擊力=1，每次受傷攻擊力+1', lv2Power: '回合開始+2血袋', lv3Power: '每損失1hp，攻擊力+1', preferLocation: 'hospital' }
         ];
         
         this.locations = [
@@ -3725,8 +3725,8 @@ class Game {
     
     showStationModal() {
         if (this.pendingStationPlayers.length === 0) {
-            // All station choices made, distribute resources then proceed to store phase
-            this.completeResourceDistribution();
+            // All station choices made, distribute station resources and proceed to store phase
+            this.distributeStationResources();
             this.enterStorePhase();
             return;
         }
@@ -3822,66 +3822,7 @@ class Game {
         }, 500);
     }
     
-    completeResourceDistribution() {
-        // Count tokens at each location
-        this.locations.forEach(location => {
-            if (location.id === 3) return; // Skip station, handled separately
-            
-            if (!location.resource || location.rewards.length === 0) return;
-            
-            // Count hunters and total tokens at this location
-            let hunterCount = 0;
-            let totalCount = 0;
-            
-            this.players.forEach(player => {
-                if (player.tokens.hunter === location.id) {
-                    hunterCount++;
-                    totalCount++;
-                }
-                if (player.tokens.apprentice === location.id) {
-                    totalCount++;
-                }
-            });
-            
-            if (hunterCount === 0) return; // No hunters, no resources
-            
-            // Determine reward amount based on total count and player count
-            const rewardAmount = this.getRewardAmount(location, totalCount);
-            console.log(`Resource distribution: Location ${location.id} (${location.name})`);
-            console.log(`  - Player count: ${this.playerCount}`);
-            console.log(`  - Total tokens: ${totalCount}`);
-            console.log(`  - Location rewards array: [${location.rewards}]`);
-            console.log(`  - Calculated reward amount: ${rewardAmount}`);
-            
-            // Distribute resources to hunters only
-            this.players.forEach(player => {
-                if (player.tokens.hunter === location.id) {
-                    if (location.resource === 'money' || location.resource === 'exp') {
-                        this.modifyResource(player.id, location.resource, rewardAmount);
-                        this.addLogEntry(
-                            `💰 <strong>${player.name}</strong> gained ${rewardAmount} ${location.resource} at ${location.name}`,
-                            'resource-gain'
-                        );
-                    } else if (location.resource === 'beer' || location.resource === 'bloodBag') {
-                        player.resources[location.resource] += rewardAmount;
-                        this.addLogEntry(
-                            `💰 <strong>${player.name}</strong> gained ${rewardAmount} ${location.resource} at ${location.name}`,
-                            'resource-gain'
-                        );
-                    } else if (location.resource === 'score') {
-                        // Plaza scoring: 3 points if alone, 0 if crowded
-                        player.score += rewardAmount;
-                        if (rewardAmount > 0) {
-                            this.addLogEntry(
-                                `🏆 <strong>${player.name}</strong> gained ${rewardAmount} points at ${location.name}`,
-                                'resource-gain'
-                            );
-                        }
-                    }
-                }
-            });
-        });
-        
+    distributeStationResources() {
         // Handle station resources
         Object.entries(this.stationChoices).forEach(([playerId, resourceType]) => {
             const player = this.players.find(p => p.id === parseInt(playerId));
@@ -3904,6 +3845,11 @@ class Game {
             
             // Calculate reward based on player count and token count
             rewardAmount = this.getRewardAmount({ rewards: locationRewards }, this.stationTotalCount);
+            
+            console.log(`Station resource distribution: Player ${player.name} chose ${resourceType}`);
+            console.log(`  - Station total count: ${this.stationTotalCount}`);
+            console.log(`  - Location rewards array: [${locationRewards}]`);
+            console.log(`  - Calculated reward amount: ${rewardAmount}`);
             
             if (resourceType === 'money' || resourceType === 'exp') {
                 this.modifyResource(parseInt(playerId), resourceType, rewardAmount);
@@ -4299,7 +4245,7 @@ class Game {
             // roll is 1-6, array index is 0-5
             let baseDamage = player.weapon.damage[roll - 1];
             
-            // Gloves Level 1 Power: Enhance damage values 5, 6 based on damage taken (4 stays at 1)
+            // Gloves Powers: Enhance damage values 5, 6 based on glovesPowerLevel
             if (player.weapon.name === 'Gloves' && player.weapon.powerTrackPosition >= 1 && 
                 this.currentBattle && (roll === 5 || roll === 6)) {
                 baseDamage = 1 + this.currentBattle.glovesPowerLevel;
@@ -5313,10 +5259,17 @@ class Game {
             this.modifyResource(battle.playerId, 'exp', finalDamage);
             this.logBattleAction(`${player.name} gains ${finalDamage} EXP from taking damage!`);
             
-            // Gloves Level 1 Power: Increase damage values for each damage taken
+            // Gloves Power: Increase damage values based on damage taken
             if (player.weapon.name === 'Gloves' && player.weapon.powerTrackPosition >= 1) {
-                battle.glovesPowerLevel += finalDamage;
-                this.logBattleAction(`Gloves Lv1 Power: Damage values [4,5,6] increased to ${1 + battle.glovesPowerLevel}!`);
+                if (player.weapon.powerTrackPosition >= 7) {
+                    // Level 3: +1 power for each point of damage taken (overrides Level 1)
+                    battle.glovesPowerLevel += finalDamage;
+                    this.logBattleAction(`Gloves Lv3 Power: Damage values [5,6] increased to ${1 + battle.glovesPowerLevel}!`);
+                } else {
+                    // Level 1: +1 power for being damaged (regardless of damage amount)
+                    battle.glovesPowerLevel += 1;
+                    this.logBattleAction(`Gloves Lv1 Power: Damage values [5,6] increased to ${1 + battle.glovesPowerLevel}!`);
+                }
             }
         }
         
@@ -5531,12 +5484,6 @@ class Game {
             this.logBattleAction(`+2 bonus EXP from Sword power!`);
         }
         
-        // Gloves Level 3 Power: +6 points when damage values reach 6
-        if (player.weapon.name === 'Gloves' && player.weapon.powerTrackPosition >= 7 && 
-            battle.glovesPowerLevel >= 5) { // 1 + 5 = 6 damage value
-            player.score += 6;
-            this.logBattleAction(`Gloves Lv3 Power: +6 bonus points for reaching maximum power!`);
-        }
         
         this.endMonsterBattle(true);
     }
