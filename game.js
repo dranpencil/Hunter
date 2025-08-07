@@ -3,7 +3,6 @@ class BotPlayer {
     constructor(playerId, weapon) {
         this.playerId = playerId;
         this.weapon = weapon;
-        this.stage = 1; // 1: before 2nd lv1 monster, 2: before 2nd lv2 monster, 3: after 2nd lv2 monster
         this.monstersDefeated = { lv1: 0, lv2: 0, lv3: 0 };
         this.roundsSinceLastPlaza = 0;
         this.preferAttackDiceNext = false; // Track EXP upgrade preference
@@ -90,22 +89,10 @@ class BotPlayer {
         };
     }
     
-    updateStage(monsterLevel) {
-        this.monstersDefeated[`lv${monsterLevel}`]++;
-        
-        // Update stage based on defeated monsters
-        if (this.monstersDefeated.lv1 < 2) {
-            this.stage = 1;
-        } else if (this.monstersDefeated.lv2 < 2) {
-            this.stage = 2;
-        } else {
-            this.stage = 3;
-        }
-    }
     
     getRequiredEP() {
-        // Base EP requirement for forest based on stage
-        let baseRequirement = this.stage + 1; // Stage 1 = 2EP, Stage 2 = 3EP, Stage 3 = 4EP
+        // Minimum EP requirement for forest (level 1 monster costs 2 EP)
+        let baseRequirement = 2;
         
         // Chain/Whip weapons need extra EP for pet summoning
         if (this.weapon.name === 'Chain' || this.weapon.name === 'Whip') {
@@ -1540,9 +1527,6 @@ class Game {
         
         if (battleResult.victory || battleResult.tamed) {
             // Update bot's stage based on monster defeated
-            if (battleResult.victory) {
-                bot.updateStage(monster.level);
-            }
         }
         
         return battleResult;
@@ -3104,25 +3088,169 @@ class Game {
         document.getElementById('monster-modal').style.display = 'flex';
     }
     
+    calculateAttackExpectedValue(player) {
+        // Calculate expected damage per attack
+        const weapon = player.weapon;
+        let damageSum = 0;
+        for (let i = 0; i < weapon.damage.length; i++) {
+            damageSum += weapon.damage[i];
+        }
+        const expectedDamagePerDie = damageSum / 6;
+        const attackDice = weapon.currentAttackDice || weapon.attackDice;
+        return expectedDamagePerDie * attackDice;
+    }
+    
+    calculateDefenseExpectedValue(player) {
+        // Most weapons have 50% chance of successful defense (rolls 4,5,6)
+        const defenseDice = player.weapon.currentDefenseDice || player.weapon.defenseDice;
+        return 0.5 * defenseDice;
+    }
+    
+    calculateSureDamage(player) {
+        // Calculate guaranteed damage from items
+        let sureDamage = 0;
+        player.inventory.forEach(item => {
+            if (item.name === 'Dynamite') sureDamage += 3;
+            else if (item.name === 'Bomb') sureDamage += 2;
+            else if (item.name === 'Grenade') sureDamage += 1;
+        });
+        return sureDamage;
+    }
+    
+    selectOptimalMonsterLevel(player, attackExpectedValue, defenseExpectedValue, sureDamage) {
+        // Monster average stats
+        const monsterStats = {
+            1: { hp: 3, attack: 2 },
+            2: { hp: 6, attack: 3 },
+            3: { hp: 11, attack: 4 }
+        };
+        
+        // Check if this is first time fighting (no monsters defeated yet)
+        const isFirstTime = !player.monstersDefeated || 
+            (player.monstersDefeated.level1 === 0 && 
+             player.monstersDefeated.level2 === 0 && 
+             player.monstersDefeated.level3 === 0);
+        
+        if (isFirstTime) {
+            console.log(`Bot ${player.name}: First monster fight, selecting level 1`);
+            return 1;
+        }
+        
+        // Try levels from highest to lowest
+        for (let level = 3; level >= 1; level--) {
+            const monster = monsterStats[level];
+            let monsterHP = monster.hp;
+            let botHP = player.resources.hp;
+            let rounds = 0;
+            const maxRounds = 20; // Prevent infinite loops
+            
+            console.log(`Bot ${player.name}: Evaluating level ${level} monster`);
+            
+            // Simulate battle rounds
+            while (monsterHP > 0 && botHP > 0 && rounds < maxRounds) {
+                rounds++;
+                
+                // Bot attack phase
+                monsterHP -= attackExpectedValue;
+                
+                // Check if items can finish the monster (only use if can kill)
+                if (monsterHP > 0 && monsterHP <= sureDamage) {
+                    monsterHP -= sureDamage;
+                    sureDamage = 0; // Items used
+                }
+                
+                if (monsterHP <= 0) {
+                    console.log(`Bot ${player.name}: Can defeat level ${level} monster in ${rounds} rounds`);
+                    return level;
+                }
+                
+                // Monster attack phase
+                const monsterDamage = Math.max(0, monster.attack - defenseExpectedValue);
+                botHP -= monsterDamage;
+                
+                if (botHP <= 0) {
+                    console.log(`Bot ${player.name}: Would die to level ${level} monster`);
+                    break; // Try lower level
+                }
+            }
+            
+            if (rounds >= maxRounds) {
+                console.log(`Bot ${player.name}: Battle simulation exceeded max rounds for level ${level}`);
+            }
+        }
+        
+        // Default to level 1 if all else fails
+        console.log(`Bot ${player.name}: Defaulting to level 1 monster`);
+        return 1;
+    }
+    
+    findOptimalItemCombination(player, targetDamage) {
+        // Find the minimal item combination to deal at least targetDamage
+        const combatItems = [];
+        
+        // Count available items
+        player.inventory.forEach(item => {
+            if (item.name === 'Dynamite') combatItems.push({ name: 'Dynamite', damage: 3 });
+            else if (item.name === 'Bomb') combatItems.push({ name: 'Bomb', damage: 2 });
+            else if (item.name === 'Grenade') combatItems.push({ name: 'Grenade', damage: 1 });
+        });
+        
+        if (combatItems.length === 0) return null;
+        
+        // Sort by damage (highest first for efficiency)
+        combatItems.sort((a, b) => b.damage - a.damage);
+        
+        // Try to find exact combination that can kill
+        const combination = [];
+        let remainingDamage = targetDamage;
+        
+        for (const item of combatItems) {
+            if (remainingDamage <= 0) break;
+            
+            if (item.damage <= remainingDamage) {
+                combination.push(item);
+                remainingDamage -= item.damage;
+            } else if (remainingDamage > 0 && combination.length === 0) {
+                // If this is the first item and it overkills, use it anyway
+                combination.push(item);
+                remainingDamage = 0;
+            }
+        }
+        
+        // Only return combination if it can kill the monster
+        if (remainingDamage <= 0) {
+            return combination;
+        }
+        
+        // Cannot kill with available items - return null (save items)
+        return null;
+    }
+    
     handleBotMonsterSelection(player) {
-        // Initialize bot stage if not set
-        if (!player.stage) {
-            player.stage = 1;
+        // Initialize monster tracking if not set
+        if (!player.monstersDefeated) {
             player.monstersDefeated = { level1: 0, level2: 0, level3: 0 };
         }
         
-        // Determine monster level based on bot stage progression
-        let selectedLevel;
-        if (player.stage === 1) {
-            // Stage 1: Fight level 1 monsters (need to defeat 2 to progress)
-            selectedLevel = 1;
-        } else if (player.stage === 2) {
-            // Stage 2: Fight level 2 monsters (need to defeat 2 to progress)
-            selectedLevel = 2;
-        } else {
-            // Stage 3: Fight level 3 monsters
-            selectedLevel = 3;
-        }
+        // Calculate expected values for combat
+        const attackExpectedValue = this.calculateAttackExpectedValue(player);
+        const defenseExpectedValue = this.calculateDefenseExpectedValue(player);
+        const sureDamage = this.calculateSureDamage(player);
+        
+        console.log(`Bot ${player.name} combat calculations:`, {
+            attackExpectedValue,
+            defenseExpectedValue,
+            sureDamage,
+            currentHP: player.resources.hp
+        });
+        
+        // Use expected value calculation to select monster level
+        let selectedLevel = this.selectOptimalMonsterLevel(
+            player,
+            attackExpectedValue,
+            defenseExpectedValue,
+            sureDamage
+        );
         
         // Check EP requirements
         const epRequirement = selectedLevel + 1; // Level 1 = 2 EP, Level 2 = 3 EP, Level 3 = 4 EP
@@ -3132,7 +3260,7 @@ class Game {
             else if (player.resources.ep >= 3) selectedLevel = 2;
             else if (player.resources.ep >= 2) selectedLevel = 1;
             else {
-                // Not enough EP for any monster - this shouldn't happen
+                // Not enough EP for any monster
                 console.warn(`Bot ${player.name} doesn't have enough EP for any monster`);
                 selectedLevel = 1;
             }
@@ -3440,6 +3568,29 @@ class Game {
                 }
             }
             
+            // Tactical item usage: Check if bot can finish monster with items
+            if (currentMonsterHP > 0) {
+                const itemCombination = this.findOptimalItemCombination(player, currentMonsterHP);
+                if (itemCombination && itemCombination.length > 0) {
+                    // Use items to finish the monster
+                    let itemDamage = 0;
+                    const itemsUsed = [];
+                    
+                    for (const itemUse of itemCombination) {
+                        // Find and remove item from inventory
+                        const itemIndex = player.inventory.findIndex(item => item.name === itemUse.name);
+                        if (itemIndex >= 0) {
+                            player.inventory.splice(itemIndex, 1);
+                            itemDamage += itemUse.damage;
+                            itemsUsed.push(itemUse.name);
+                        }
+                    }
+                    
+                    currentMonsterHP -= itemDamage;
+                    battleActions.push(`${player.name} uses items: ${itemsUsed.join(', ')} for ${itemDamage} damage!`);
+                }
+            }
+            
             if (currentMonsterHP <= 0) {
                 battleActions.push(`Monster defeated!`);
                 break;
@@ -3552,21 +3703,13 @@ class Game {
     }
     
     applyBotVictoryRewards(player, monster, battle, battleActions) {
-        // Update stage progression
+        // Track monsters defeated for statistics
         if (!player.monstersDefeated) {
             player.monstersDefeated = { level1: 0, level2: 0, level3: 0 };
         }
         
         player.monstersDefeated[`level${monster.level}`]++;
-        
-        // Check stage progression
-        if (player.stage === 1 && player.monstersDefeated.level1 >= 2) {
-            player.stage = 2;
-            battleActions.push(`${player.name} advances to Stage 2!`);
-        } else if (player.stage === 2 && player.monstersDefeated.level2 >= 2) {
-            player.stage = 3;
-            battleActions.push(`${player.name} advances to Stage 3!`);
-        }
+        battleActions.push(`${player.name} has defeated ${player.monstersDefeated.level1} Lv1, ${player.monstersDefeated.level2} Lv2, ${player.monstersDefeated.level3} Lv3 monsters`);
         
         // Apply monster rewards
         player.resources.money += monster.money;
