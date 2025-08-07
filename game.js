@@ -1000,7 +1000,7 @@ class Game {
             { name: 'Bow', reqExpAttack: 4, reqExpDefense: 3, capacity: 6, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 0, 0, 4], priority: 1,
               lv1Power: '閃避率+16%', lv2Power: '回合開始+2經驗', lv3Power: '傷害x2', preferLocation: 'plaza' },
             { name: 'Sword', reqExpAttack: 5, reqExpDefense: 3, capacity: 4, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 1, 1, 2], priority: 9,
-              lv1Power: '遊戲開始防禦力+1', lv2Power: '回合開始+1經驗', lv3Power: '攻擊時每骰到1個1即+1分', preferLocation: 'dojo' },
+              lv1Power: '遊戲開始防禦力+1', lv2Power: '回合開始+1經驗', lv3Power: '攻擊或防禦時，只要骰到至少1個1即+1分', preferLocation: 'dojo' },
             { name: 'Knife', reqExpAttack: 3, reqExpDefense: 3, capacity: 10, initialMoney: 8, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 0, 1, 1], priority: 2,
               lv1Power: '人氣獎勵token不下降', lv2Power: '可將一次的攻擊力x3', lv3Power: '打贏的獎勵x2', preferLocation: 'plaza' },
             { name: 'Gloves', reqExpAttack: 4, reqExpDefense: 3, capacity: 6, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 0, 1, 1], priority: 7,
@@ -3431,6 +3431,15 @@ class Game {
             
             battleActions.push(`${player.name} attacks: [${attackRolls.join(', ')}] = ${playerDamage} damage${petDamage > 0 ? ` + ${petDamage} pet damage` : ''} = ${totalDamage} total`);
             
+            // Sword Level 3 Power: +1 point if at least one attack die shows 1
+            if (player.weapon.name === 'Sword' && player.weapon.powerTrackPosition >= 7) {
+                const hasOnes = attackRolls.includes(1);
+                if (hasOnes) {
+                    player.score += 1;
+                    battleActions.push(`Sword Lv3 Power: +1 point for rolling at least one 1 on attack!`);
+                }
+            }
+            
             if (currentMonsterHP <= 0) {
                 battleActions.push(`Monster defeated!`);
                 break;
@@ -3460,6 +3469,15 @@ class Game {
             }
             
             battleActions.push(`Monster attacks for ${monsterDamage} damage. ${player.name} defends: [${defenseRolls.join(', ')}] = ${defense} defense. Final damage: ${finalDamage}${finalDamage > 0 ? ` (+${finalDamage} EXP)` : ''}`);
+            
+            // Sword Level 3 Power: +1 point if at least one defense die shows 1
+            if (player.weapon.name === 'Sword' && player.weapon.powerTrackPosition >= 7) {
+                const hasOnes = defenseRolls.includes(1);
+                if (hasOnes) {
+                    player.score += 1;
+                    battleActions.push(`Sword Lv3 Power: +1 point for rolling at least one 1 on defense!`);
+                }
+            }
             
             // Axe retaliation (if player survives)
             if (player.weapon.name === 'Axe' && finalDamage > 0 && currentPlayerHP > 0) {
@@ -5096,12 +5114,12 @@ class Game {
             this.logBattleAction(`Bow Lv3 Power: Damage doubled!`);
         }
         
-        // Sword Level 3 Power: +1 point per attack die showing 1
+        // Sword Level 3 Power: +1 point if at least one attack die shows 1
         if (player.weapon.name === 'Sword' && player.weapon.powerTrackPosition >= 7) {
-            const onesCount = allAttackRolls.filter(roll => roll === 1).length;
-            if (onesCount > 0) {
-                player.score += onesCount;
-                this.logBattleAction(`Sword Lv3 Power: +${onesCount} point${onesCount > 1 ? 's' : ''} for rolling ${onesCount} one${onesCount > 1 ? 's' : ''}!`);
+            const hasOnes = allAttackRolls.includes(1);
+            if (hasOnes) {
+                player.score += 1;
+                this.logBattleAction(`Sword Lv3 Power: +1 point for rolling at least one 1!`);
             }
         }
         
@@ -5248,6 +5266,15 @@ class Game {
         
         // Log attack
         this.logBattleAction(`Monster attacks for ${battle.monster.att} damage! ${player.name} defends: [${defenseRolls.join(', ')}] = ${totalDefense} defense. Final damage: ${finalDamage}`);
+        
+        // Sword Level 3 Power: +1 point if at least one defense die shows 1
+        if (player.weapon.name === 'Sword' && player.weapon.powerTrackPosition >= 7) {
+            const hasOnes = defenseRolls.includes(1);
+            if (hasOnes) {
+                player.score += 1;
+                this.logBattleAction(`Sword Lv3 Power: +1 point for rolling at least one 1 on defense!`);
+            }
+        }
         
         if (finalDamage > 0) {
             this.modifyResource(battle.playerId, 'hp', -finalDamage);
