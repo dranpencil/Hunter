@@ -2926,17 +2926,18 @@ class Game {
                         const title = canUse ? 'Use Beer (+1 EP)' : 'EP is already at maximum';
                         useButton = `<button class="small-btn"${disabled} onclick="game.useInventoryItem(${playerId}, '${item.name}')" title="${title}">Use</button>`;
                         
-                        // Katana Level 1 Power: Beer to Blood Bag conversion
-                        if (player.weapon.name === 'Katana' && player.weapon.powerTrackPosition >= 1 && count > 0) {
-                            const convertTitle = 'Convert Beer to Blood Bag (Katana Power)';
-                            useButton += `<button class="small-btn katana-convert" onclick="game.convertBeerToBloodBag(${playerId})" title="${convertTitle}">🩸</button>`;
-                        }
                     } else if (item.name === 'Blood Bag') {
                         // Can use blood bag if HP is not at maximum
                         canUse = player.resources.hp < player.maxResources.hp;
                         const disabled = !canUse ? ' disabled' : '';
                         const title = canUse ? 'Use Blood Bag (+1 HP)' : 'HP is already at maximum';
                         useButton = `<button class="small-btn"${disabled} onclick="game.useInventoryItem(${playerId}, '${item.name}')" title="${title}">Use</button>`;
+                        
+                        // Katana Level 1 Power: Blood Bag to Beer conversion
+                        if (player.weapon.name === 'Katana' && player.weapon.powerTrackPosition >= 1 && count > 0) {
+                            const convertTitle = 'Convert Blood Bag to Beer (Katana Power)';
+                            useButton += `<button class="small-btn katana-convert" onclick="game.convertBloodBagToBeer(${playerId})" title="${convertTitle}">🍺</button>`;
+                        }
                     }
                 }
                 
@@ -5630,29 +5631,6 @@ class Game {
         // Advance weapon power track based on monster level
         this.advanceWeaponPowerTrack(battle.playerId, monster.level);
         
-        // Apply weapon power effects on monster defeat
-        if (player.katanaPower && player.katanaPower.bonusExp) {
-            this.modifyResource(battle.playerId, 'exp', player.katanaPower.bonusExp);
-            this.logBattleAction(`+${player.katanaPower.bonusExp} bonus experience from Katana power!`);
-        }
-        
-        // Rifle Level 2 Power: +3 money on monster defeat
-        if (player.weapon.name === 'Rifle' && player.weapon.powerTrackPosition >= 3) {
-            this.modifyResource(battle.playerId, 'money', 3);
-            this.logBattleAction(`+3 bonus money from Rifle power!`);
-        }
-        
-        // Plasma Level 2 Power: +4 money on monster defeat
-        if (player.weapon.name === 'Plasma' && player.weapon.powerTrackPosition >= 3) {
-            this.modifyResource(battle.playerId, 'money', 4);
-            this.logBattleAction(`+4 bonus money from Plasma power!`);
-        }
-        
-        // Sword Level 2 Power: +2 EXP when beating monster
-        if (player.weapon.name === 'Sword' && player.weapon.powerTrackPosition >= 3) {
-            this.modifyResource(battle.playerId, 'exp', 2);
-            this.logBattleAction(`+2 bonus EXP from Sword power!`);
-        }
         
         
         this.endMonsterBattle(true);
@@ -7154,7 +7132,7 @@ class Game {
         }
     }
     
-    convertBeerToBloodBag(playerId) {
+    convertBloodBagToBeer(playerId) {
         const player = this.players.find(p => p.id === playerId);
         if (!player) return;
         
@@ -7164,22 +7142,22 @@ class Game {
             return;
         }
         
-        // Find a beer item in inventory
-        const beerIndex = player.inventory.findIndex(item => item.name === 'Beer');
-        if (beerIndex === -1) {
-            console.log('No beer in inventory to convert');
+        // Find a blood bag item in inventory
+        const bloodBagIndex = player.inventory.findIndex(item => item.name === 'Blood Bag');
+        if (bloodBagIndex === -1) {
+            console.log('No blood bag in inventory to convert');
             return;
         }
         
-        // Remove one beer
-        player.inventory.splice(beerIndex, 1);
-        player.resources.beer = Math.max(0, player.resources.beer - 1);
+        // Remove one blood bag
+        player.inventory.splice(bloodBagIndex, 1);
+        player.resources.bloodBag = Math.max(0, player.resources.bloodBag - 1);
         
-        // Add one blood bag
-        this.addItemToInventory(playerId, 'Blood Bag', 1);
-        player.resources.bloodBag += 1;
+        // Add one beer
+        this.addItemToInventory(playerId, 'Beer', 1);
+        player.resources.beer += 1;
         
-        console.log(`Katana Lv1 Power: ${player.name} converts 1 beer to 1 blood bag`);
+        console.log(`Katana Lv1 Power: ${player.name} converts 1 blood bag to 1 beer`);
         
         // Update displays
         this.updateResourceDisplay();
