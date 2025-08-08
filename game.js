@@ -133,13 +133,13 @@ class BotPlayer {
         }
         
         // Resource-based adjustments
-        this.adjustEntriesForResources(entries, player);
+        this.adjustEntriesForResources(entries, player, gameState);
         
         // Calculate probabilities and select location
         return this.selectLocationByProbability(entries);
     }
     
-    adjustEntriesForResources(entries, player) {
+    adjustEntriesForResources(entries, player, gameState) {
         // Hospital adjustments based on HP
         const hpRatio = player.resources.hp / player.maxResources.hp;
         if (hpRatio <= 0.5) {
@@ -166,8 +166,18 @@ class BotPlayer {
             entries[1] += 2;
         }
         
-        // Dojo adjustments based on attack/defense dice and stage
-        const dojoEntries = this.getTableValue(this.dojoTable, player.weapon.currentAttackDice, player.weapon.currentDefenseDice);
+        // Dojo adjustments based on attack/defense dice and weapon power track
+        // Determine which table to use based on weapon power track position
+        let dojoTableLevel = 1;
+        if (player.weapon.powerTrackPosition >= 7) {
+            dojoTableLevel = 3; // Position 7: use lv3 table
+        } else if (player.weapon.powerTrackPosition >= 3) {
+            dojoTableLevel = 2; // Position 3-6: use lv2 table
+        } else {
+            dojoTableLevel = 1; // Position 1-2: use lv1 table
+        }
+        
+        const dojoEntries = this.getTableValue(this.dojoTable, player.weapon.currentAttackDice, player.weapon.currentDefenseDice, dojoTableLevel);
         if (dojoEntries > 0) {
             entries[5] += dojoEntries; // Dojo
         }
@@ -178,42 +188,77 @@ class BotPlayer {
         }
         
         // Forest adjustments
-        this.adjustForestEntries(entries, player);
+        this.adjustForestEntries(entries, player, gameState);
     }
     
-    adjustForestEntries(entries, player) {
+    adjustForestEntries(entries, player, gameState) {
         // Full EP bonus
         if (player.resources.ep === player.maxResources.ep) {
             entries[7] += 1;
         }
         
-        // Combat item bonuses
+        // Combat item bonuses (new simpler rules)
         const grenades = player.inventory.filter(item => item.name === 'Grenade').length;
         const bombs = player.inventory.filter(item => item.name === 'Bomb').length;
         const dynamites = player.inventory.filter(item => item.name === 'Dynamite').length;
         
-        if (grenades > 0) entries[7] += Math.floor(1 / this.stage);
-        if (bombs > 0) entries[7] += Math.floor(2 / this.stage);
-        if (dynamites > 0) entries[7] += Math.floor(3 / this.stage);
+        if (grenades > 0) entries[7] += 1;
+        if (bombs > 0) entries[7] += 2;
+        if (dynamites > 0) entries[7] += 3;
+        
+        // Check if bot has the lowest score
+        if (gameState && gameState.players) {
+            const scores = gameState.players.map(p => p.score || 0);
+            const botScore = player.score || 0;
+            const lowestScore = Math.min(...scores);
+            if (botScore <= lowestScore) {
+                entries[7] += 1; // Bonus for having lowest score
+            }
+        }
+        
+        // Ammunition penalty for Rifle/Plasma weapons
+        if (player.weapon.name === 'Rifle') {
+            const bullets = player.inventory.filter(item => item.name === 'Bullet').length;
+            if (bullets === 0) {
+                entries[7] -= 100; // Strong penalty to discourage Forest entry without bullets
+            }
+        } else if (player.weapon.name === 'Plasma') {
+            const batteries = player.inventory.filter(item => item.name === 'Battery').length;
+            if (batteries === 0) {
+                entries[7] -= 100; // Strong penalty to discourage Forest entry without batteries
+            }
+        }
         
         // HP penalty
         if (player.resources.hp / player.maxResources.hp < 0.5) {
             entries[7] -= 3;
         }
         
-        // Table-based adjustment
-        const forestEntries = this.getTableValue(this.forestTable, player.weapon.currentAttackDice, player.weapon.currentDefenseDice);
+        // Table-based adjustment using weapon power track
+        // Determine which table to use based on weapon power track position
+        let forestTableLevel = 1;
+        if (player.weapon.powerTrackPosition >= 7) {
+            forestTableLevel = 3; // Position 7: use lv3 table
+        } else if (player.weapon.powerTrackPosition >= 3) {
+            forestTableLevel = 2; // Position 3-6: use lv2 table
+        } else {
+            forestTableLevel = 1; // Position 1-2: use lv1 table
+        }
+        
+        const forestEntries = this.getTableValue(this.forestTable, player.weapon.currentAttackDice, player.weapon.currentDefenseDice, forestTableLevel);
         entries[7] += forestEntries;
     }
     
-    getTableValue(table, attackDice, defenseDice) {
-        const stageTable = table[this.stage];
-        if (!stageTable || !stageTable[attackDice]) {
+    getTableValue(table, attackDice, defenseDice, tableLevel = 1) {
+        // Use provided tableLevel (default to 1 if not specified)
+        const level = tableLevel;
+        const levelTable = table[level];
+        if (!levelTable || !levelTable[attackDice]) {
             return 0;
         }
         
-        const defenseIndex = Math.min(defenseDice, stageTable[attackDice].length - 1);
-        return stageTable[attackDice][defenseIndex] || 0;
+        const defenseIndex = Math.min(defenseDice, levelTable[attackDice].length - 1);
+        return levelTable[attackDice][defenseIndex] || 0;
     }
     
     selectLocationByProbability(entries) {
@@ -491,7 +536,7 @@ class BotPlayer {
         const requiredEP = this.getRequiredEP();
         let beerCount = player.resources.beer;
         
-        // First priority: recover EP to at least stage requirement
+        // First priority: recover EP to required level
         const epNeeded = Math.max(0, requiredEP - player.resources.ep);
         const epRecovery = Math.min(epNeeded, Math.min(beerCount, player.maxResources.ep - player.resources.ep));
         
@@ -1526,7 +1571,7 @@ class Game {
         const battleResult = bot.manageBattle(this, monster);
         
         if (battleResult.victory || battleResult.tamed) {
-            // Update bot's stage based on monster defeated
+            // Monster defeated successfully
         }
         
         return battleResult;
@@ -1572,7 +1617,27 @@ class Game {
     
     // Initialize game UI after player creation
     init() {
-        console.log('Initializing game UI...');
+        try {
+            // IMMEDIATELY handle bot detection before any other UI operations
+            const currentPlayer = this.players[this.currentPlayerIndex];
+        
+        if (currentPlayer && currentPlayer.isBot) {
+            console.log('First round: Immediately hiding cards for bot player');
+            const cardSelection = document.querySelector('.card-selection');
+            const confirmButton = document.getElementById('confirm-selection');
+            if (cardSelection) cardSelection.style.display = 'none';
+            if (confirmButton) confirmButton.style.display = 'none';
+            
+            // Also set a timeout to ensure bot selection happens for first round
+            setTimeout(() => {
+                console.log('First round: Running bot location selection');
+                this.handleBotLocationSelection(this.currentPlayerIndex);
+                setTimeout(() => {
+                    console.log('First round: Running bot confirmation');
+                    this.confirmSelection();
+                }, 500);
+            }, 1000);
+        }
         
         // Initialize location cards
         this.initializeLocationCards();
@@ -1590,6 +1655,10 @@ class Game {
         this.updateStatusMessage();
         
         console.log('Game UI initialized successfully');
+        } catch (error) {
+            console.error('CRITICAL ERROR in init():', error);
+            console.error('Error stack:', error.stack);
+        }
     }
     
     setupEventListeners() {
@@ -1612,131 +1681,12 @@ class Game {
     }
     
     initializeLocationCards() {
-        // Create hunter location cards
-        const hunterCardsContainer = document.getElementById('hunter-cards');
-        const apprenticeCardsContainer = document.getElementById('apprentice-cards');
-        
-        if (!hunterCardsContainer || !apprenticeCardsContainer) {
-            console.error('Location card containers not found!');
-            return;
-        }
-        
-        // Clear existing cards
-        hunterCardsContainer.innerHTML = '';
-        apprenticeCardsContainer.innerHTML = '';
-        
-        // Create cards for each location
-        this.locations.forEach(location => {
-            // Create hunter card
-            const hunterCard = this.createLocationCard(location, 'hunter');
-            hunterCardsContainer.appendChild(hunterCard);
-            
-            // Create apprentice card
-            const apprenticeCard = this.createLocationCard(location, 'apprentice');
-            apprenticeCardsContainer.appendChild(apprenticeCard);
-        });
-        
-        console.log('Location cards created');
+        // Use the modern card creation system instead
+        this.createLocationCards();
+        console.log('Location cards initialized using createLocationCards()');
     }
     
-    createLocationCard(location, tokenType) {
-        const card = document.createElement('div');
-        card.className = 'location-card';
-        card.dataset.location = location.id;
-        card.dataset.tokenType = tokenType;
-        
-        card.innerHTML = `
-            <div class="card-header">
-                <span class="location-name">${location.name}</span>
-            </div>
-            <div class="card-body">
-                <div class="location-id">${location.id}</div>
-                <div class="reward-info">
-                    ${this.getRewardText(location)}
-                </div>
-            </div>
-        `;
-        
-        // Add click event
-        card.addEventListener('click', () => this.selectLocation(location.id, tokenType));
-        
-        return card;
-    }
-    
-    getRewardText(location) {
-        switch (location.resource) {
-            case 'money': 
-                return this.getRewardDisplayText('$', location.rewards);
-            case 'beer': 
-                return this.getRewardDisplayText('Beer', location.rewards);
-            case 'bloodBag': 
-                return this.getRewardDisplayText('Blood', location.rewards);
-            case 'exp': 
-                return this.getRewardDisplayText('EXP', location.rewards);
-            case 'score': 
-                return this.getRewardDisplayText('Score', location.rewards);
-            case null:
-                if (location.id === 3) return 'Wild Card';
-                if (location.id === 7) return 'Monster Hunt';
-                return '';
-            default: return '';
-        }
-    }
-    
-    selectLocation(locationId, tokenType) {
-        const currentPlayer = this.players[this.currentPlayerIndex];
-        
-        // Prevent manual selection for bots
-        if (currentPlayer.isBot) {
-            console.log('Cannot manually select locations for bots');
-            return;
-        }
-        
-        // Check if location is available
-        if (!this.isLocationAvailable(locationId, tokenType)) {
-            return;
-        }
-        
-        // Store selection
-        currentPlayer.selectedCards[tokenType] = locationId;
-        
-        // Update UI
-        this.updateLocationCardStates();
-        this.updateSelectionDisplay();
-        this.checkSelectionComplete();
-        
-        console.log(`Player ${currentPlayer.id + 1} selected ${tokenType} for location ${locationId}`);
-    }
-    
-    isLocationAvailable(locationId, tokenType) {
-        const currentPlayer = this.players[this.currentPlayerIndex];
-        
-        // Check dummy tokens
-        if (this.dummyTokens.includes(locationId)) {
-            return false;
-        }
-        
-        // Check if same player already selected this location with other token
-        const otherTokenType = tokenType === 'hunter' ? 'apprentice' : 'hunter';
-        if (currentPlayer.selectedCards[otherTokenType] === locationId && locationId !== 7) {
-            return false; // Can't select same location except Forest
-        }
-        
-        // Forest special rules for hunter
-        if (locationId === 7 && tokenType === 'hunter') {
-            // Need 2+ EP
-            if (currentPlayer.resources.ep < 2) {
-                return false;
-            }
-            
-            // Need ammunition for Rifle/Plasma weapons
-            if (!this.hasRequiredAmmunition(currentPlayer)) {
-                return false;
-            }
-        }
-        
-        return true;
-    }
+    // Old card creation system removed - now using createLocationCards() consistently
     
     hasRequiredAmmunition(player) {
         if (player.weapon.name === 'Rifle') {
@@ -1836,14 +1786,17 @@ class Game {
             // Hide location cards for bot turns
             this.hideLocationCardsForBot();
             
-            // Delay slightly for visual feedback
-            setTimeout(() => {
-                this.handleBotLocationSelection(this.currentPlayerIndex);
-                // Auto-confirm after selections are made
+            // Only run bot selection if it hasn't been handled already in init()
+            if (this.currentRound > 1 || this.currentPlayerIndex > 0) {
+                // Delay slightly for visual feedback
                 setTimeout(() => {
-                    this.confirmSelection();
-                }, 500);
-            }, 1000);
+                    this.handleBotLocationSelection(this.currentPlayerIndex);
+                    // Auto-confirm after selections are made
+                    setTimeout(() => {
+                        this.confirmSelection();
+                    }, 500);
+                }, 1000);
+            }
         } else {
             // Show location cards for human players
             this.showLocationCardsForHuman();
@@ -2336,33 +2289,7 @@ class Game {
         return selectedWeapons;
     }
     
-    init() {
-        // Add small delay to ensure DOM is fully ready
-        setTimeout(() => {
-            console.log('Init - Players:', this.players);
-            this.players.forEach(player => {
-                console.log(`Player ${player.id} inventory:`, player.inventory);
-            });
-            this.createLocationCards();
-            // Initialize displays for all players
-            this.updateInventoryDisplayOld(); // Update weapon displays
-            this.players.forEach(player => {
-                this.updateInventoryDisplay(player.id);
-            });
-            this.updatePetDisplay();
-            // Apply player colors to name headers
-            this.applyPlayerNameColors();
-            // Initialize popularity track displays for all players
-            this.players.forEach(player => {
-                this.updatePopularityTrackDisplay(player.id);
-            });
-            // Initialize dummy token display
-            this.updateDummyTokenDisplay();
-        }, 100);
-        this.setupEventListeners();
-        this.updateUI();
-        this.updateResourceDisplay();
-    }
+    // Duplicate init() function removed - was overriding the main init() function
     
     get currentPlayer() {
         return this.players[this.currentPlayerIndex];
@@ -2445,17 +2372,8 @@ class Game {
                 card.classList.add('disabled');
                 card.title = 'Requires at least 2 EP';
                 isDisabled = true;
-            } else if (!this.hasRequiredAmmunition(this.currentPlayer)) { // Forest requires ammunition for Rifle/Plasma
-                card.classList.add('disabled');
-                if (this.currentPlayer.weapon.name === 'Rifle') {
-                    card.title = 'Need bullets for Rifle in Forest';
-                } else if (this.currentPlayer.weapon.name === 'Plasma') {
-                    card.title = 'Need batteries for Plasma in Forest';
-                } else {
-                    card.title = 'Need ammunition for Forest';
-                }
-                isDisabled = true;
             }
+            // Note: Ammunition requirement removed - players can enter without ammo but will get warning popup
         }
         
         // Only set default colors if not disabled
@@ -2562,6 +2480,22 @@ class Game {
         if (clickedCard.classList.contains('disabled')) {
             console.log(`Location ${locationId} is disabled for ${tokenType} - blocking selection`);
             return; // Don't allow selection of disabled cards
+        }
+        
+        // Check for Forest ammunition warning (only for human players, not bots)
+        if (locationId === 7 && tokenType === 'hunter' && !this.currentPlayer.isBot && !this.hasRequiredAmmunition(this.currentPlayer)) {
+            let warningMessage = 'You are entering the Forest without ammunition. ';
+            if (this.currentPlayer.weapon.name === 'Rifle') {
+                warningMessage += 'Rifle weapons need bullets to attack. You can still use combat items (Grenades, Bombs, Dynamite) to fight monsters.';
+            } else if (this.currentPlayer.weapon.name === 'Plasma') {
+                warningMessage += 'Plasma weapons need batteries to attack. You can still use combat items (Grenades, Bombs, Dynamite) to fight monsters.';
+            }
+            warningMessage += '\n\nAre you sure you want to enter the Forest?';
+            
+            if (!confirm(warningMessage)) {
+                console.log('Player canceled Forest entry due to ammunition warning');
+                return; // Player canceled the selection
+            }
         }
         
         // Get current player's colors
@@ -2733,6 +2667,7 @@ class Game {
         
         this.createLocationCards();
         this.updateUI();
+        this.updateCurrentPlayer(); // Fix: Handle bot detection for round transitions
         this.updateDummyTokenDisplay();
     }
     
@@ -6017,7 +5952,7 @@ class Game {
         let purchasedItems = [];
         let gameState = {
             round: this.currentRound,
-            stage: player.stage || 1,
+            round: this.currentRound,
             availableLocations: [1, 2, 3, 4, 5, 6, 7], // All locations available for context
             otherPlayersData: this.players.filter(p => p.id !== player.id).map(p => ({
                 preferredLocation: p.weapon.preferLocation,
@@ -6896,6 +6831,7 @@ class Game {
         
         this.createLocationCards();
         this.updateUI();
+        this.updateCurrentPlayer(); // Fix: Handle bot detection for new rounds
         this.updateDummyTokenDisplay();
     }
     
