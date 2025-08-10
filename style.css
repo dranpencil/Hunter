@@ -2162,6 +2162,8 @@ button {
     margin-left: 340px;
 }
 
+/* Scoring Milestones */
+
 /* Hide log on smaller screens */
 @media (max-width: 1400px) {
     .game-log-section {
