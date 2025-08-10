@@ -4156,9 +4156,16 @@ class Game {
             
             // Move reward token up or down
             let shouldGiveRewards = false;
+            let tokenMoved = false;
+            
             if (isAlone) {
                 const oldRewardLevel = player.popularityTrack.rewardToken;
                 player.popularityTrack.rewardToken = Math.min(5, player.popularityTrack.rewardToken + 1);
+                
+                // Check if token actually moved
+                if (player.popularityTrack.rewardToken > oldRewardLevel) {
+                    tokenMoved = true;
+                }
                 
                 // Special case: if player was already at level 5 and would move up, still give rewards
                 if (oldRewardLevel === 5 && player.popularityTrack.rewardToken === 5) {
@@ -4169,17 +4176,33 @@ class Game {
                 // Knife Level 1 Power: Reward token never goes down
                 if (player.weapon.name === 'Knife' && player.weapon.powerTrackPosition >= 1) {
                     console.log(`Knife Lv1 Power: ${player.name}'s reward token does not go down`);
+                    // Token doesn't move, so tokenMoved stays false
                 } else {
+                    const beforeMove = player.popularityTrack.rewardToken;
                     player.popularityTrack.rewardToken = Math.max(0, player.popularityTrack.rewardToken - 1);
+                    if (player.popularityTrack.rewardToken < beforeMove) {
+                        tokenMoved = true; // Token moved down (for non-Knife weapons)
+                    }
                 }
             }
             
             const newRewardLevel = player.popularityTrack.rewardToken;
             
-            // Distribute rewards for the levels the reward token is at and below
-            // Also distribute if player was at max level and would have moved up
-            if (newRewardLevel > 0 || shouldGiveRewards) {
-                this.distributePopularityRewards(player.id, shouldGiveRewards ? 5 : newRewardLevel);
+            // Knife weapon special logic: only get rewards if token moved up or at max level
+            if (player.weapon.name === 'Knife') {
+                if ((tokenMoved && newRewardLevel > oldRewardLevel) || shouldGiveRewards) {
+                    // Token moved up or was at max level - give rewards
+                    this.distributePopularityRewards(player.id, shouldGiveRewards ? 5 : newRewardLevel);
+                    console.log(`Knife weapon: ${player.name} receives popularity rewards (token moved from ${oldRewardLevel} to ${newRewardLevel})`);
+                } else {
+                    // Token didn't move or moved down - no rewards
+                    console.log(`Knife weapon: ${player.name} does not receive popularity rewards (token stayed at ${newRewardLevel})`);
+                }
+            } else {
+                // Normal weapons: distribute rewards as usual
+                if (newRewardLevel > 0 || shouldGiveRewards) {
+                    this.distributePopularityRewards(player.id, shouldGiveRewards ? 5 : newRewardLevel);
+                }
             }
             
             // Update point token if reward token is higher
@@ -4845,10 +4868,10 @@ class Game {
                 tameBtn.style.display = 'none';
                 defenseBtn.style.display = 'block';
                 
-                // Knife Level 2 Power: Show x3 damage button after attack
+                // Knife Level 2 Power: Show 2x damage button after attack
                 if (battle.canUseTripleDamage) {
                     tripleDamageBtn.style.display = 'block';
-                    tripleDamageBtn.textContent = `x3 Damage (${battle.lastAttackDamage * 2} extra)`;
+                    tripleDamageBtn.textContent = `2x Damage (+${battle.lastAttackDamage} extra)`;
                     tripleDamageBtn.onclick = () => this.useTripleDamage();
                 } else {
                     tripleDamageBtn.style.display = 'none';
@@ -5239,10 +5262,10 @@ class Game {
             // Move to item usage phase (post-attack)
             battle.turn = 'player_items';
             
-            // Knife Level 2 Power: Show x3 damage button after attack if damage was dealt
+            // Knife Level 2 Power: Show 2x damage button after attack if damage was dealt
             if (player.weapon.name === 'Knife' && player.weapon.powerTrackPosition >= 3 && 
                 !battle.tripleDamageUsed && playerDamage > 0) {
-                battle.lastAttackDamage = playerDamage; // Store the damage for x3 calculation
+                battle.lastAttackDamage = playerDamage; // Store the damage for 2x calculation
                 battle.canUseTripleDamage = true;
             }
             
@@ -5412,6 +5435,16 @@ class Game {
             }
             // Allow item usage before player's next attack
             battle.turn = 'player_items_after_monster';
+            
+            // Hide Knife Lv2 2x damage button after monster attack
+            if (battle.canUseTripleDamage) {
+                battle.canUseTripleDamage = false;
+                const tripleDamageBtn = document.getElementById('battle-triple-damage-btn');
+                if (tripleDamageBtn) {
+                    tripleDamageBtn.style.display = 'none';
+                }
+            }
+            
             this.updateBattlePhase();
             this.updateBattleItemButtons();
         }
@@ -5422,7 +5455,7 @@ class Game {
         
         const battle = this.currentBattle;
         const player = this.players.find(p => p.id === battle.playerId);
-        const extraDamage = battle.lastAttackDamage * 2; // Triple means original + 2x extra
+        const extraDamage = battle.lastAttackDamage; // Double means original + 1x extra
         
         // Apply the extra damage immediately
         battle.monster.hp -= extraDamage;
@@ -5431,7 +5464,7 @@ class Game {
         battle.tripleDamageUsed = true;
         battle.canUseTripleDamage = false;
         
-        this.logBattleAction(`${player.name} activates Knife Lv2 Power: x3 damage! ${extraDamage} extra damage dealt!`);
+        this.logBattleAction(`${player.name} activates Knife Lv2 Power: 2x damage! ${extraDamage} extra damage dealt!`);
         
         // Update monster HP display
         document.getElementById('battle-monster-hp').textContent = `${Math.max(0, battle.monster.hp)}/${battle.monster.maxHp}`;

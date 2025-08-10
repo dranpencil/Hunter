@@ -159,6 +159,7 @@ Each weapon features:
 - Lv1: Popularity token doesn't decrease
 - Lv2: Can triple damage once per battle
 - Lv3: Battle rewards x2
+- Special: Only receives popularity track resources when token moves up (exception: at max level 5)
 
 **Gloves**
 - Lv1: +1 damage [5,6] when taking damage (per attack)
@@ -257,3 +258,4 @@ Each weapon features:
 *Last Updated: Current session*
 *Game Version: 1.0*
 *Technical Stack: Vanilla JavaScript ES6, HTML5, CSS3*
+- add to memory.
