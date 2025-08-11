@@ -5078,10 +5078,10 @@ class Game {
             petDisplay.push(`${petIcons[1]} x${battle.petsUsed.level1} (+${battle.petsUsed.level1} ATK)`);
         }
         if (battle.petsUsed.level2 > 0) {
-            petDisplay.push(`${petIcons[2]} x${battle.petsUsed.level2} (+${battle.petsUsed.level2 * 3} ATK)`);
+            petDisplay.push(`${petIcons[2]} x${battle.petsUsed.level2} (+${battle.petsUsed.level2 * 2} ATK)`);
         }
         if (battle.petsUsed.level3 > 0) {
-            petDisplay.push(`${petIcons[3]} x${battle.petsUsed.level3} (+${battle.petsUsed.level3 * 5} ATK)`);
+            petDisplay.push(`${petIcons[3]} x${battle.petsUsed.level3} (+${battle.petsUsed.level3 * 4} ATK)`);
         }
         
         if (petDisplay.length > 0) {
@@ -5638,8 +5638,8 @@ class Game {
         
         // Calculate pet damage
         let petDamage = battle.petsUsed.level1 * 1 + 
-                       battle.petsUsed.level2 * 3 + 
-                       battle.petsUsed.level3 * 5;
+                       battle.petsUsed.level2 * 2 + 
+                       battle.petsUsed.level3 * 4;
         
         // Chain Level 3 Power: Double pet damage
         if (player.weapon.name === 'Chain' && player.weapon.powerTrackPosition >= 7 && petDamage > 0) {
@@ -8109,8 +8109,8 @@ class Game {
             // Pet info for tooltips
             const petInfo = {
                 1: { cost: 2, attack: 1, icon: '🐾' },
-                2: { cost: 3, attack: 3, icon: '🦊' },
-                3: { cost: 4, attack: 5, icon: '🐺' }
+                2: { cost: 3, attack: 2, icon: '🦊' },
+                3: { cost: 4, attack: 4, icon: '🐺' }
             };
             
             // Display each type of pet
@@ -8140,8 +8140,8 @@ class Game {
         
         const petInfo = {
             1: { cost: 2, attack: 1, icon: '🐾', name: 'Level 1 Pet' },
-            2: { cost: 3, attack: 3, icon: '🦊', name: 'Level 2 Pet' },
-            3: { cost: 4, attack: 5, icon: '🐺', name: 'Level 3 Pet' }
+            2: { cost: 3, attack: 2, icon: '🦊', name: 'Level 2 Pet' },
+            3: { cost: 4, attack: 4, icon: '🐺', name: 'Level 3 Pet' }
         };
         
         [1, 2, 3].forEach(level => {

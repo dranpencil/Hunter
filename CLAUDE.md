@@ -312,3 +312,5 @@ Each weapon features:
 *Technical Stack: Vanilla JavaScript ES6, HTML5, CSS3*
 *Data Export: CSV format with comprehensive game metrics*
 - add to memory.
+- to memorize
+- to memorize
