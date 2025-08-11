@@ -48,7 +48,7 @@ Hunter & Apprentice is a strategic digital board game for 2-5 players where each
 - Round start weapon powers activate
 - Board resets for new selections
 
-**Win Condition**: First player to reach 50 points wins
+**Win Condition**: Game ends when any player reaches 50+ points, winner determined by highest score (with popularity level as tiebreaker) at round end
 
 ## Bot System AI
 
@@ -246,16 +246,69 @@ Each weapon features:
 - Weapon power interactions
 - UI synchronization with game state
 
+## Data Collection System
+
+### CSV Data Export
+- **Automated Game Running**: Configurable batch processing (1-1000 games, 2-5 players)
+- **Performance Optimized**: 0ms delays, DOM updates skipped in automated mode
+- **15 Data Points Per Player**:
+  - `game_id`, `player_count`, `rounds`, `player_id`, `weapon`, `level`, `score`, `rank`
+  - `weapon_track_pos`, `defeated_lv1`, `defeated_lv2`, `defeated_lv3`
+  - `score_monsters`, `score_milestones`, `score_popularity`, `score_plaza`, `score_fakeblood`, `score_other`
+
+### Score Tracking System
+- **Score Sources**: Comprehensive tracking by source type
+  - `scoreFromMonsters`: Points from defeated monsters
+  - `scoreFromMilestones`: HP/EP milestone bonuses (8→+2pts, 10→+4pts)
+  - `scoreFromPopularity`: Popularity track advancement and reward tokens
+  - `scoreFromPlaza`: Plaza location scoring (3 points if alone)
+  - `scoreFromFakeBlood`: Bonus points from Fake Blood items
+  - `scoreFromOther`: Weapon-specific bonuses and miscellaneous sources
+
+### Ranking System
+- **Primary Sort**: Highest score wins
+- **Tiebreaker**: Popularity track level (0-5)
+- **Shared Ranks**: Players with identical score AND level share same rank
+- **Winner Logic**: Game ends at round completion, winner = rank 1 player
+
+### Popularity Track Logic
+- **Point Token**: Permanent position (0-5) representing highest reached level
+- **Reward Token**: Current position affecting resource rewards
+- **Movement Rules**: 
+  - Up if hunter alone at location
+  - Down if crowded (except Knife Lv1+ power)
+  - Forest placement = no change
+- **Scoring**: Point advancement awards points equal to level reached
+
+### Technical Implementation
+- **`processPopularityTrackLogic()`**: Game logic separated from DOM updates
+- **`calculatePlayerRankings()`**: Ranking calculation with tiebreaker handling
+- **`determineWinner()`**: Proper winner selection using ranking system
+- **DOM Protection**: All UI updates wrapped with `isAutomatedMode` checks
+
+### Data Collection Functions
+- **`recordGameData()`**: Collects 15 data points per player
+- **`exportToCSV()`**: Automatic CSV download with timestamp
+- **`runAutomatedGames()`**: Batch processing with progress tracking
+- **`startDataCollection()`**: UI entry point for automated collection
+
+### Performance Features
+- **DOM Avoidance**: Complete UI bypass during automated games
+- **Speed Optimization**: Minimal delays between phases
+- **Error Handling**: Protected against null DOM references
+- **Memory Efficiency**: Game state reset between automated runs
+
 ## Future Enhancements
 - Network multiplayer support
 - Additional weapons and powers
 - New locations and resources
 - Advanced bot difficulty levels
 - Achievement system
-- Statistics tracking
+- Real-time statistics dashboard
 
 ---
 *Last Updated: Current session*
-*Game Version: 1.0*
+*Game Version: 1.1 - Data Collection System*
 *Technical Stack: Vanilla JavaScript ES6, HTML5, CSS3*
+*Data Export: CSV format with comprehensive game metrics*
 - add to memory.

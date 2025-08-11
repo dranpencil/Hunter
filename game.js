@@ -698,14 +698,20 @@ class BotPlayer {
                 
                 // Check for milestone bonuses
                 if (player.maxResources.hp === 8 && !player.milestones.hp8) {
-                    this.addScore(player.id, 2);
+                    game.addScore(player.id, 2, 'milestone');
                     player.milestones.hp8 = true;
-                    document.getElementById(`p${player.id}-hp-milestone-8`).checked = true;
+                    if (!game.isAutomatedMode) {
+                        const checkbox = document.getElementById(`p${player.id}-hp-milestone-8`);
+                        if (checkbox) checkbox.checked = true;
+                    }
                     logActions.push(`upgraded max HP to ${player.maxResources.hp} (+2 milestone points)`);
                 } else if (player.maxResources.hp === 10 && !player.milestones.hp10) {
-                    this.addScore(player.id, 4);
+                    game.addScore(player.id, 4, 'milestone');
                     player.milestones.hp10 = true;
-                    document.getElementById(`p${player.id}-hp-milestone-10`).checked = true;
+                    if (!game.isAutomatedMode) {
+                        const checkbox = document.getElementById(`p${player.id}-hp-milestone-10`);
+                        if (checkbox) checkbox.checked = true;
+                    }
                     logActions.push(`upgraded max HP to ${player.maxResources.hp} (+4 milestone points)`);
                 } else {
                     logActions.push(`upgraded max HP to ${player.maxResources.hp}`);
@@ -731,14 +737,20 @@ class BotPlayer {
                 
                 // Check for milestone bonuses
                 if (player.maxResources.ep === 8 && !player.milestones.ep8) {
-                    this.addScore(player.id, 2);
+                    game.addScore(player.id, 2, 'milestone');
                     player.milestones.ep8 = true;
-                    document.getElementById(`p${player.id}-ep-milestone-8`).checked = true;
+                    if (!game.isAutomatedMode) {
+                        const checkbox = document.getElementById(`p${player.id}-ep-milestone-8`);
+                        if (checkbox) checkbox.checked = true;
+                    }
                     logActions.push(`upgraded max EP to ${player.maxResources.ep} (+2 milestone points)`);
                 } else if (player.maxResources.ep === 10 && !player.milestones.ep10) {
-                    this.addScore(player.id, 4);
+                    game.addScore(player.id, 4, 'milestone');
                     player.milestones.ep10 = true;
-                    document.getElementById(`p${player.id}-ep-milestone-10`).checked = true;
+                    if (!game.isAutomatedMode) {
+                        const checkbox = document.getElementById(`p${player.id}-ep-milestone-10`);
+                        if (checkbox) checkbox.checked = true;
+                    }
                     logActions.push(`upgraded max EP to ${player.maxResources.ep} (+4 milestone points)`);
                 } else {
                     logActions.push(`upgraded max EP to ${player.maxResources.ep}`);
@@ -1066,6 +1078,15 @@ class Game {
         this.bots = []; // Array to hold bot instances
         this.botCount = 0; // Number of bots in the game
         
+        // Data collection and automation properties
+        this.isAutomatedMode = false; // Flag for automated game running
+        this.isDataCollectionMode = false; // Flag for data collection mode
+        this.collectedGameData = []; // Store all collected game data
+        this.currentGameId = null; // Track current game ID
+        this.automatedGamesTotal = 0; // Total games to run
+        this.automatedGamesCompleted = 0; // Games completed so far
+        this.automatedPlayerCount = 2; // Player count for automated games
+        
         // Solo play mode configuration
         this.soloModeSlots = [
             { type: 'player', active: true },
@@ -1146,10 +1167,32 @@ class Game {
     }
     
     
-    addScore(playerId, points) {
+    addScore(playerId, points, source = 'other') {
         const player = this.players.find(p => p.id === playerId);
         if (player) {
             player.score += points;
+            
+            // Track score by source for data analysis
+            switch(source) {
+                case 'monster':
+                    player.scoreFromMonsters += points;
+                    break;
+                case 'milestone':
+                    player.scoreFromMilestones += points;
+                    break;
+                case 'popularity':
+                    player.scoreFromPopularity += points;
+                    break;
+                case 'plaza':
+                    player.scoreFromPlaza += points;
+                    break;
+                case 'fakeblood':
+                    player.scoreFromFakeBlood += points;
+                    break;
+                default:
+                    player.scoreFromOther += points;
+                    break;
+            }
         }
     }
     
@@ -1230,6 +1273,8 @@ class Game {
     }
     
     updateLocationDisplays() {
+        // Skip UI updates in automated mode for performance
+        if (this.isAutomatedMode) return;
         // Update reward display text based on current player count
         console.log('=== UPDATING LOCATION DISPLAYS ===');
         console.log('Player count:', this.playerCount);
@@ -1435,6 +1480,13 @@ class Game {
                     hp10: false  // Max HP 10 milestone (4 points)
                 },
                 score: 0,
+                // Track score sources for data analysis
+                scoreFromMonsters: 0,
+                scoreFromMilestones: 0,
+                scoreFromPopularity: 0,
+                scoreFromPlaza: 0,
+                scoreFromFakeBlood: 0,
+                scoreFromOther: 0,
                 maxResources: {
                     money: 15,
                     exp: 15,
@@ -1490,6 +1542,9 @@ class Game {
     }
     
     handleBotLocationSelection(playerId) {
+        if (this.isAutomatedMode) {
+            console.log(`[${new Date().toISOString()}] Bot ${playerId} starting location selection - Round ${this.currentRound}`);
+        }
         const bot = this.getBotForPlayer(playerId);
         if (!bot) return;
         
@@ -1540,18 +1595,28 @@ class Game {
         this.checkSelectionComplete();
         
         // Show bot's selections in the status message
-        const statusElement = document.getElementById('status-message');
-        if (statusElement) {
-            const locationNames = {
-                1: 'Work Site',
-                2: 'Bar',
-                3: 'Station',
-                4: 'Hospital',
-                5: 'Dojo',
-                6: 'Plaza',
-                7: 'Forest'
-            };
-            statusElement.innerHTML = `<strong>${player.name}</strong> selected: Hunter → ${locationNames[hunterLocation]}, Apprentice → ${locationNames[apprenticeLocation]}`;
+        if (!this.isAutomatedMode) {
+            const statusElement = document.getElementById('status-message');
+            if (statusElement) {
+                const locationNames = {
+                    1: 'Work Site',
+                    2: 'Bar',
+                    3: 'Station',
+                    4: 'Hospital',
+                    5: 'Dojo',
+                    6: 'Plaza',
+                    7: 'Forest'
+                };
+                statusElement.innerHTML = `<strong>${player.name}</strong> selected: Hunter → ${locationNames[hunterLocation]}, Apprentice → ${locationNames[apprenticeLocation]}`;
+            }
+        }
+        
+        // In automated mode, immediately confirm the selection
+        if (this.isAutomatedMode) {
+            console.log(`[${new Date().toISOString()}] Auto-confirming bot selection for player ${playerId}`);
+            setTimeout(() => {
+                this.confirmSelection();
+            }, this.getDelay(100));
         }
     }
     
@@ -1630,15 +1695,10 @@ class Game {
             if (cardSelection) cardSelection.style.display = 'none';
             if (confirmButton) confirmButton.style.display = 'none';
             
-            // Also set a timeout to ensure bot selection happens for first round
-            setTimeout(() => {
-                console.log('First round: Running bot location selection');
-                this.handleBotLocationSelection(this.currentPlayerIndex);
-                setTimeout(() => {
-                    console.log('First round: Running bot confirmation');
-                    this.confirmSelection();
-                }, 500);
-            }, 1000);
+            // Bot selection will be handled by updateCurrentPlayer()
+            if (this.isAutomatedMode) {
+                console.log(`[${new Date().toISOString()}] First round bot selection will be handled by updateCurrentPlayer`);
+            }
         }
         
         // Initialize location cards
@@ -1787,27 +1847,28 @@ class Game {
     
     updateCurrentPlayer() {
         const currentPlayer = this.players[this.currentPlayerIndex];
-        document.getElementById('current-player-name').textContent = currentPlayer.name;
+        
+        // Skip UI updates in automated mode
+        if (!this.isAutomatedMode) {
+            const playerNameElement = document.getElementById('current-player-name');
+            if (playerNameElement) {
+                playerNameElement.textContent = currentPlayer.name;
+            }
+        }
         
         // Check if current player is a bot
         if (currentPlayer.isBot) {
-            console.log(`${currentPlayer.name} is a bot, making automatic selections...`);
-            
-            // Hide location cards for bot turns
-            this.hideLocationCardsForBot();
-            
-            // Only run bot selection if it hasn't been handled already in init()
-            if (this.currentRound > 1 || this.currentPlayerIndex > 0) {
-                // Delay slightly for visual feedback
-                setTimeout(() => {
-                    this.handleBotLocationSelection(this.currentPlayerIndex);
-                    // Auto-confirm after selections are made
-                    setTimeout(() => {
-                        this.confirmSelection();
-                    }, 500);
-                }, 1000);
+            if (!this.isAutomatedMode) {
+                console.log(`${currentPlayer.name} is a bot, making automatic selections...`);
+                // Hide location cards for bot turns
+                this.hideLocationCardsForBot();
             }
-        } else {
+            
+            // Bot selection will handle its own confirmation
+            setTimeout(() => {
+                this.handleBotLocationSelection(this.currentPlayerIndex);
+            }, this.getDelay(200));
+        } else if (!this.isAutomatedMode) {
             // Show location cards for human players
             this.showLocationCardsForHuman();
         }
@@ -1859,6 +1920,8 @@ class Game {
     }
     
     updateDummyTokenDisplay() {
+        // Skip UI updates in automated mode for performance
+        if (this.isAutomatedMode) return;
         // Clear existing dummy tokens from board
         document.querySelectorAll('.dummy-token').forEach(token => token.remove());
         
@@ -1877,6 +1940,9 @@ class Game {
     }
     
     updateResourceDisplay() {
+        // Skip UI updates in automated mode for performance
+        if (this.isAutomatedMode) return;
+        
         this.players.forEach(player => {
             const playerId = player.id;
             
@@ -2032,6 +2098,67 @@ class Game {
         }
     }
     
+    startSoloGameWithConfig(botConfiguration) {
+        // Direct configuration-based game start for automated mode
+        const playerCount = botConfiguration.totalPlayers;
+        
+        if (this.isAutomatedMode) {
+            console.log(`[${new Date().toISOString()}] Starting automated game: ${playerCount} total players (all bots)`);
+        }
+        
+        // Skip UI setup if in automated mode
+        if (!this.isAutomatedMode) {
+            // Hide selection screen
+            const selectionScreen = document.getElementById('player-count-selection');
+            if (selectionScreen) selectionScreen.style.display = 'none';
+            
+            // Show game elements
+            this.showGameLog();
+            const playerBoards = document.getElementById('player-boards-container');
+            const gameBoard = document.querySelector('.game-board');
+            const playerArea = document.querySelector('.player-area');
+            const gameStatus = document.querySelector('.game-status');
+            
+            if (playerBoards) playerBoards.style.display = 'grid';
+            if (gameBoard) gameBoard.style.display = 'grid';
+            if (playerArea) playerArea.style.display = 'block';
+            if (gameStatus) gameStatus.style.display = 'block';
+        }
+        
+        // Initialize the game
+        this.playerCount = playerCount;
+        
+        // Log game start
+        if (!this.isAutomatedMode) {
+            this.addLogEntry(`🎮 <strong>New Game Started</strong> - ${playerCount} players`, 'round-start');
+            this.addLogEntry(`🔄 <strong>Round ${this.currentRound || 1} Started</strong>`, 'round-start');
+        }
+        
+        // Update location rewards based on player count
+        this.updateLocationRewards();
+        this.setupDummyTokens(playerCount);
+        
+        const assignedWeapons = this.getRandomWeapons(playerCount);
+        this.playerColors = this.getRandomPlayerColors(playerCount);
+        
+        // Create players with bot configuration
+        this.createPlayers(playerCount, assignedWeapons, botConfiguration);
+        
+        // Start the game
+        this.roundPhase = 'selection';
+        this.currentPlayerIndex = 0;
+        
+        // Start with bot selections if first player is a bot
+        if (this.players[0].isBot) {
+            setTimeout(() => {
+                this.handleBotLocationSelection(0);
+            }, this.getDelay(500));
+        } else if (!this.isAutomatedMode) {
+            this.createLocationCards();
+            this.updateStatusMessage();
+        }
+    }
+    
     startSoloGame() {
         // Count active slots and determine configuration
         const activeSlots = this.soloModeSlots.filter(slot => slot.active);
@@ -2105,11 +2232,11 @@ class Game {
         setTimeout(() => {
             console.log('Solo game: Attempting location display update with delay...');
             this.updateLocationDisplays();
-        }, 100);
+        }, this.getDelay(100));
         setTimeout(() => {
             console.log('Solo game: Final attempt at location display update...');
             this.updateLocationDisplays();
-        }, 1000);
+        }, this.getDelay(1000));
     }
     
     createPlayerBoards() {
@@ -2577,7 +2704,19 @@ class Game {
     }
     
     confirmSelection() {
+        // Check if we have a valid current player
+        if (!this.currentPlayer || this.currentPlayerIndex >= this.players.length) {
+            console.log(`[DEBUG] confirmSelection called with invalid currentPlayer: ${this.currentPlayerIndex}/${this.players.length}`);
+            return;
+        }
+        
+        if (this.isAutomatedMode) {
+            console.log(`[${new Date().toISOString()}] Confirming selection for player ${this.currentPlayerIndex} - Round ${this.currentRound}`);
+        }
+        console.log(`[DEBUG] confirmSelection called for player ${this.currentPlayerIndex}`);
+        
         if (this.currentPlayer.selectedCards.hunter === null || this.currentPlayer.selectedCards.apprentice === null) {
+            console.log(`[DEBUG] Player ${this.currentPlayerIndex} selections incomplete: H=${this.currentPlayer.selectedCards.hunter}, A=${this.currentPlayer.selectedCards.apprentice}`);
             return;
         }
         
@@ -2594,6 +2733,9 @@ class Game {
         
         if (this.currentPlayerIndex >= this.players.length) {
             // All players have made selections, start resource distribution
+            if (this.isAutomatedMode) {
+                console.log(`[${new Date().toISOString()}] All players completed selections, moving to resource distribution`);
+            }
             this.startResourceDistribution();
         } else {
             // Next player's turn
@@ -2638,7 +2780,16 @@ class Game {
     }
     
     placeToken(playerId, tokenType, locationId) {
+        // Update player's token position
+        const player = this.players.find(p => p.id === playerId);
+        player.tokens[tokenType] = locationId;
+        
+        // Skip DOM operations in automated mode
+        if (this.isAutomatedMode) return;
+        
         const location = document.querySelector(`.location[data-location="${locationId}"] .token-slots`);
+        if (!location) return;
+        
         const token = document.createElement('div');
         token.className = `token ${tokenType} player-${playerId}`;
         token.textContent = tokenType[0].toUpperCase();
@@ -2650,10 +2801,6 @@ class Game {
         token.style.color = 'white';
         
         location.appendChild(token);
-        
-        // Update player's token position
-        const player = this.players.find(p => p.id === playerId);
-        player.tokens[tokenType] = locationId;
     }
     
     nextRound() {
@@ -2701,6 +2848,8 @@ class Game {
     }
     
     updateDummyTokenDisplay() {
+        // Skip UI updates in automated mode for performance
+        if (this.isAutomatedMode) return;
         // Remove existing dummy tokens from display
         document.querySelectorAll('.dummy-token').forEach(token => token.remove());
         
@@ -2802,6 +2951,9 @@ class Game {
     }
     
     updateResourceDisplay() {
+        // Skip UI updates in automated mode for performance
+        if (this.isAutomatedMode) return;
+        
         this.players.forEach(player => {
             const prefix = `p${player.id}`;
             document.getElementById(`${prefix}-money`).textContent = player.resources.money;
@@ -2826,6 +2978,8 @@ class Game {
     }
     
     updateInventoryDisplay(playerId) {
+        // Skip UI updates in automated mode for performance
+        if (this.isAutomatedMode) return;
         console.log(`updateInventoryDisplay called for player ${playerId}`);
         const player = this.players.find(p => p.id === playerId);
         if (!player) {
@@ -2974,16 +3128,22 @@ class Game {
         // Check milestone 8
         if (maxValue >= 8 && !player.milestones[`${resourceType}8`]) {
             player.milestones[`${resourceType}8`] = true;
-            this.addScore(playerId, 2);
-            document.getElementById(`p${playerId}-${resourceType}-milestone-8`).checked = true;
+            this.addScore(playerId, 2, 'milestone');
+            if (!this.isAutomatedMode) {
+                const checkbox = document.getElementById(`p${playerId}-${resourceType}-milestone-8`);
+                if (checkbox) checkbox.checked = true;
+            }
             console.log(`Player ${playerId} reached ${resourceType.toUpperCase()} max 8 milestone - awarded 2 points`);
         }
         
         // Check milestone 10
         if (maxValue >= 10 && !player.milestones[`${resourceType}10`]) {
             player.milestones[`${resourceType}10`] = true;
-            this.addScore(playerId, 4);
-            document.getElementById(`p${playerId}-${resourceType}-milestone-10`).checked = true;
+            this.addScore(playerId, 4, 'milestone');
+            if (!this.isAutomatedMode) {
+                const checkbox = document.getElementById(`p${playerId}-${resourceType}-milestone-10`);
+                if (checkbox) checkbox.checked = true;
+            }
             console.log(`Player ${playerId} reached ${resourceType.toUpperCase()} max 10 milestone - awarded 4 points`);
         }
         
@@ -3307,7 +3467,7 @@ class Game {
         setTimeout(() => {
             console.log('Executing bot battle now...');
             this.executeBotBattle(player, battle);
-        }, 1000);
+        }, this.getDelay(1000));
     }
     
     executeBotBattle(player, battle) {
@@ -3419,7 +3579,7 @@ class Game {
                     this.updateResourceDisplay();
                     this.updateInventoryDisplayOld();
                     this.updateInventoryDisplay(player.id);
-                }, 100);
+                }, this.getDelay(100));
             }
             
             // Continue to next battle or end battle phase
@@ -3429,7 +3589,7 @@ class Game {
                 } else {
                     this.endRound();
                 }
-            }, 2000);
+            }, this.getDelay(2000));
             
             console.log('Ending executeBotBattle with instant kill.');
             return;
@@ -3515,7 +3675,7 @@ class Game {
             if (player.weapon.name === 'Sword' && player.weapon.powerTrackPosition >= 7) {
                 const hasOnes = attackRolls.includes(1);
                 if (hasOnes) {
-                    this.addScore(player.id, 1);
+                    this.addScore(player.id, 1, 'other'); // Sword Lv3 power
                     battleActions.push(`Sword Lv3 Power: +1 point for rolling at least one 1 on attack!`);
                 }
             }
@@ -3634,7 +3794,7 @@ class Game {
                 this.updateResourceDisplay();
                 this.updateInventoryDisplayOld();
                 this.updateInventoryDisplay(player.id);
-            }, 100);
+            }, this.getDelay(100));
         }
         
         // Continue to next battle or end battle phase
@@ -3644,7 +3804,7 @@ class Game {
             } else {
                 this.endRound();
             }
-        }, 2000);
+        }, this.getDelay(2000));
     }
     
     applyBotVictoryRewards(player, monster, battle, battleActions) {
@@ -3668,7 +3828,11 @@ class Game {
         player.resources.money += finalMoney;
         player.resources.beer += finalEnergy; // Monster data uses 'energy' not 'beer'
         player.resources.bloodBag += finalBlood; // Monster data uses 'blood' not 'bloodBag'
-        this.addScore(player.id, monster.pts + battle.bonusPts); // Points are NOT doubled by Knife Lv3
+        // Split the points between monster and fake blood sources
+        this.addScore(player.id, monster.pts, 'monster'); // Points are NOT doubled by Knife Lv3
+        if (battle.bonusPts > 0) {
+            this.addScore(player.id, battle.bonusPts, 'fakeblood');
+        }
         
         // Add items to inventory
         if (finalEnergy > 0) {
@@ -3761,14 +3925,20 @@ class Game {
             
             // Check for milestone bonuses
             if (player.maxResources.hp === 8 && !player.milestones.hp8) {
-                this.addScore(player.id, 2);
+                this.addScore(player.id, 2, 'milestone');
                 player.milestones.hp8 = true;
-                document.getElementById(`p${player.id}-hp-milestone-8`).checked = true;
+                if (!this.isAutomatedMode) {
+                    const checkbox = document.getElementById(`p${player.id}-hp-milestone-8`);
+                    if (checkbox) checkbox.checked = true;
+                }
                 actions.push(`upgraded max HP to ${player.maxResources.hp} (+2 milestone points)`);
             } else if (player.maxResources.hp === 10 && !player.milestones.hp10) {
-                this.addScore(player.id, 4);
+                this.addScore(player.id, 4, 'milestone');
                 player.milestones.hp10 = true;
-                document.getElementById(`p${player.id}-hp-milestone-10`).checked = true;
+                if (!this.isAutomatedMode) {
+                    const checkbox = document.getElementById(`p${player.id}-hp-milestone-10`);
+                    if (checkbox) checkbox.checked = true;
+                }
                 actions.push(`upgraded max HP to ${player.maxResources.hp} (+4 milestone points)`);
             } else {
                 actions.push(`upgraded max HP to ${player.maxResources.hp}`);
@@ -3794,14 +3964,20 @@ class Game {
             
             // Check for milestone bonuses
             if (player.maxResources.ep === 8 && !player.milestones.ep8) {
-                this.addScore(player.id, 2);
+                this.addScore(player.id, 2, 'milestone');
                 player.milestones.ep8 = true;
-                document.getElementById(`p${player.id}-ep-milestone-8`).checked = true;
+                if (!this.isAutomatedMode) {
+                    const checkbox = document.getElementById(`p${player.id}-ep-milestone-8`);
+                    if (checkbox) checkbox.checked = true;
+                }
                 actions.push(`upgraded max EP to ${player.maxResources.ep} (+2 milestone points)`);
             } else if (player.maxResources.ep === 10 && !player.milestones.ep10) {
-                this.addScore(player.id, 4);
+                this.addScore(player.id, 4, 'milestone');
                 player.milestones.ep10 = true;
-                document.getElementById(`p${player.id}-ep-milestone-10`).checked = true;
+                if (!this.isAutomatedMode) {
+                    const checkbox = document.getElementById(`p${player.id}-ep-milestone-10`);
+                    if (checkbox) checkbox.checked = true;
+                }
                 actions.push(`upgraded max EP to ${player.maxResources.ep} (+4 milestone points)`);
             } else {
                 actions.push(`upgraded max EP to ${player.maxResources.ep}`);
@@ -3841,6 +4017,10 @@ class Game {
     }
     
     showStationModal() {
+        if (this.isAutomatedMode) {
+            console.log(`[${new Date().toISOString()}] Processing station phase with ${this.pendingStationPlayers ? this.pendingStationPlayers.length : 0} players`);
+        }
+        
         if (this.pendingStationPlayers.length === 0) {
             // All station choices made, distribute station resources and proceed to store phase
             this.distributeStationResources();
@@ -3851,7 +4031,7 @@ class Game {
         const playerId = this.pendingStationPlayers[0];
         const player = this.players.find(p => p.id === playerId);
         
-        // Check if current player is a bot
+        // Check if current player is a bot (should always be true in automated mode)
         if (player.isBot) {
             this.handleBotStationSelection(player);
             return;
@@ -3936,7 +4116,7 @@ class Game {
         // Continue to next player or complete distribution
         setTimeout(() => {
             this.showStationModal();
-        }, 500);
+        }, this.getDelay(500));
     }
     
     distributeStationResources() {
@@ -3994,6 +4174,8 @@ class Game {
     }
     
     updateInventoryDisplayOld() {
+        // Skip UI updates in automated mode for performance
+        if (this.isAutomatedMode) return;
         this.players.forEach(player => {
             // Update upgrade progress only now
             const prefix = `p${player.id}`;
@@ -4058,6 +4240,8 @@ class Game {
     }
     
     updateBulletDisplay(playerId) {
+        if (this.isAutomatedMode) return;
+        
         const player = this.players.find(p => p.id === playerId);
         if (!player) return;
         
@@ -4075,6 +4259,8 @@ class Game {
     }
     
     updateBatteryDisplay(playerId) {
+        if (this.isAutomatedMode) return;
+        
         const player = this.players.find(p => p.id === playerId);
         if (!player) return;
         
@@ -4096,7 +4282,120 @@ class Game {
         }
     }
     
+    processPopularityTrackLogic() {
+        // This function contains only the game logic, no DOM updates
+        // Can be called in both interactive and automated modes
+        
+        // Count tokens at each location
+        const locationCounts = {};
+        this.locations.forEach(loc => {
+            locationCounts[loc.id] = 0;
+        });
+        
+        // Count all tokens at each location
+        this.players.forEach(player => {
+            if (player.tokens.hunter) {
+                locationCounts[player.tokens.hunter]++;
+            }
+            if (player.tokens.apprentice) {
+                locationCounts[player.tokens.apprentice]++;
+            }
+        });
+        
+        // Update each player's popularity track
+        this.players.forEach(player => {
+            const hunterLocation = player.tokens.hunter;
+            if (!hunterLocation) return;
+            
+            // Skip popularity track update if hunter is in Forest (location 7)
+            if (hunterLocation === 7) {
+                if (!this.isAutomatedMode) {
+                    console.log(`Player ${player.id}'s hunter is in Forest - popularity track does not change`);
+                }
+                return;
+            }
+            
+            const oldRewardLevel = player.popularityTrack.rewardToken;
+            
+            // Check if hunter is alone at location
+            const isAlone = locationCounts[hunterLocation] === 1;
+            
+            // Move reward token up or down
+            let shouldGiveRewards = false;
+            let tokenMoved = false;
+            
+            if (isAlone) {
+                const oldRewardLevel = player.popularityTrack.rewardToken;
+                player.popularityTrack.rewardToken = Math.min(5, player.popularityTrack.rewardToken + 1);
+                
+                // Check if token actually moved
+                if (player.popularityTrack.rewardToken > oldRewardLevel) {
+                    tokenMoved = true;
+                }
+                
+                // Special case: if player was already at level 5 and would move up, still give rewards
+                if (oldRewardLevel === 5 && player.popularityTrack.rewardToken === 5) {
+                    shouldGiveRewards = true;
+                    if (!this.isAutomatedMode) {
+                        console.log(`Player ${player.id} was already at max popularity level 5 - still receives all rewards`);
+                    }
+                }
+            } else {
+                // Knife Level 1 Power: Reward token never goes down
+                if (player.weapon.name === 'Knife' && player.weapon.powerTrackPosition >= 1) {
+                    if (!this.isAutomatedMode) {
+                        console.log(`Knife Lv1 Power: ${player.name}'s reward token does not go down`);
+                    }
+                    // Token doesn't move, so tokenMoved stays false
+                } else {
+                    const beforeMove = player.popularityTrack.rewardToken;
+                    player.popularityTrack.rewardToken = Math.max(0, player.popularityTrack.rewardToken - 1);
+                    if (player.popularityTrack.rewardToken < beforeMove) {
+                        tokenMoved = true; // Token moved down (for non-Knife weapons)
+                    }
+                }
+            }
+            
+            const newRewardLevel = player.popularityTrack.rewardToken;
+            
+            // Knife weapon special logic: only get rewards if token moved up or at max level
+            if (player.weapon.name === 'Knife') {
+                if ((tokenMoved && newRewardLevel > oldRewardLevel) || shouldGiveRewards) {
+                    // Token moved up or was at max level - give rewards
+                    this.distributePopularityRewards(player.id, shouldGiveRewards ? 5 : newRewardLevel);
+                    if (!this.isAutomatedMode) {
+                        console.log(`Knife weapon: ${player.name} receives popularity rewards (token moved from ${oldRewardLevel} to ${newRewardLevel})`);
+                    }
+                } else {
+                    // Token didn't move or moved down - no rewards
+                    if (!this.isAutomatedMode) {
+                        console.log(`Knife weapon: ${player.name} does not receive popularity rewards (token stayed at ${newRewardLevel})`);
+                    }
+                }
+            } else {
+                // Normal weapons: distribute rewards as usual
+                if (newRewardLevel > 0 || shouldGiveRewards) {
+                    this.distributePopularityRewards(player.id, shouldGiveRewards ? 5 : newRewardLevel);
+                }
+            }
+            
+            // Update point token if reward token is higher
+            if (newRewardLevel > player.popularityTrack.pointToken) {
+                const oldPointLevel = player.popularityTrack.pointToken;
+                player.popularityTrack.pointToken = newRewardLevel;
+                
+                // Give points for newly reached level
+                if (!player.popularityTrack.levelReached[newRewardLevel]) {
+                    player.popularityTrack.levelReached[newRewardLevel] = true;
+                    this.addScore(player.id, newRewardLevel, 'popularity'); // Add level value as points
+                }
+            }
+        });
+    }
+
     updatePopularityTrackDisplay(playerId) {
+        // Skip UI updates in automated mode for performance
+        if (this.isAutomatedMode) return;
         const player = this.players.find(p => p.id === playerId);
         if (!player) return;
         
@@ -4142,105 +4441,21 @@ class Game {
     }
     
     updatePopularityTrack() {
-        // Count tokens at each location
-        const locationCounts = {};
-        this.locations.forEach(loc => {
-            locationCounts[loc.id] = 0;
-        });
+        // Always run the game logic
+        this.processPopularityTrackLogic();
         
-        // Count all tokens at each location
-        this.players.forEach(player => {
-            if (player.tokens.hunter) {
-                locationCounts[player.tokens.hunter]++;
-            }
-            if (player.tokens.apprentice) {
-                locationCounts[player.tokens.apprentice]++;
-            }
-        });
+        // Skip DOM updates in automated mode to avoid DOM errors
+        if (this.isAutomatedMode) return;
         
-        // Update each player's popularity track
+        // Update DOM displays for all players
         this.players.forEach(player => {
-            const hunterLocation = player.tokens.hunter;
-            if (!hunterLocation) return;
-            
-            // Skip popularity track update if hunter is in Forest (location 7)
-            if (hunterLocation === 7) {
-                console.log(`Player ${player.id}'s hunter is in Forest - popularity track does not change`);
-                return;
+            // Update level display
+            const levelElement = document.getElementById(`p${player.id}-level`);
+            if (levelElement) {
+                levelElement.textContent = player.popularityTrack.pointToken;
             }
             
-            const oldRewardLevel = player.popularityTrack.rewardToken;
-            
-            // Check if hunter is alone at location
-            const isAlone = locationCounts[hunterLocation] === 1;
-            
-            // Move reward token up or down
-            let shouldGiveRewards = false;
-            let tokenMoved = false;
-            
-            if (isAlone) {
-                const oldRewardLevel = player.popularityTrack.rewardToken;
-                player.popularityTrack.rewardToken = Math.min(5, player.popularityTrack.rewardToken + 1);
-                
-                // Check if token actually moved
-                if (player.popularityTrack.rewardToken > oldRewardLevel) {
-                    tokenMoved = true;
-                }
-                
-                // Special case: if player was already at level 5 and would move up, still give rewards
-                if (oldRewardLevel === 5 && player.popularityTrack.rewardToken === 5) {
-                    shouldGiveRewards = true;
-                    console.log(`Player ${player.id} was already at max popularity level 5 - still receives all rewards`);
-                }
-            } else {
-                // Knife Level 1 Power: Reward token never goes down
-                if (player.weapon.name === 'Knife' && player.weapon.powerTrackPosition >= 1) {
-                    console.log(`Knife Lv1 Power: ${player.name}'s reward token does not go down`);
-                    // Token doesn't move, so tokenMoved stays false
-                } else {
-                    const beforeMove = player.popularityTrack.rewardToken;
-                    player.popularityTrack.rewardToken = Math.max(0, player.popularityTrack.rewardToken - 1);
-                    if (player.popularityTrack.rewardToken < beforeMove) {
-                        tokenMoved = true; // Token moved down (for non-Knife weapons)
-                    }
-                }
-            }
-            
-            const newRewardLevel = player.popularityTrack.rewardToken;
-            
-            // Knife weapon special logic: only get rewards if token moved up or at max level
-            if (player.weapon.name === 'Knife') {
-                if ((tokenMoved && newRewardLevel > oldRewardLevel) || shouldGiveRewards) {
-                    // Token moved up or was at max level - give rewards
-                    this.distributePopularityRewards(player.id, shouldGiveRewards ? 5 : newRewardLevel);
-                    console.log(`Knife weapon: ${player.name} receives popularity rewards (token moved from ${oldRewardLevel} to ${newRewardLevel})`);
-                } else {
-                    // Token didn't move or moved down - no rewards
-                    console.log(`Knife weapon: ${player.name} does not receive popularity rewards (token stayed at ${newRewardLevel})`);
-                }
-            } else {
-                // Normal weapons: distribute rewards as usual
-                if (newRewardLevel > 0 || shouldGiveRewards) {
-                    this.distributePopularityRewards(player.id, shouldGiveRewards ? 5 : newRewardLevel);
-                }
-            }
-            
-            // Update point token if reward token is higher
-            if (newRewardLevel > player.popularityTrack.pointToken) {
-                const oldPointLevel = player.popularityTrack.pointToken;
-                player.popularityTrack.pointToken = newRewardLevel;
-                
-                // Give points for newly reached level
-                if (!player.popularityTrack.levelReached[newRewardLevel]) {
-                    player.popularityTrack.levelReached[newRewardLevel] = true;
-                    this.addScore(player.id, newRewardLevel); // Add level value as points
-                    
-                    // Update level display
-                    document.getElementById(`p${player.id}-level`).textContent = newRewardLevel;
-                }
-            }
-            
-            // Update display
+            // Update popularity track display
             this.updatePopularityTrackDisplay(player.id);
         });
         
@@ -4286,7 +4501,7 @@ class Game {
                 }
             }
             if (rewards.score) {
-                this.addScore(player.id, rewards.score);
+                this.addScore(player.id, rewards.score, 'popularity');
             }
         }
     }
@@ -4921,7 +5136,7 @@ class Game {
                     this.logBattleAction(`${player.name} cannot attack without ammo!`);
                     battle.turn = 'player';
                     this.updateBattlePhase();
-                }, 1500);
+                }, this.getDelay(1500));
             } else if (canTame) {
                 turnText.textContent = 'Use items, attack, or tame the monster!';
                 attackBtn.style.display = 'block';
@@ -5091,7 +5306,7 @@ class Game {
         // Trigger bot attack after a short delay
         setTimeout(() => {
             this.attackMonster();
-        }, 500);
+        }, this.getDelay(500));
     }
     
     updateBattleItemButtons() {
@@ -5597,7 +5812,14 @@ class Game {
                 this.logBattleAction(`+${monster.pts} score`);
             }
             
-            this.addScore(battle.playerId, totalScore);
+            // Score from monster battle (already split if fake blood was used)
+            if (!battle.bonusPts || battle.bonusPts === 0) {
+                this.addScore(battle.playerId, totalScore, 'monster');
+            } else {
+                // Already handled in executeBotBattle
+                this.addScore(battle.playerId, totalScore - battle.bonusPts, 'monster');
+                this.addScore(battle.playerId, battle.bonusPts, 'fakeblood');
+            }
         }
         
         // Advance weapon power track based on monster level
@@ -5690,6 +5912,8 @@ class Game {
     }
     
     updateWeaponPowerDisplay(playerId) {
+        // Skip UI updates in automated mode for performance
+        if (this.isAutomatedMode) return;
         const player = this.players.find(p => p.id === playerId);
         if (!player) return;
         
@@ -5917,6 +6141,11 @@ class Game {
     enterStorePhase() {
         this.roundPhase = 'store';
         this.currentStorePlayer = 0;
+        
+        if (this.isAutomatedMode) {
+            console.log(`[${new Date().toISOString()}] Starting store phase - Round ${this.currentRound}`);
+        }
+        
         this.showStore();
     }
     
@@ -6032,16 +6261,26 @@ class Game {
     }
     
     handleBotShopping(player) {
-        // Hide store UI for bot turns
-        document.querySelector('.card-selection').style.display = 'none';
-        document.getElementById('store-area').style.display = 'none';
-        document.querySelector('.current-player').style.display = 'none';
-        document.getElementById('confirm-selection').style.display = 'none';
-        
-        // Show status message that bot is shopping
-        const statusElement = document.getElementById('status-message');
-        if (statusElement) {
-            statusElement.innerHTML = `<strong>${player.name}</strong> is shopping...`;
+        // Skip UI updates in automated mode
+        if (!this.isAutomatedMode) {
+            // Hide store UI for bot turns
+            const cardSelection = document.querySelector('.card-selection');
+            const storeArea = document.getElementById('store-area');
+            const currentPlayer = document.querySelector('.current-player');
+            const confirmButton = document.getElementById('confirm-selection');
+            
+            if (cardSelection) cardSelection.style.display = 'none';
+            if (storeArea) storeArea.style.display = 'none';
+            if (currentPlayer) currentPlayer.style.display = 'none';
+            if (confirmButton) confirmButton.style.display = 'none';
+            
+            // Show status message that bot is shopping
+            const statusElement = document.getElementById('status-message');
+            if (statusElement) {
+                statusElement.innerHTML = `<strong>${player.name}</strong> is shopping...`;
+            }
+        } else {
+            console.log(`[${new Date().toISOString()}] Bot ${player.name} shopping - Round ${this.currentRound}`);
         }
         
         // Use the bot's money management logic to automatically purchase items
@@ -6226,14 +6465,20 @@ class Game {
                 
                 // Check for milestone bonuses
                 if (player.maxResources.hp === 8 && !player.hpMilestone8) {
-                    this.addScore(player.id, 2);
+                    this.addScore(player.id, 2, 'milestone');
                     player.hpMilestone8 = true;
-                    document.getElementById(`p${player.id}-hp-milestone-8`).checked = true;
+                    if (!this.isAutomatedMode) {
+                        const checkbox = document.getElementById(`p${player.id}-hp-milestone-8`);
+                        if (checkbox) checkbox.checked = true;
+                    }
                     hpEpActions.push('HP milestone bonus (+2 points)');
                 } else if (player.maxResources.hp === 10 && !player.hpMilestone10) {
-                    this.addScore(player.id, 4);
+                    this.addScore(player.id, 4, 'milestone');
                     player.hpMilestone10 = true;
-                    document.getElementById(`p${player.id}-hp-milestone-10`).checked = true;
+                    if (!this.isAutomatedMode) {
+                        const checkbox = document.getElementById(`p${player.id}-hp-milestone-10`);
+                        if (checkbox) checkbox.checked = true;
+                    }
                     hpEpActions.push('HP milestone bonus (+4 points)');
                 }
             }
@@ -6258,14 +6503,20 @@ class Game {
                 
                 // Check for milestone bonuses
                 if (player.maxResources.ep === 8 && !player.epMilestone8) {
-                    this.addScore(player.id, 2);
+                    this.addScore(player.id, 2, 'milestone');
                     player.epMilestone8 = true;
-                    document.getElementById(`p${player.id}-ep-milestone-8`).checked = true;
+                    if (!this.isAutomatedMode) {
+                        const checkbox = document.getElementById(`p${player.id}-ep-milestone-8`);
+                        if (checkbox) checkbox.checked = true;
+                    }
                     hpEpActions.push('EP milestone bonus (+2 points)');
                 } else if (player.maxResources.ep === 10 && !player.epMilestone10) {
-                    this.addScore(player.id, 4);
+                    this.addScore(player.id, 4, 'milestone');
                     player.epMilestone10 = true;
-                    document.getElementById(`p${player.id}-ep-milestone-10`).checked = true;
+                    if (!this.isAutomatedMode) {
+                        const checkbox = document.getElementById(`p${player.id}-ep-milestone-10`);
+                        if (checkbox) checkbox.checked = true;
+                    }
                     hpEpActions.push('EP milestone bonus (+4 points)');
                 }
             }
@@ -6310,8 +6561,13 @@ class Game {
                 logMessages.push(`💰 <strong>${player.name}</strong> (Bot) auto-managed: ${managementList}`);
             }
             
-            // Update status element
-            statusElement.innerHTML = `<strong>${player.name}</strong> ${statusMessages.join('; ')}`;
+            // Update status element (skip in automated mode)
+            if (!this.isAutomatedMode) {
+                const statusElement = document.getElementById('status-message');
+                if (statusElement) {
+                    statusElement.innerHTML = `<strong>${player.name}</strong> ${statusMessages.join('; ')}`;
+                }
+            }
             
             // Add to game log
             logMessages.forEach(msg => {
@@ -6321,8 +6577,8 @@ class Game {
             // Auto-proceed to next player after a short delay
             setTimeout(() => {
                 this.finishShopping();
-            }, 1500);
-        }, 1000);
+            }, this.getDelay(1500));
+        }, this.getDelay(1000));
     }
     
     getItemEffect(itemName) {
@@ -6341,6 +6597,9 @@ class Game {
     
     // Game Log Management
     addLogEntry(message, category = 'system') {
+        // Skip logging in automated mode for performance
+        if (this.isAutomatedMode) return;
+        
         const logContainer = document.getElementById('game-log');
         if (!logContainer) return;
         
@@ -6547,7 +6806,11 @@ class Game {
         
         if (this.currentStorePlayer >= this.players.length) {
             // All players finished shopping, hide store area
-            document.getElementById('store-area').style.display = 'none';
+            if (this.isAutomatedMode) {
+                console.log(`[${new Date().toISOString()}] All players finished shopping, checking capacity overflow`);
+            } else {
+                document.getElementById('store-area').style.display = 'none';
+            }
             // Check for capacity overflow
             this.checkCapacityOverflow();
         } else {
@@ -6588,8 +6851,14 @@ class Game {
     startResourceDistribution() {
         this.roundPhase = 'distribution';
         
+        if (this.isAutomatedMode) {
+            console.log(`[${new Date().toISOString()}] Starting resource distribution - Round ${this.currentRound}`);
+        }
+        
         // Clear the board (but not dummy tokens)
-        document.querySelectorAll('.token:not(.dummy-token)').forEach(token => token.remove());
+        if (!this.isAutomatedMode) {
+            document.querySelectorAll('.token:not(.dummy-token)').forEach(token => token.remove());
+        }
         
         
         // Place all tokens based on selections
@@ -6663,7 +6932,7 @@ class Game {
                         this.addItemToInventory(player.id, itemName, rewardAmount);
                     } else if (location.resource === 'score') {
                         // Plaza scoring: 3 points if alone, 0 if crowded
-                        this.addScore(player.id, rewardAmount);
+                        this.addScore(player.id, rewardAmount, 'plaza');
                     }
                 }
             });
@@ -6727,15 +6996,25 @@ class Game {
         
         if (stationHunters.length > 0) {
             this.pendingStationPlayers = [...stationHunters];
+            if (this.isAutomatedMode) {
+                console.log(`[${new Date().toISOString()}] Found ${stationHunters.length} station hunters, showing modal`);
+            }
             this.showStationModal();
         } else {
             // No station choices needed, go to store phase
+            if (this.isAutomatedMode) {
+                console.log(`[${new Date().toISOString()}] No station players, going directly to store phase`);
+            }
             this.enterStorePhase();
         }
     }
     
     startBattlePhase() {
         this.roundPhase = 'battle';
+        
+        if (this.isAutomatedMode) {
+            console.log(`[${new Date().toISOString()}] Starting battle phase - Round ${this.currentRound}`);
+        }
         
         // Get all hunters in the Forest
         let forestHunters = [];
@@ -6774,11 +7053,23 @@ class Game {
     }
     
     endRound() {
+        if (this.isAutomatedMode) {
+            console.log(`[${new Date().toISOString()}] Ending round ${this.currentRound}, checking win condition`);
+        }
+        
         // Check for win condition before starting next round
-        const winner = this.checkWinCondition();
-        if (winner) {
+        const hasWinner = this.checkWinCondition();
+        if (hasWinner) {
+            const winner = this.determineWinner();
+            if (this.isAutomatedMode) {
+                console.log(`[${new Date().toISOString()}] Winner found: ${winner.name} with ${winner.score} points`);
+            }
             this.endGame(winner);
             return;
+        }
+        
+        if (this.isAutomatedMode) {
+            console.log(`[${new Date().toISOString()}] No winner yet, starting next round phase`);
         }
         
         // Start NextRound phase
@@ -6786,15 +7077,324 @@ class Game {
     }
     
     checkWinCondition() {
-        // Check if any player has reached 50 points
-        const winner = this.players.find(player => player.score >= 50);
-        return winner || null;
+        // Check if any player has reached 50 points to trigger end of game
+        // But don't determine winner yet - that happens at end of round
+        const hasWinner = this.players.some(player => player.score >= 50);
+        return hasWinner;
+    }
+
+    determineWinner() {
+        // Use the same ranking logic to determine the actual winner
+        const rankings = this.calculatePlayerRankings();
+        
+        // Find the player(s) with rank 1
+        const winners = this.players.filter(player => rankings[player.id] === 1);
+        
+        // Return the first winner (in case of ties, they all share rank 1)
+        return winners[0];
+    }
+    
+    calculatePlayerRankings() {
+        // Calculate rankings based on score first, then level as tiebreaker
+        const playersCopy = [...this.players];
+        
+        // Sort players by score (descending), then by level (descending)
+        playersCopy.sort((a, b) => {
+            if (a.score !== b.score) {
+                return b.score - a.score; // Higher score wins
+            }
+            // Tiebreaker: higher level wins
+            return b.popularityTrack.pointToken - a.popularityTrack.pointToken;
+        });
+        
+        // Assign ranks, handling ties
+        const rankings = {};
+        let currentRank = 1;
+        
+        for (let i = 0; i < playersCopy.length; i++) {
+            const player = playersCopy[i];
+            
+            if (i > 0) {
+                const prevPlayer = playersCopy[i - 1];
+                // Check if tied with previous player
+                if (player.score !== prevPlayer.score || 
+                    player.popularityTrack.pointToken !== prevPlayer.popularityTrack.pointToken) {
+                    currentRank = i + 1; // New rank
+                }
+                // If tied, keep same rank as previous player
+            }
+            
+            rankings[player.id] = currentRank;
+        }
+        
+        return rankings;
+    }
+
+    recordGameData() {
+        // Calculate player rankings
+        const rankings = this.calculatePlayerRankings();
+        
+        // Collect game data for CSV export
+        const gameData = [];
+        
+        this.players.forEach(player => {
+            const data = {
+                game_id: this.currentGameId || Date.now(),
+                player_count: this.playerCount,
+                rounds: this.currentRound,
+                player_id: player.id + 1,
+                weapon: player.weapon.name,
+                level: player.popularityTrack.pointToken,
+                score: player.score,
+                rank: rankings[player.id],
+                weapon_track_pos: player.weapon.powerTrackPosition,
+                defeated_lv1: player.monstersDefeated ? player.monstersDefeated.level1 || 0 : 0,
+                defeated_lv2: player.monstersDefeated ? player.monstersDefeated.level2 || 0 : 0,
+                defeated_lv3: player.monstersDefeated ? player.monstersDefeated.level3 || 0 : 0,
+                score_monsters: player.scoreFromMonsters,
+                score_milestones: player.scoreFromMilestones,
+                score_popularity: player.scoreFromPopularity,
+                score_plaza: player.scoreFromPlaza,
+                score_fakeblood: player.scoreFromFakeBlood,
+                score_other: player.scoreFromOther
+            };
+            gameData.push(data);
+        });
+        
+        return gameData;
+    }
+    
+    exportToCSV(allGameData) {
+        // Convert data to CSV format
+        const headers = [
+            'game_id', 'player_count', 'rounds', 'player_id', 'weapon', 'level', 'score', 'rank',
+            'weapon_track_pos', 'defeated_lv1', 'defeated_lv2', 'defeated_lv3',
+            'score_monsters', 'score_milestones', 'score_popularity', 'score_plaza',
+            'score_fakeblood', 'score_other'
+        ];
+        
+        let csv = headers.join(',') + '\n';
+        
+        allGameData.forEach(row => {
+            const values = headers.map(header => row[header] || 0);
+            csv += values.join(',') + '\n';
+        });
+        
+        // Create download link
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19);
+        link.download = `game_data_${timestamp}.csv`;
+        link.href = url;
+        link.click();
+        window.URL.revokeObjectURL(url);
+    }
+    
+    getDelay(normalDelay) {
+        // Return 0 delay when in automated mode, otherwise use normal delay
+        const delay = this.isAutomatedMode ? 0 : normalDelay;
+        if (this.isAutomatedMode && delay !== normalDelay) {
+            console.log(`[${new Date().toISOString()}] Skipping ${normalDelay}ms delay in automated mode`);
+        }
+        return delay;
+    }
+    
+    showDataCollectionModal() {
+        console.log('[DEBUG] showDataCollectionModal called');
+        const modal = document.getElementById('data-collection-modal');
+        if (modal) {
+            console.log('[DEBUG] Modal found, showing it');
+            modal.style.display = 'block';
+        } else {
+            console.log('[DEBUG] Modal not found!');
+        }
+    }
+    
+    hideDataCollectionModal() {
+        const modal = document.getElementById('data-collection-modal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    }
+    
+    startDataCollection() {
+        console.log('[DEBUG] startDataCollection called');
+        const numGamesInput = document.getElementById('num-games');
+        const playerCountSelect = document.getElementById('player-count-select');
+        
+        const numberOfGames = parseInt(numGamesInput.value) || 10;
+        const playerCount = parseInt(playerCountSelect.value) || 2;
+        
+        console.log(`[DEBUG] Values: games=${numberOfGames}, players=${playerCount}`);
+        console.log(`[${new Date().toISOString()}] Starting data collection: ${numberOfGames} games with ${playerCount} players`);
+        
+        // Completely reset game state to ensure no interference
+        this.resetGameState();
+        
+        // Hide the modal
+        this.hideDataCollectionModal();
+        
+        // Hide any game UI that might be visible
+        const playerBoards = document.getElementById('player-boards-container');
+        const gameBoard = document.querySelector('.game-board');
+        const playerArea = document.querySelector('.player-area');
+        const gameStatus = document.querySelector('.game-status');
+        const gameLog = document.getElementById('game-log-section');
+        
+        if (playerBoards) playerBoards.style.display = 'none';
+        if (gameBoard) gameBoard.style.display = 'none';
+        if (playerArea) playerArea.style.display = 'none';
+        if (gameStatus) gameStatus.style.display = 'none';
+        if (gameLog) gameLog.style.display = 'none';
+        
+        // Start automated games
+        this.runAutomatedGames(numberOfGames, playerCount);
+    }
+    
+    runAutomatedGames(numberOfGames, playerCount) {
+        // Initialize automation
+        this.isAutomatedMode = true;
+        this.isDataCollectionMode = true;
+        this.automatedGamesTotal = numberOfGames;
+        this.automatedGamesCompleted = 0;
+        this.automatedPlayerCount = playerCount;
+        this.collectedGameData = [];
+        
+        console.log(`Starting automated data collection: ${numberOfGames} games with ${playerCount} players`);
+        this.updateDataCollectionProgress();
+        
+        // Start the first game
+        this.startNextAutomatedGame();
+    }
+    
+    startNextAutomatedGame() {
+        if (this.automatedGamesCompleted >= this.automatedGamesTotal) {
+            // All games completed, export data
+            this.finishDataCollection();
+            return;
+        }
+        
+        try {
+            // Reset game state for new game
+            this.resetGameState();
+            
+            // Generate unique game ID
+            this.currentGameId = `game_${this.automatedGamesCompleted + 1}_${Date.now()}`;
+            
+            console.log(`[AUTO] Starting game ${this.automatedGamesCompleted + 1} of ${this.automatedGamesTotal}`);
+            
+            // Create all bot configuration
+            const botConfiguration = {
+                humanPlayers: 0,
+                totalPlayers: this.automatedPlayerCount
+            };
+            
+            // Start the game with all bots
+            this.startSoloGameWithConfig(botConfiguration);
+        } catch (error) {
+            console.error(`[AUTO] Error in game ${this.automatedGamesCompleted + 1}:`, error);
+            // Try to continue with next game
+            this.automatedGamesCompleted++;
+            setTimeout(() => this.startNextAutomatedGame(), 100);
+        }
+    }
+    
+    resetGameState() {
+        // Clear existing game state
+        this.players = [];
+        this.bots = [];
+        this.dummyTokens = [];
+        this.currentPlayerIndex = 0;
+        this.currentRound = 1;
+        this.roundPhase = 'setup';
+        this.stationChoices = {};
+        this.pendingStationPlayer = null;
+        this.stationTotalCount = 0;
+        this.currentBattle = null;
+        this.currentStorePlayer = null;
+        
+        // Clear UI if not in fully automated mode
+        if (!this.isAutomatedMode) {
+            document.getElementById('player-boards-container').innerHTML = '';
+            document.querySelectorAll('.token').forEach(token => token.remove());
+        }
+    }
+    
+    finishDataCollection() {
+        console.log(`[${new Date().toISOString()}] Data collection complete! Collected data from ${this.automatedGamesCompleted} games`);
+        
+        // Export all collected data to CSV
+        if (this.collectedGameData.length > 0) {
+            this.exportToCSV(this.collectedGameData);
+        }
+        
+        // Reset automation flags
+        this.isAutomatedMode = false;
+        this.isDataCollectionMode = false;
+        
+        // Reset game state completely
+        this.resetGameState();
+        
+        // Update UI
+        this.updateDataCollectionProgress();
+        
+        // Show completion message
+        const statusElement = document.getElementById('data-collection-status');
+        if (statusElement) {
+            statusElement.textContent = `✅ Data collection complete! ${this.automatedGamesCompleted} games recorded.`;
+        }
+        
+        // Show the data collection modal again with results
+        setTimeout(() => {
+            this.showDataCollectionModal();
+        }, 1000);
+    }
+    
+    updateDataCollectionProgress() {
+        const progressElement = document.getElementById('data-collection-progress');
+        if (progressElement) {
+            if (this.isAutomatedMode) {
+                progressElement.style.display = 'block';
+                progressElement.textContent = `Running game ${this.automatedGamesCompleted + 1} of ${this.automatedGamesTotal}...`;
+            } else {
+                progressElement.style.display = 'none';
+            }
+        }
     }
     
     endGame(winner) {
         this.roundPhase = 'gameover';
         
-        // Show game over message
+        // Record game data if in automated mode or data collection mode
+        if (this.isAutomatedMode || this.isDataCollectionMode) {
+            const gameData = this.recordGameData();
+            if (this.collectedGameData) {
+                this.collectedGameData.push(...gameData);
+            }
+        }
+        
+        // Show game over message if not in automated mode
+        if (!this.isAutomatedMode) {
+            document.getElementById('status-message').textContent = 
+                `🎉 Game Over! ${winner.name} wins with ${winner.score} points! 🎉`;
+        } else {
+            console.log(`Game ${this.automatedGamesCompleted + 1} complete: ${winner.name} wins with ${winner.score} points`);
+        }
+        
+        // Handle automated mode continuation
+        if (this.isAutomatedMode) {
+            this.automatedGamesCompleted++;
+            this.updateDataCollectionProgress();
+            
+            // Start next game after a brief delay
+            setTimeout(() => {
+                this.startNextAutomatedGame();
+            }, this.getDelay(100));
+            return;
+        }
+        
+        // Show game over message for regular games
         document.getElementById('status-message').textContent = 
             `🎉 Game Over! ${winner.name} wins with ${winner.score} points! 🎉`;
         
@@ -6815,8 +7415,14 @@ class Game {
     startNextRoundPhase() {
         this.roundPhase = 'nextround';
         
+        if (this.isAutomatedMode) {
+            console.log(`[${new Date().toISOString()}] Starting next round phase - Round ${this.currentRound}`);
+        }
+        
         // Clear the board - bring all tokens back to players
-        document.querySelectorAll('.token').forEach(token => token.remove());
+        if (!this.isAutomatedMode) {
+            document.querySelectorAll('.token').forEach(token => token.remove());
+        }
         
         // Reset token positions
         this.players.forEach(player => {
@@ -6831,7 +7437,7 @@ class Game {
         // Automatically proceed to next round after a brief delay
         setTimeout(() => {
             this.startNewRound();
-        }, 2000);
+        }, this.getDelay(2000));
     }
     
     startNewRound() {
@@ -7318,6 +7924,8 @@ class Game {
     }
     
     updatePetDisplay() {
+        if (this.isAutomatedMode) return;
+        
         this.players.forEach(player => {
             const petContainer = document.getElementById(`p${player.id}-pets`);
             if (!petContainer) {
