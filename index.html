@@ -309,6 +309,35 @@
             </div>
         </div>
         
+        <!-- Monster Selection Modal -->
+        <div id="monster-selection-modal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <h3>Monster Encountered!</h3>
+                <div class="monster-info">
+                    <div class="monster-stats">
+                        <p><strong>Level:</strong> <span id="monster-level-display"></span></p>
+                        <p><strong>HP:</strong> <span id="monster-hp-display"></span></p>
+                        <p><strong>ATT:</strong> <span id="monster-att-display"></span></p>
+                    </div>
+                    <div class="monster-rewards">
+                        <h4>Rewards:</h4>
+                        <p>💰 Money: <span id="monster-money-display"></span></p>
+                        <p>⚡ Energy: <span id="monster-energy-display"></span></p>
+                        <p>🩸 Blood: <span id="monster-blood-display"></span></p>
+                        <p>🏆 Points: <span id="monster-pts-display"></span></p>
+                    </div>
+                    <div class="monster-effect">
+                        <h4>Effect:</h4>
+                        <div id="monster-effect-display" class="effect-text"></div>
+                    </div>
+                </div>
+                <div class="monster-actions">
+                    <button onclick="game.changeMonster()" id="change-monster-btn">Change (-1 EP)</button>
+                    <button onclick="game.confirmMonsterSelection()">Ready</button>
+                </div>
+            </div>
+        </div>
+        
         <!-- Data Collection Modal -->
         <div id="data-collection-modal" class="modal" style="display: none;">
             <div class="modal-content">

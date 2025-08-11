@@ -1073,6 +1073,11 @@ class Game {
         this.stationTotalCount = 0; // Track total count at station
         this.monsters = this.loadMonsters(); // Load monster data
         this.currentBattle = null; // Track ongoing monster battle
+        
+        // Monster selection system
+        this.defeatedMonsters = new Set(); // Track defeated monster IDs
+        this.currentSelectedMonster = null; // Current monster shown to player
+        this.monsterSelectionEPSpent = 0; // Track EP spent on changing monsters
         this.storeItems = this.loadStoreItems(); // Load store items
         this.currentStorePlayer = null; // Track current shopping player
         this.bots = []; // Array to hold bot instances
@@ -1120,6 +1125,11 @@ class Game {
     
     
     initializeGame(playerCount) {
+        // Reset defeated monsters for new game
+        this.defeatedMonsters.clear();
+        this.currentSelectedMonster = null;
+        this.monsterSelectionEPSpent = 0;
+        
         // Show game log
         this.showGameLog();
         
@@ -1611,12 +1621,18 @@ class Game {
             }
         }
         
-        // In automated mode, immediately confirm the selection
+        // Auto-confirm selection for bot players
         if (this.isAutomatedMode) {
             console.log(`[${new Date().toISOString()}] Auto-confirming bot selection for player ${playerId}`);
             setTimeout(() => {
                 this.confirmSelection();
             }, this.getDelay(100));
+        } else {
+            // In regular games, also auto-confirm for bot players after a short delay
+            console.log(`Auto-confirming bot ${playerId + 1} selection`);
+            setTimeout(() => {
+                this.confirmSelection();
+            }, 1500); // Give human player time to see bot selection
         }
     }
     
@@ -3425,19 +3441,27 @@ class Game {
         // Deduct EP
         this.modifyResource(player.id, 'ep', -totalEPCost);
         
-        // Select random monster from the level
-        const monsters = this.monsters[selectedLevel] || [];
-        if (monsters.length === 0) {
-            console.error(`No monsters found for level ${selectedLevel}`);
+        // Select random available monster from the level
+        const selectedMonster = this.selectRandomAvailableMonster(selectedLevel);
+        if (!selectedMonster) {
+            console.error(`No available monsters found for level ${selectedLevel}`);
             return;
         }
-        const selectedMonster = monsters[Math.floor(Math.random() * monsters.length)];
         
+        // Store original HP and apply apprentice bonus if applicable
+        selectedMonster.maxHp = selectedMonster.hp;
+        
+        // Check if player's apprentice is also in Forest for -1 HP bonus
+        if (player.tokens.apprentice === 7) { // Forest location
+            selectedMonster.hp = Math.max(1, selectedMonster.hp - 1);
+            console.log(`${player.name}'s apprentice in Forest - monster HP reduced by 1 (${selectedMonster.maxHp} -> ${selectedMonster.hp})`);
+        }
+
         console.log(`Bot ${player.name} selected Level ${selectedLevel} monster:`, selectedMonster);
         console.log('Selected pets:', this.selectedPets);
         console.log('About to call startMonsterBattle...');
         
-        // Start battle immediately
+        // Start battle immediately (bots skip monster selection UI)
         this.startMonsterBattle(player.id, selectedMonster, this.selectedPets);
         console.log('startMonsterBattle called for bot');
     }
@@ -4724,51 +4748,180 @@ class Game {
     }
     
     loadMonsters() {
-        // Load monster data from CSV (simplified version focusing on core stats)
-        return {
-            1: [ // Level 1 monsters
-                { level: 1, hp: 4, att: 1, money: 3, energy: 1, blood: 0, pts: 2 },
-                { level: 1, hp: 4, att: 1, money: 0, energy: 3, blood: 0, pts: 3 },
-                { level: 1, hp: 4, att: 2, money: 2, energy: 1, blood: 0, pts: 4 },
-                { level: 1, hp: 3, att: 2, money: 0, energy: 1, blood: 1, pts: 3 },
-                { level: 1, hp: 3, att: 1, money: 0, energy: 0, blood: 1, pts: 2 },
-                { level: 1, hp: 3, att: 2, money: 0, energy: 0, blood: 1, pts: 4 },
-                { level: 1, hp: 3, att: 1, money: 1, energy: 1, blood: 0, pts: 2 },
-                { level: 1, hp: 3, att: 2, money: 0, energy: 2, blood: 1, pts: 2 },
-                { level: 1, hp: 3, att: 3, money: 2, energy: 1, blood: 0, pts: 4 },
-                { level: 1, hp: 2, att: 3, money: 0, energy: 1, blood: 1, pts: 3 },
-                { level: 1, hp: 2, att: 3, money: 0, energy: 2, blood: 0, pts: 4 },
-                { level: 1, hp: 2, att: 3, money: 3, energy: 0, blood: 0, pts: 3 }
-            ],
-            2: [ // Level 2 monsters
-                { level: 2, hp: 7, att: 2, money: 3, energy: 1, blood: 0, pts: 7 },
-                { level: 2, hp: 7, att: 2, money: 0, energy: 3, blood: 0, pts: 8 },
-                { level: 2, hp: 7, att: 2, money: 2, energy: 1, blood: 0, pts: 8 },
-                { level: 2, hp: 7, att: 3, money: 2, energy: 2, blood: 1, pts: 6 },
-                { level: 2, hp: 6, att: 2, money: 1, energy: 2, blood: 0, pts: 6 },
-                { level: 2, hp: 6, att: 3, money: 2, energy: 0, blood: 1, pts: 7 },
-                { level: 2, hp: 6, att: 4, money: 3, energy: 1, blood: 0, pts: 8 },
-                { level: 2, hp: 6, att: 3, money: 0, energy: 3, blood: 1, pts: 6 },
-                { level: 2, hp: 5, att: 4, money: 2, energy: 1, blood: 0, pts: 8 },
-                { level: 2, hp: 5, att: 4, money: 2, energy: 0, blood: 1, pts: 7 },
-                { level: 2, hp: 5, att: 4, money: 0, energy: 2, blood: 1, pts: 7 },
-                { level: 2, hp: 5, att: 3, money: 2, energy: 2, blood: 0, pts: 6 }
-            ],
-            3: [ // Level 3 monsters
-                { level: 3, hp: 13, att: 3, money: 0, energy: 0, blood: 3, pts: 15 },
-                { level: 3, hp: 12, att: 3, money: 1, energy: 3, blood: 0, pts: 15 },
-                { level: 3, hp: 12, att: 4, money: 0, energy: 1, blood: 2, pts: 16 },
-                { level: 3, hp: 11, att: 3, money: 2, energy: 2, blood: 0, pts: 14 },
-                { level: 3, hp: 11, att: 5, money: 2, energy: 1, blood: 1, pts: 16 },
-                { level: 3, hp: 11, att: 4, money: 1, energy: 3, blood: 0, pts: 15 },
-                { level: 3, hp: 11, att: 4, money: 2, energy: 2, blood: 0, pts: 15 },
-                { level: 3, hp: 11, att: 5, money: 1, energy: 0, blood: 2, pts: 16 },
-                { level: 3, hp: 10, att: 4, money: 3, energy: 1, blood: 0, pts: 14 },
-                { level: 3, hp: 10, att: 4, money: 4, energy: 0, blood: 0, pts: 14 },
-                { level: 3, hp: 10, att: 4, money: 0, energy: 4, blood: 0, pts: 14 },
-                { level: 3, hp: 10, att: 5, money: 2, energy: 1, blood: 0, pts: 16 }
-            ]
-        };
+        // Load monster data from Monster.csv
+        // Since we can't directly read CSV files in browser, we'll use the parsed data
+        // In a real implementation, this would read from the CSV file
+        const monsterData = [
+            { level: 1, hp: 4, att: 1, money: 3, energy: 1, blood: 0, effect: "無", pts: 2 },
+            { level: 1, hp: 4, att: 1, money: 0, energy: 3, blood: 0, effect: "血減半時，攻擊力+1", pts: 3 },
+            { level: 1, hp: 4, att: 2, money: 2, energy: 1, blood: 0, effect: "偷走玩家2金幣", pts: 4 },
+            { level: 1, hp: 3, att: 2, money: 0, energy: 1, blood: 1, effect: "死亡時，玩家及在森林裡的玩家-1血", pts: 3 },
+            { level: 1, hp: 3, att: 1, money: 0, energy: 0, blood: 1, effect: "玩家受傷無法獲得經驗", pts: 2 },
+            { level: 1, hp: 3, att: 2, money: 0, energy: 0, blood: 1, effect: "玩家需多-1體力來攻擊此怪獸", pts: 4 },
+            { level: 1, hp: 3, att: 1, money: 1, energy: 1, blood: 0, effect: "玩家受傷無法獲得經驗", pts: 2 },
+            { level: 1, hp: 3, att: 2, money: 0, energy: 2, blood: 1, effect: "這回合其他怪獸+1血", pts: 2 },
+            { level: 1, hp: 3, att: 3, money: 2, energy: 1, blood: 0, effect: "每次玩家攻擊-1體力", pts: 4 },
+            { level: 1, hp: 2, att: 3, money: 0, energy: 1, blood: 1, effect: "不在森林的玩家-1血", pts: 3 },
+            { level: 1, hp: 2, att: 3, money: 0, energy: 2, blood: 0, effect: "遭受攻擊後若沒有死亡+1血", pts: 4 },
+            { level: 1, hp: 2, att: 3, money: 3, energy: 0, blood: 0, effect: "不怕手榴彈、炸彈", pts: 3 },
+            { level: 2, hp: 7, att: 2, money: 3, energy: 1, blood: 0, effect: "不在森林的玩家-1血", pts: 7 },
+            { level: 2, hp: 7, att: 2, money: 0, energy: 3, blood: 0, effect: "玩家需多-2體力來攻擊此怪獸", pts: 8 },
+            { level: 2, hp: 7, att: 2, money: 2, energy: 1, blood: 0, effect: "不怕手榴彈、炸彈、炸藥", pts: 8 },
+            { level: 2, hp: 7, att: 3, money: 2, energy: 2, blood: 1, effect: "這回合其他怪獸+1血", pts: 6 },
+            { level: 2, hp: 6, att: 2, money: 1, energy: 2, blood: 0, effect: "玩家防禦力2以上先攻", pts: 6 },
+            { level: 2, hp: 6, att: 3, money: 2, energy: 0, blood: 1, effect: "玩家防禦力3以上先攻", pts: 7 },
+            { level: 2, hp: 6, att: 4, money: 3, energy: 1, blood: 0, effect: "每次玩家攻擊-1體力", pts: 8 },
+            { level: 2, hp: 6, att: 3, money: 0, energy: 3, blood: 1, effect: "需要+1體力收服", pts: 6 },
+            { level: 2, hp: 5, att: 4, money: 2, energy: 1, blood: 0, effect: "玩家防禦力2以上先攻", pts: 8 },
+            { level: 2, hp: 5, att: 4, money: 2, energy: 0, blood: 1, effect: "玩家受傷最多獲得3經驗", pts: 7 },
+            { level: 2, hp: 5, att: 4, money: 0, energy: 2, blood: 1, effect: "此回合沒有殺怪的玩家-2分", pts: 7 },
+            { level: 2, hp: 5, att: 3, money: 2, energy: 2, blood: 0, effect: "血減半時，攻擊力+1", pts: 6 },
+            { level: 3, hp: 13, att: 3, money: 0, energy: 0, blood: 3, effect: "不在森林的玩家-2血", pts: 15 },
+            { level: 3, hp: 12, att: 3, money: 1, energy: 3, blood: 0, effect: "血減半時，攻擊力+1", pts: 15 },
+            { level: 3, hp: 12, att: 4, money: 0, energy: 1, blood: 2, effect: "玩家防禦力5以上先攻", pts: 16 },
+            { level: 3, hp: 11, att: 3, money: 2, energy: 2, blood: 0, effect: "此回合沒有殺怪的玩家-2分", pts: 14 },
+            { level: 3, hp: 11, att: 5, money: 2, energy: 1, blood: 1, effect: "每次玩家攻擊-1體力", pts: 16 },
+            { level: 3, hp: 11, att: 4, money: 1, energy: 3, blood: 0, effect: "玩家需多-3體力來攻擊此怪獸", pts: 15 },
+            { level: 3, hp: 11, att: 4, money: 2, energy: 2, blood: 0, effect: "死亡時，玩家及在森林裡的玩家-1血", pts: 15 },
+            { level: 3, hp: 11, att: 5, money: 1, energy: 0, blood: 2, effect: "玩家防禦力4以上先攻", pts: 16 },
+            { level: 3, hp: 10, att: 4, money: 3, energy: 1, blood: 0, effect: "這回合其他怪獸+1血", pts: 14 },
+            { level: 3, hp: 10, att: 4, money: 4, energy: 0, blood: 0, effect: "不怕手榴彈、炸彈、炸藥", pts: 14 },
+            { level: 3, hp: 10, att: 4, money: 0, energy: 4, blood: 0, effect: "玩家防禦力4以上先攻", pts: 14 },
+            { level: 3, hp: 10, att: 5, money: 2, energy: 1, blood: 0, effect: "玩家受傷最多獲得4經驗", pts: 16 }
+        ];
+
+        // Organize by level and add index for unique identification
+        const organized = { 1: [], 2: [], 3: [] };
+        monsterData.forEach((monster, index) => {
+            monster.index = index; // Add unique index for tracking
+            organized[monster.level].push(monster);
+        });
+
+        return organized;
+    }
+
+    selectRandomAvailableMonster(level) {
+        // Get all monsters of the specified level
+        const monsters = this.monsters[level] || [];
+        
+        // Filter out defeated monsters
+        const availableMonsters = monsters.filter(monster => {
+            const monsterId = `L${level}-${monster.index}`;
+            return !this.defeatedMonsters.has(monsterId);
+        });
+
+        if (availableMonsters.length === 0) {
+            console.warn(`No available monsters for level ${level}`);
+            return null;
+        }
+
+        // Select random monster from available ones
+        const randomIndex = Math.floor(Math.random() * availableMonsters.length);
+        return { ...availableMonsters[randomIndex] }; // Return a copy
+    }
+
+    showMonsterSelectionUI(monster, playerId) {
+        const player = this.players.find(p => p.id === playerId);
+        
+        // Update all display elements with monster data
+        document.getElementById('monster-level-display').textContent = monster.level;
+        
+        // Special HP display: show original HP and battle HP if apprentice is in Forest
+        const originalHp = monster.maxHp || monster.hp; // Use maxHp if available, otherwise current hp
+        const battleHp = monster.hp; // This should be the actual HP they'll face in battle
+        
+        const hpDisplay = document.getElementById('monster-hp-display');
+        if (player && player.tokens.apprentice === 7 && originalHp !== battleHp) {
+            // Apprentice is in Forest and HP is reduced - show both values
+            hpDisplay.innerHTML = `${originalHp} → ${battleHp}`;
+            hpDisplay.classList.add('hp-bonus');
+        } else {
+            // Normal display
+            hpDisplay.textContent = monster.hp;
+            hpDisplay.classList.remove('hp-bonus');
+        }
+        
+        document.getElementById('monster-att-display').textContent = monster.att;
+        document.getElementById('monster-money-display').textContent = monster.money;
+        document.getElementById('monster-energy-display').textContent = monster.energy;
+        document.getElementById('monster-blood-display').textContent = monster.blood;
+        document.getElementById('monster-pts-display').textContent = monster.pts;
+        document.getElementById('monster-effect-display').textContent = monster.effect;
+
+        // Enable/disable Change button based on player's EP
+        const changeButton = document.getElementById('change-monster-btn');
+        if (player && player.resources.ep > 0) {
+            changeButton.disabled = false;
+            changeButton.textContent = `Change (-1 EP)`;
+        } else {
+            changeButton.disabled = true;
+            changeButton.textContent = `Change (No EP)`;
+        }
+
+        // Show the modal
+        document.getElementById('monster-selection-modal').style.display = 'flex';
+    }
+
+    changeMonster() {
+        const playerId = this.currentMonsterPlayer;
+        const player = this.players.find(p => p.id === playerId);
+        
+        if (!player || player.resources.ep <= 0) {
+            console.log('Player has no EP to change monster');
+            return;
+        }
+
+        // Deduct 1 EP
+        player.resources.ep -= 1;
+        this.monsterSelectionEPSpent += 1;
+
+        // Select new random monster of the same level as current monster
+        const currentMonsterLevel = this.currentSelectedMonster.level;
+        const newMonster = this.selectRandomAvailableMonster(currentMonsterLevel);
+        if (newMonster) {
+            // Apply the same bonuses as the original monster selection
+            newMonster.maxHp = newMonster.hp;
+            
+            // Check if player's apprentice is also in Forest for -1 HP bonus
+            if (player.tokens.apprentice === 7) { // Forest location
+                newMonster.hp = Math.max(1, newMonster.hp - 1);
+                console.log(`${player.name}'s apprentice in Forest - new monster HP reduced by 1 (${newMonster.maxHp} -> ${newMonster.hp})`);
+            }
+            
+            this.currentSelectedMonster = newMonster;
+            this.showMonsterSelectionUI(newMonster, playerId);
+            
+            // Update resource display to show EP reduction
+            this.updateResourceDisplay();
+            
+            this.addLogEntry(
+                `${player.name} spent 1 EP to change monster`,
+                'system'
+            );
+        }
+    }
+
+    confirmMonsterSelection() {
+        // Hide the monster selection modal
+        document.getElementById('monster-selection-modal').style.display = 'none';
+        
+        // Continue with battle using the selected monster
+        const playerId = this.currentMonsterPlayer;
+        const monster = this.currentSelectedMonster;
+        
+        if (!monster) {
+            console.error('No monster selected for battle');
+            return;
+        }
+
+        // Start the battle
+        this.startMonsterBattle(playerId, monster, this.selectedPets);
+    }
+
+    markMonsterDefeated(monster) {
+        const monsterId = `L${monster.level}-${monster.index}`;
+        this.defeatedMonsters.add(monsterId);
+        console.log(`Monster ${monsterId} marked as defeated`);
     }
     
     selectMonsterLevel(playerId, level) {
@@ -4798,26 +4951,41 @@ class Game {
             return;
         }
         
-        // Hide monster selection modal
+        // Hide monster level selection modal
         document.getElementById('monster-modal').style.display = 'none';
         
-        // Deduct EP
+        // Deduct EP for battle
         this.modifyResource(playerId, 'ep', -totalEPCost);
+        this.monsterSelectionEPSpent = 0; // Reset EP spending tracker
         
-        // Select random monster from the level
-        const monsters = this.monsters[monsterLevel];
-        const randomIndex = Math.floor(Math.random() * monsters.length);
-        const selectedMonster = { ...monsters[randomIndex] };
-        selectedMonster.maxHp = selectedMonster.hp; // Store original HP
+        // Select random available monster from the level
+        const selectedMonster = this.selectRandomAvailableMonster(monsterLevel);
+        if (!selectedMonster) {
+            alert(`No available monsters at level ${monsterLevel}!`);
+            return;
+        }
+
+        // Store original HP
+        selectedMonster.maxHp = selectedMonster.hp;
         
         // Check if player's apprentice is also in Forest for -1 HP bonus
         if (player.tokens.apprentice === 7) { // Forest location
             selectedMonster.hp = Math.max(1, selectedMonster.hp - 1);
             console.log(`${player.name}'s apprentice in Forest - monster HP reduced by 1 (${selectedMonster.maxHp} -> ${selectedMonster.hp})`);
         }
+
+        // Store selected monster
+        this.currentSelectedMonster = selectedMonster;
         
-        // Start battle with selected pets
-        this.startMonsterBattle(playerId, selectedMonster, this.selectedPets);
+        // Check if this is a bot player - if so, skip monster selection UI
+        if (player.isBot) {
+            // Bots go directly to battle without monster selection UI
+            console.log(`Bot ${player.name} skipping monster selection UI`);
+            this.startMonsterBattle(playerId, selectedMonster, this.selectedPets);
+        } else {
+            // Human players see the monster selection UI
+            this.showMonsterSelectionUI(selectedMonster, playerId);
+        }
     }
     
     startMonsterBattle(playerId, monster, selectedPets = {level1: 0, level2: 0, level3: 0}) {
@@ -5762,6 +5930,9 @@ class Game {
         const monster = battle.monster;
         
         this.logBattleAction(`${player.name} defeats the Level ${monster.level} monster!`);
+        
+        // Mark monster as defeated so it can't be selected again
+        this.markMonsterDefeated(monster);
         
         // Check for Knife Level 3 Power: Double rewards
         const knifeDoubleRewards = player.weapon.name === 'Knife' && player.weapon.powerTrackPosition >= 7;

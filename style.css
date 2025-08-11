@@ -2273,6 +2273,96 @@ button {
     min-height: 30px;
 }
 
+/* Monster Selection Modal Styles */
+.monster-info {
+    display: grid;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.monster-stats p,
+.monster-rewards p {
+    margin: 5px 0;
+    font-size: 14px;
+}
+
+.monster-effect {
+    padding: 10px;
+    background: #f8f9fa;
+    border-left: 4px solid #007bff;
+    border-radius: 4px;
+}
+
+.monster-effect h4 {
+    margin-top: 0;
+    color: #007bff;
+}
+
+.effect-text {
+    font-size: 13px;
+    color: #495057;
+    font-style: italic;
+    min-height: 20px;
+}
+
+.monster-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+.monster-actions button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.monster-actions button:first-child {
+    background-color: #6c757d;
+    color: white;
+}
+
+.monster-actions button:first-child:hover:not(:disabled) {
+    background-color: #5a6268;
+}
+
+.monster-actions button:first-child:disabled {
+    background-color: #e9ecef;
+    color: #6c757d;
+    cursor: not-allowed;
+}
+
+.monster-actions button:last-child {
+    background-color: #28a745;
+    color: white;
+}
+
+.monster-actions button:last-child:hover {
+    background-color: #218838;
+}
+
+.monster-rewards h4,
+.monster-effect h4 {
+    font-size: 16px;
+    margin-bottom: 10px;
+    color: #343a40;
+}
+
+/* HP bonus display styling */
+#monster-hp-display {
+    font-weight: bold;
+}
+
+/* Style the HP reduction display when apprentice bonus applies */
+#monster-hp-display.hp-bonus {
+    color: #28a745; /* Green color for bonus */
+    font-size: 15px;
+}
+
 /* Hide log on smaller screens */
 @media (max-width: 1400px) {
     .game-log-section {
