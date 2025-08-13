@@ -194,17 +194,17 @@ class BotPlayer {
     adjustForestEntries(entries, player, gameState) {
         // Full EP bonus
         if (player.resources.ep === player.maxResources.ep) {
-            entries[7] += 1;
+            entries[7] += 3; // Changed from +1 to +3
         }
         
-        // Combat item bonuses (new simpler rules)
+        // Combat item bonuses (updated values)
         const grenades = player.inventory.filter(item => item.name === 'Grenade').length;
         const bombs = player.inventory.filter(item => item.name === 'Bomb').length;
         const dynamites = player.inventory.filter(item => item.name === 'Dynamite').length;
         
-        if (grenades > 0) entries[7] += 1;
-        if (bombs > 0) entries[7] += 2;
-        if (dynamites > 0) entries[7] += 3;
+        if (grenades > 0) entries[7] += 2; // Changed from +1 to +2
+        if (bombs > 0) entries[7] += 4; // Changed from +2 to +4
+        if (dynamites > 0) entries[7] += 6; // Changed from +3 to +6
         
         // Check if bot has the lowest score
         if (gameState && gameState.players) {
@@ -212,7 +212,7 @@ class BotPlayer {
             const botScore = player.score || 0;
             const lowestScore = Math.min(...scores);
             if (botScore <= lowestScore) {
-                entries[7] += 1; // Bonus for having lowest score
+                entries[7] += 4; // Changed from +1 to +4 for having lowest score
             }
         }
         
@@ -1048,7 +1048,7 @@ class Game {
             { name: 'Knife', reqExpAttack: 3, reqExpDefense: 3, capacity: 10, initialMoney: 8, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 0, 1, 1], priority: 2,
               lv1Power: '人氣獎勵token不下降', lv2Power: '可將一次的攻擊力x2', lv3Power: '打贏的資源獎勵x2', preferLocation: 'plaza' },
             { name: 'Gloves', reqExpAttack: 4, reqExpDefense: 3, capacity: 6, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 0, 1, 1], priority: 7,
-              lv1Power: '基礎攻擊力=1，每次受傷攻擊力+1', lv2Power: '回合開始+1血袋', lv3Power: '每損失1hp，攻擊力+1', preferLocation: 'hospital' }
+              lv1Power: '基礎攻擊力=1，當hp少於一半時攻擊力+1', lv2Power: '回合開始+1血袋', lv3Power: '每次遭受攻擊而扣血，攻擊力+1', preferLocation: 'hospital' }
         ];
         
         this.locations = [
@@ -1217,8 +1217,9 @@ class Game {
                     return [6, 4];
                 case 'hospital':
                 case 'dojo':
-                case 'plaza':
                     return [4, 2];
+                case 'plaza':
+                    return [5, 2]; // Updated from [4, 2] to [5, 2]
                 default:
                     return [];
             }
@@ -1232,8 +1233,9 @@ class Game {
                     return [7, 5, 4]; // 7 with 1 token, 5 with 2 tokens, 4 with 3+ tokens
                 case 'hospital':
                 case 'dojo':
-                case 'plaza':
                     return [5, 4, 3]; // 5 with 1 token, 4 with 2 tokens, 3 with 3+ tokens
+                case 'plaza':
+                    return [5, 3, 2]; // Updated to [5, 3, 2]
                 default:
                     return [];
             }
@@ -1247,8 +1249,9 @@ class Game {
                     return [8, 6, 5, 4]; // 8 with 1 token, 6 with 2 tokens, 5 with 3 tokens, 4 with 4+ tokens
                 case 'hospital':
                 case 'dojo':
-                case 'plaza':
                     return [6, 5, 4, 3]; // 6 with 1 token, 5 with 2 tokens, 4 with 3 tokens, 3 with 4+ tokens
+                case 'plaza':
+                    return [6, 4, 3, 2]; // Updated from [6, 5, 4, 3] to [6, 4, 3, 2]
                 default:
                     return [];
             }
@@ -2479,12 +2482,16 @@ class Game {
         apprenticeCardsContainer.style.display = 'flex';
         
         console.log('Cards created and forced visible - Hunter:', hunterCardsContainer.children.length, 'Apprentice:', apprenticeCardsContainer.children.length);
+        
+        // Update Forest button status based on EP and ammunition
+        this.updateForestButtonStatus();
     }
     
     createCard(location, tokenType) {
         const card = document.createElement('div');
-        card.className = 'location-card';
+        card.className = `location-card ${tokenType}-card`;
         card.dataset.locationId = location.id;
+        card.dataset.location = location.id; // Add data-location attribute for Forest button queries
         card.dataset.tokenType = tokenType;
         card.textContent = location.name;
         
@@ -2541,6 +2548,53 @@ class Game {
         card.addEventListener('click', this.selectCard.bind(this, location.id, tokenType));
         
         return card;
+    }
+    
+    updateForestButtonStatus() {
+        // Update Forest button enable/disable status based on current player's EP and ammunition
+        if (this.roundPhase !== 'selection' || !this.currentPlayer) return;
+        
+        const forestCards = document.querySelectorAll('.hunter-card[data-location="7"]');
+        forestCards.forEach(card => {
+            // Check EP requirement
+            const hasEnoughEP = this.currentPlayer.resources.ep >= 2;
+            
+            // Check ammunition for Rifle and Plasma weapons
+            let hasAmmo = true;
+            if (this.currentPlayer.weapon.name === 'Rifle') {
+                const bulletCount = this.currentPlayer.inventory.filter(inv => inv.name === 'Bullet').length;
+                hasAmmo = bulletCount > 0 || this.currentPlayer.weapon.powerTrackPosition >= 7; // Rifle Lv3 has infinite ammo
+            } else if (this.currentPlayer.weapon.name === 'Plasma') {
+                const batteryCount = this.currentPlayer.inventory.filter(inv => inv.name === 'Battery').length;
+                hasAmmo = batteryCount > 0 || this.currentPlayer.weapon.powerTrackPosition >= 7; // Plasma Lv3 has infinite ammo
+            }
+            
+            // Update card status
+            if (!hasEnoughEP) {
+                card.classList.add('disabled');
+                card.title = 'Requires at least 2 EP';
+                card.style.backgroundColor = '#ecf0f1';
+                card.style.color = '#95a5a6';
+                card.style.border = '3px solid #bdc3c7';
+                card.style.cursor = 'not-allowed';
+            } else if (!hasAmmo) {
+                // Note: Players can still enter without ammo but will get warning popup
+                card.classList.remove('disabled');
+                card.title = 'Warning: No ammunition available';
+                card.style.cursor = 'pointer';
+            } else {
+                card.classList.remove('disabled');
+                card.title = '';
+                card.style.cursor = 'pointer';
+            }
+            
+            // Apply appropriate colors if not selected
+            if (!card.classList.contains('selected') && !card.classList.contains('disabled')) {
+                card.style.backgroundColor = '#ecf0f1';
+                card.style.color = '#2c3e50';
+                card.style.border = '3px solid #95a5a6';
+            }
+        });
     }
     
     getRandomPlayerColors(playerCount = 2) {
@@ -3170,6 +3224,11 @@ class Game {
                 upgradeButton.disabled = true;
                 upgradeButton.title = `${resourceType.toUpperCase()} is at maximum (10)`;
             }
+        }
+        
+        // Update Forest button if EP was upgraded for current player during selection phase
+        if (resourceType === 'ep' && this.roundPhase === 'selection' && player.id === this.currentPlayer?.id) {
+            this.updateLocationCardStates();
         }
         
         this.updateResourceDisplay();
@@ -4624,10 +4683,18 @@ class Game {
             // roll is 1-6, array index is 0-5
             let baseDamage = player.weapon.damage[roll - 1];
             
-            // Gloves Powers: Enhance damage values 5, 6 based on glovesPowerLevel
-            if (player.weapon.name === 'Gloves' && player.weapon.powerTrackPosition >= 1 && 
-                this.currentBattle && (roll === 5 || roll === 6)) {
-                baseDamage = 1 + this.currentBattle.glovesPowerLevel;
+            // Gloves Powers: Enhance all damage based on conditions
+            if (player.weapon.name === 'Gloves' && player.weapon.powerTrackPosition >= 1 && this.currentBattle) {
+                // Level 1: +1 attack when HP is below half of max HP
+                if (player.weapon.powerTrackPosition >= 1 && player.weapon.powerTrackPosition < 7) {
+                    if (player.resources.hp < player.maxResources.hp / 2) {
+                        baseDamage += 1;
+                    }
+                }
+                // Level 3: +1 attack for each time damaged (cumulative)
+                else if (player.weapon.powerTrackPosition >= 7) {
+                    baseDamage += this.currentBattle.glovesPowerLevel;
+                }
             }
             
             totalDamage += baseDamage;
@@ -5784,17 +5851,11 @@ class Game {
             this.modifyResource(battle.playerId, 'exp', finalDamage);
             this.logBattleAction(`${player.name} gains ${finalDamage} EXP from taking damage!`);
             
-            // Gloves Power: Increase damage values based on damage taken
-            if (player.weapon.name === 'Gloves' && player.weapon.powerTrackPosition >= 1) {
-                if (player.weapon.powerTrackPosition >= 7) {
-                    // Level 3: +1 power for each point of damage taken (overrides Level 1)
-                    battle.glovesPowerLevel += finalDamage;
-                    this.logBattleAction(`Gloves Lv3 Power: Damage values [5,6] increased to ${1 + battle.glovesPowerLevel}!`);
-                } else {
-                    // Level 1: +1 power for being damaged (regardless of damage amount)
-                    battle.glovesPowerLevel += 1;
-                    this.logBattleAction(`Gloves Lv1 Power: Damage values [5,6] increased to ${1 + battle.glovesPowerLevel}!`);
-                }
+            // Gloves Power: Level 3 only - increase attack for each time damaged
+            if (player.weapon.name === 'Gloves' && player.weapon.powerTrackPosition >= 7 && finalDamage > 0) {
+                // Level 3: +1 attack for each time damaged (cumulative)
+                battle.glovesPowerLevel += 1;
+                this.logBattleAction(`Gloves Lv3 Power: Attack increased! (+${battle.glovesPowerLevel} total attack bonus)`);
             }
         }
         
@@ -6958,6 +7019,12 @@ class Game {
             this.updateBulletDisplay(player.id);
         });
         
+        // Update Forest button if buying ammunition for current player
+        if (this.currentStorePlayer === this.currentPlayer?.id && 
+            (itemName === 'Bullet' || itemName === 'Battery')) {
+            this.updateForestButtonStatus();
+        }
+        
         // Update battery displays for all players
         this.players.forEach(player => {
             this.updateBatteryDisplay(player.id);
@@ -7823,6 +7890,11 @@ class Game {
         if (item.name === 'Beer') {
             if (player.resources.ep >= player.maxResources.ep) return;
             player.resources.ep = Math.min(player.resources.ep + 1, player.maxResources.ep);
+            
+            // Update Forest button status if this is the current player
+            if (player.id === this.currentPlayer?.id) {
+                this.updateForestButtonStatus();
+            }
         } else if (item.name === 'Blood Bag') {
             if (player.resources.hp >= player.maxResources.hp) return;
             player.resources.hp = Math.min(player.resources.hp + 1, player.maxResources.hp);
@@ -7944,6 +8016,11 @@ class Game {
             // Update EP display in battle UI if in battle
             if (this.currentBattle && this.currentBattle.playerId === playerId) {
                 document.getElementById('battle-player-ep').textContent = `${player.resources.ep}/${player.maxResources.ep}`;
+            }
+            
+            // Update Forest button status if this is the current player
+            if (player.id === this.currentPlayer?.id) {
+                this.updateForestButtonStatus();
             }
         } else if (itemName === 'Blood Bag') {
             // Blood Bag: +1 HP (only if not at max)
