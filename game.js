@@ -1028,12 +1028,12 @@ class Game {
     constructor() {
         this.weapons = [
             { name: 'Bat', reqExpAttack: 4, reqExpDefense: 3, capacity: 6, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 1, 1, 1], priority: 3, 
-              lv1Power: '徒弟在資源區域撞其他獵人+1區域資源', lv2Power: '回合開始+1血袋或+1體力', lv3Power: '命中的骰子再骰，直到沒有骰子命中，傷害為所有傷害加總', preferLocation: 'plaza' },
+              lv1Power: '徒弟在資源區域撞其他獵人+1區域資源', lv2Power: '回合開始+1生命或+1體力', lv3Power: '命中的骰子再骰，直到沒有骰子命中，傷害為所有傷害加總', preferLocation: 'plaza' },
             { name: 'Katana', reqExpAttack: 5, reqExpDefense: 3, capacity: 4, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 1, 1, 1, 1], priority: 8,
               lv1Power: '1血袋換1體力', lv2Power: '回合開始+1經驗', lv3Power: '攻擊骰總點數大於27則一擊必殺', preferLocation: 'dojo' },
             { name: 'Rifle', reqExpAttack: 6, reqExpDefense: 3, capacity: 8, initialMoney: 2, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 1, 2, 2], priority: 10,
               lv1Power: '可購買子彈:2$，每次攻擊花費1子彈', lv2Power: '回合開始+2$', lv3Power: '商店價格-1$', preferLocation: 'work site' },
-            { name: 'Plasma', reqExpAttack: 7, reqExpDefense: 3, capacity: 8, initialMoney: 2, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 2, 2, 2], priority: 11,
+            { name: 'Plasma', reqExpAttack: 7, reqExpDefense: 3, capacity: 8, initialMoney: 3, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 2, 2, 2], priority: 11,
               lv1Power: '可購買電池:3$，每次攻擊花費1電池', lv2Power: '回合開始+3$', lv3Power: '無限電池', preferLocation: 'work site' },
             { name: 'Chain', reqExpAttack: 4, reqExpDefense: 3, capacity: 6, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 1, 1, 1], priority: 6,
               lv1Power: '怪獸於血量3以下即可收服', lv2Power: '回合開始+2啤酒', lv3Power: '寵物攻擊x2', preferLocation: 'bar' },
@@ -7690,26 +7690,46 @@ class Game {
         
         // Apply weapon power effects at round start
         this.players.forEach(player => {
-            // Bat Level 2 Power: Choice of +1 blood bag or +1 EP at round start
+            // Bat Level 2 Power: Choice of +1 HP or +1 EP at round start
             if (player.weapon.name === 'Bat' && player.weapon.powerTrackPosition >= 3) {
-                if (player.isBot) {
-                    // Bot logic: choose based on HP/EP ratio - pick the lower resource
+                const maxHp = player.maxHP || 10;
+                const maxEp = player.maxEP || 10;
+                const hpFull = player.resources.hp >= maxHp;
+                const epFull = player.resources.ep >= maxEp;
+                
+                if (hpFull && epFull) {
+                    // Both resources are full, no bonus
+                    console.log(`Bat Lv2 Power: ${player.name} has full HP and EP, no bonus received`);
+                    this.addLogEntry(`🦇 ${player.name}'s Bat Lv2 Power: Both HP and EP are full, no bonus`, 'power');
+                } else if (player.isBot) {
+                    // Bot logic: choose based on what's available and HP/EP ratio
                     let choice;
-                    if (player.resources.hp < player.resources.ep) {
-                        choice = 'bloodBag';
-                    } else if (player.resources.ep < player.resources.hp) {
+                    if (hpFull) {
                         choice = 'ep';
+                    } else if (epFull) {
+                        choice = 'hp';
                     } else {
-                        // Equal HP and EP, choose randomly
-                        choice = Math.random() < 0.5 ? 'ep' : 'bloodBag';
+                        // Neither is full, pick the lower resource
+                        const hpRatio = player.resources.hp / maxHp;
+                        const epRatio = player.resources.ep / maxEp;
+                        if (hpRatio < epRatio) {
+                            choice = 'hp';
+                        } else if (epRatio < hpRatio) {
+                            choice = 'ep';
+                        } else {
+                            // Equal ratios, choose randomly
+                            choice = Math.random() < 0.5 ? 'hp' : 'ep';
+                        }
                     }
                     
-                    if (choice === 'ep') {
-                        this.modifyResource(player.id, 'ep', 1);
-                        console.log(`Bat Lv2 Power: Bot ${player.name} chooses +1 EP at round start (HP: ${player.resources.hp}, EP: ${player.resources.ep})`);
+                    if (choice === 'hp') {
+                        this.modifyResource(player.id, 'hp', 1);
+                        console.log(`Bat Lv2 Power: Bot ${player.name} chooses +1 HP at round start (HP: ${player.resources.hp}/${maxHp}, EP: ${player.resources.ep}/${maxEp})`);
+                        this.addLogEntry(`🦇 ${player.name} chooses +1 HP from Bat Lv2 Power`, 'power');
                     } else {
-                        this.addItemToInventory(player.id, 'Blood Bag', 1);
-                        console.log(`Bat Lv2 Power: Bot ${player.name} chooses +1 blood bag at round start (HP: ${player.resources.hp}, EP: ${player.resources.ep})`);
+                        this.modifyResource(player.id, 'ep', 1);
+                        console.log(`Bat Lv2 Power: Bot ${player.name} chooses +1 EP at round start (HP: ${player.resources.hp}/${maxHp}, EP: ${player.resources.ep}/${maxEp})`);
+                        this.addLogEntry(`🦇 ${player.name} chooses +1 EP from Bat Lv2 Power`, 'power');
                     }
                 } else {
                     // Human player: show choice dialog
@@ -8307,6 +8327,18 @@ class Game {
         const player = this.players.find(p => p.id === playerId);
         if (!player) return;
         
+        const maxHp = player.maxHP || 10;
+        const maxEp = player.maxEP || 10;
+        const hpFull = player.resources.hp >= maxHp;
+        const epFull = player.resources.ep >= maxEp;
+        
+        // If both are full, no choice needed
+        if (hpFull && epFull) {
+            console.log(`Bat Lv2 Power: ${player.name} has full HP and EP, no bonus received`);
+            this.addLogEntry(`🦇 ${player.name}'s Bat Lv2 Power: Both HP and EP are full, no bonus`, 'power');
+            return;
+        }
+        
         // Create a modal dialog for the choice
         const modal = document.createElement('div');
         modal.className = 'modal-overlay';
@@ -8334,16 +8366,28 @@ class Game {
             color: #ecf0f1;
         `;
         
+        // Build button HTML based on what's available
+        let buttonHtml = '';
+        if (!hpFull) {
+            buttonHtml += `
+                <button id="bat-choose-hp" style="margin: 10px; padding: 10px 20px; font-size: 16px; cursor: pointer;">
+                    ❤️ +1 HP (${player.resources.hp}/${maxHp})
+                </button>
+            `;
+        }
+        if (!epFull) {
+            buttonHtml += `
+                <button id="bat-choose-ep" style="margin: 10px; padding: 10px 20px; font-size: 16px; cursor: pointer;">
+                    ⚡ +1 EP (${player.resources.ep}/${maxEp})
+                </button>
+            `;
+        }
+        
         dialog.innerHTML = `
             <h3>Bat Level 2 Power</h3>
             <p>${player.name}, choose your reward:</p>
             <div style="margin: 20px 0;">
-                <button id="bat-choose-ep" style="margin: 10px; padding: 10px 20px; font-size: 16px; cursor: pointer;">
-                    ⚡ +1 EP
-                </button>
-                <button id="bat-choose-blood" style="margin: 10px; padding: 10px 20px; font-size: 16px; cursor: pointer;">
-                    🩸 +1 Blood Bag (HP)
-                </button>
+                ${buttonHtml}
             </div>
         `;
         
@@ -8351,23 +8395,46 @@ class Game {
         document.body.appendChild(modal);
         
         // Add event listeners
-        document.getElementById('bat-choose-ep').onclick = () => {
-            this.modifyResource(playerId, 'ep', 1);
-            console.log(`Bat Lv2 Power: ${player.name} chooses +1 EP at round start`);
-            this.addLogEntry(`🦇 ${player.name} chooses +1 EP from Bat Lv2 Power`, 'power');
-            document.body.removeChild(modal);
-            this.updateResourceDisplay();
-            this.updateInventoryDisplay(playerId);
-        };
+        if (!hpFull) {
+            const hpBtn = document.getElementById('bat-choose-hp');
+            if (hpBtn) {
+                hpBtn.onclick = () => {
+                    this.modifyResource(playerId, 'hp', 1);
+                    console.log(`Bat Lv2 Power: ${player.name} chooses +1 HP at round start`);
+                    this.addLogEntry(`🦇 ${player.name} chooses +1 HP from Bat Lv2 Power`, 'power');
+                    document.body.removeChild(modal);
+                    this.updateResourceDisplay();
+                    this.updateInventoryDisplay(playerId);
+                };
+            }
+        }
         
-        document.getElementById('bat-choose-blood').onclick = () => {
-            this.addItemToInventory(playerId, 'Blood Bag', 1);
-            console.log(`Bat Lv2 Power: ${player.name} chooses +1 blood bag at round start`);
-            this.addLogEntry(`🦇 ${player.name} chooses +1 Blood Bag from Bat Lv2 Power`, 'power');
-            document.body.removeChild(modal);
-            this.updateResourceDisplay();
-            this.updateInventoryDisplay(playerId);
-        };
+        if (!epFull) {
+            const epBtn = document.getElementById('bat-choose-ep');
+            if (epBtn) {
+                epBtn.onclick = () => {
+                    this.modifyResource(playerId, 'ep', 1);
+                    console.log(`Bat Lv2 Power: ${player.name} chooses +1 EP at round start`);
+                    this.addLogEntry(`🦇 ${player.name} chooses +1 EP from Bat Lv2 Power`, 'power');
+                    document.body.removeChild(modal);
+                    this.updateResourceDisplay();
+                    this.updateInventoryDisplay(playerId);
+                };
+            }
+        }
+        
+        // Auto-select if only one option is available
+        if (hpFull && !epFull) {
+            // Only EP available, auto-select it
+            setTimeout(() => {
+                document.getElementById('bat-choose-ep')?.click();
+            }, 100);
+        } else if (epFull && !hpFull) {
+            // Only HP available, auto-select it
+            setTimeout(() => {
+                document.getElementById('bat-choose-hp')?.click();
+            }, 100);
+        }
     }
 }
 
