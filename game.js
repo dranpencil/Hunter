@@ -1083,6 +1083,9 @@ class Game {
         this.bots = []; // Array to hold bot instances
         this.botCount = 0; // Number of bots in the game
         
+        // Selection phase batching
+        this.pendingSelectionLogs = []; // Store selection messages to display after all players select
+        
         // Data collection and automation properties
         this.isAutomatedMode = false; // Flag for automated game running
         this.isDataCollectionMode = false; // Flag for data collection mode
@@ -1170,6 +1173,7 @@ class Game {
         
         // Initialize the game UI
         this.roundPhase = 'selection';
+        this.pendingSelectionLogs = []; // Clear any pending logs
         this.init();
         
         // Ensure location displays are updated after UI initialization
@@ -1602,27 +1606,25 @@ class Game {
         
         console.log(`Bot ${playerId + 1} selected: Hunter→${hunterLocation}, Apprentice→${apprenticeLocation}`);
         
+        // Store bot selection for batch logging
+        const locationNames = {
+            1: 'Work Site',
+            2: 'Bar',
+            3: 'Station',
+            4: 'Hospital',
+            5: 'Dojo',
+            6: 'Plaza',
+            7: 'Forest'
+        };
+        this.pendingSelectionLogs.push({
+            message: `📍 <strong>${player.name}</strong> selected: Hunter → ${locationNames[hunterLocation]}, Apprentice → ${locationNames[apprenticeLocation]}`,
+            type: 'selection'
+        });
+        
         // Update UI to show bot selections
         this.updateLocationCardStates();
         this.updateSelectionDisplay();
         this.checkSelectionComplete();
-        
-        // Show bot's selections in the status message
-        if (!this.isAutomatedMode) {
-            const statusElement = document.getElementById('status-message');
-            if (statusElement) {
-                const locationNames = {
-                    1: 'Work Site',
-                    2: 'Bar',
-                    3: 'Station',
-                    4: 'Hospital',
-                    5: 'Dojo',
-                    6: 'Plaza',
-                    7: 'Forest'
-                };
-                statusElement.innerHTML = `<strong>${player.name}</strong> selected: Hunter → ${locationNames[hunterLocation]}, Apprentice → ${locationNames[apprenticeLocation]}`;
-            }
-        }
         
         // Auto-confirm selection for bot players
         if (this.isAutomatedMode) {
@@ -2166,6 +2168,7 @@ class Game {
         // Start the game
         this.roundPhase = 'selection';
         this.currentPlayerIndex = 0;
+        this.pendingSelectionLogs = []; // Clear any pending logs
         
         // Start with bot selections if first player is a bot
         if (this.players[0].isBot) {
@@ -2240,6 +2243,7 @@ class Game {
         playerBoardsContainer.className = `player-boards players-${playerCount}`;
         
         this.roundPhase = 'selection';
+        this.pendingSelectionLogs = []; // Clear any pending logs
         this.init();
         
         // Force immediate update of main game board location displays (same as Quick Play)
@@ -2790,22 +2794,33 @@ class Game {
             return;
         }
         
-        // Log player selections
-        const hunterLocationName = this.getLocationName(this.currentPlayer.selectedCards.hunter);
-        const apprenticeLocationName = this.getLocationName(this.currentPlayer.selectedCards.apprentice);
-        this.addLogEntry(
-            `📍 <strong>${this.currentPlayer.name}</strong> selected: Hunter → ${hunterLocationName}, Apprentice → ${apprenticeLocationName}`,
-            'selection'
-        );
+        // Store the selection message for batch logging later (only for human players, bots already added theirs)
+        if (!this.currentPlayer.isBot) {
+            const hunterLocationName = this.getLocationName(this.currentPlayer.selectedCards.hunter);
+            const apprenticeLocationName = this.getLocationName(this.currentPlayer.selectedCards.apprentice);
+            this.pendingSelectionLogs.push({
+                message: `📍 <strong>${this.currentPlayer.name}</strong> selected: Hunter → ${hunterLocationName}, Apprentice → ${apprenticeLocationName}`,
+                type: 'selection'
+            });
+        }
         
         // Move to next player
         this.currentPlayerIndex++;
         
         if (this.currentPlayerIndex >= this.players.length) {
-            // All players have made selections, start resource distribution
+            // All players have made selections, log all selections together
             if (this.isAutomatedMode) {
                 console.log(`[${new Date().toISOString()}] All players completed selections, moving to resource distribution`);
             }
+            
+            // Add all pending selection logs to the game log
+            for (const logEntry of this.pendingSelectionLogs) {
+                this.addLogEntry(logEntry.message, logEntry.type);
+            }
+            
+            // Clear pending logs for next round
+            this.pendingSelectionLogs = [];
+            
             this.startResourceDistribution();
         } else {
             // Next player's turn
@@ -2880,6 +2895,7 @@ class Game {
         // Reset for next round
         this.roundPhase = 'selection';
         this.currentPlayerIndex = 0;
+        this.pendingSelectionLogs = []; // Clear any pending logs
         
         // Clear selections
         this.players.forEach(player => {
@@ -7805,6 +7821,7 @@ class Game {
         // Reset for next round
         this.roundPhase = 'selection';
         this.currentPlayerIndex = 0;
+        this.pendingSelectionLogs = []; // Clear any pending logs
         
         // Clear selections and station choices
         this.stationChoices = {};
