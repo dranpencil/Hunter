@@ -1078,6 +1078,12 @@ class Game {
         this.defeatedMonsters = new Set(); // Track defeated monster IDs
         this.currentSelectedMonster = null; // Current monster shown to player
         this.monsterSelectionEPSpent = 0; // Track EP spent on changing monsters
+        
+        // Monster effect system
+        this.activeMonsterEffects = []; // Track all active effects in the round
+        this.currentMonsterEffect = null; // Track the selected monster's effect
+        this.roundEffectsApplied = false; // Track if round-wide effects have been applied
+        this.forestPlayersThisRound = new Set(); // Track which players are in forest this round
         this.storeItems = this.loadStoreItems(); // Load store items
         this.currentStorePlayer = null; // Track current shopping player
         this.bots = []; // Array to hold bot instances
@@ -3148,8 +3154,25 @@ class Game {
         const player = this.players.find(p => p.id === playerId);
         if (!player) return;
         
-        const newValue = player.resources[resourceType] + amount;
-        player.resources[resourceType] = Math.max(0, Math.min(newValue, player.maxResources[resourceType]));
+        const oldValue = player.resources[resourceType];
+        const newValue = oldValue + amount;
+        const maxValue = player.maxResources[resourceType];
+        const cappedValue = Math.max(0, Math.min(newValue, maxValue));
+        
+        // Log and notify if resources were lost due to cap
+        if (amount > 0 && newValue > maxValue) {
+            const lostAmount = newValue - maxValue;
+            console.log(`${player.name} lost ${lostAmount} ${resourceType} due to max cap of ${maxValue}`);
+            if (resourceType === 'money' || resourceType === 'exp') {
+                this.addLogEntry(`⚠️ ${player.name} reached max ${resourceType} (${maxValue}). Lost ${lostAmount} ${resourceType}!`, 'system');
+                // Show alert for human players only
+                if (!player.isBot && !this.isAutomatedMode) {
+                    alert(`⚠️ Resource Cap Reached!\n\n${player.name} has reached the maximum ${resourceType} limit of ${maxValue}.\n\n${lostAmount} ${resourceType} was lost!`);
+                }
+            }
+        }
+        
+        player.resources[resourceType] = cappedValue;
         
         this.updateResourceDisplay();
     }
@@ -3924,7 +3947,8 @@ class Game {
         const finalEnergy = monster.energy * rewardMultiplier;
         const finalBlood = monster.blood * rewardMultiplier;
         
-        player.resources.money += finalMoney;
+        // Apply resource caps (money max 15, others handled by items)
+        player.resources.money = Math.min(player.maxResources.money, player.resources.money + finalMoney);
         player.resources.beer += finalEnergy; // Monster data uses 'energy' not 'beer'
         player.resources.bloodBag += finalBlood; // Monster data uses 'blood' not 'bloodBag'
         // Split the points between monster and fake blood sources
@@ -4833,44 +4857,44 @@ class Game {
     loadMonsters() {
         // Load monster data from Monster.csv
         // Since we can't directly read CSV files in browser, we'll use the parsed data
-        // In a real implementation, this would read from the CSV file
+        // Effect IDs correspond to the order in Monster.csv
         const monsterData = [
-            { level: 1, hp: 4, att: 1, money: 3, energy: 1, blood: 0, effect: "無", pts: 2 },
-            { level: 1, hp: 4, att: 1, money: 0, energy: 3, blood: 0, effect: "血減半時，攻擊力+1", pts: 3 },
-            { level: 1, hp: 4, att: 2, money: 2, energy: 1, blood: 0, effect: "偷走玩家2金幣", pts: 4 },
-            { level: 1, hp: 3, att: 2, money: 0, energy: 1, blood: 1, effect: "死亡時，玩家及在森林裡的玩家-1血", pts: 3 },
-            { level: 1, hp: 3, att: 1, money: 0, energy: 0, blood: 1, effect: "玩家受傷無法獲得經驗", pts: 2 },
-            { level: 1, hp: 3, att: 2, money: 0, energy: 0, blood: 1, effect: "玩家需多-1體力來攻擊此怪獸", pts: 4 },
-            { level: 1, hp: 3, att: 1, money: 1, energy: 1, blood: 0, effect: "玩家受傷無法獲得經驗", pts: 2 },
-            { level: 1, hp: 3, att: 2, money: 0, energy: 2, blood: 1, effect: "這回合其他怪獸+1血", pts: 2 },
-            { level: 1, hp: 3, att: 3, money: 2, energy: 1, blood: 0, effect: "每次玩家攻擊-1體力", pts: 4 },
-            { level: 1, hp: 2, att: 3, money: 0, energy: 1, blood: 1, effect: "不在森林的玩家-1血", pts: 3 },
-            { level: 1, hp: 2, att: 3, money: 0, energy: 2, blood: 0, effect: "遭受攻擊後若沒有死亡+1血", pts: 4 },
-            { level: 1, hp: 2, att: 3, money: 3, energy: 0, blood: 0, effect: "不怕手榴彈、炸彈", pts: 3 },
-            { level: 2, hp: 7, att: 2, money: 3, energy: 1, blood: 0, effect: "不在森林的玩家-1血", pts: 7 },
-            { level: 2, hp: 7, att: 2, money: 0, energy: 3, blood: 0, effect: "玩家需多-2體力來攻擊此怪獸", pts: 8 },
-            { level: 2, hp: 7, att: 2, money: 2, energy: 1, blood: 0, effect: "不怕手榴彈、炸彈、炸藥", pts: 8 },
-            { level: 2, hp: 7, att: 3, money: 2, energy: 2, blood: 1, effect: "這回合其他怪獸+1血", pts: 6 },
-            { level: 2, hp: 6, att: 2, money: 1, energy: 2, blood: 0, effect: "玩家防禦力2以上先攻", pts: 6 },
-            { level: 2, hp: 6, att: 3, money: 2, energy: 0, blood: 1, effect: "玩家防禦力3以上先攻", pts: 7 },
-            { level: 2, hp: 6, att: 4, money: 3, energy: 1, blood: 0, effect: "每次玩家攻擊-1體力", pts: 8 },
-            { level: 2, hp: 6, att: 3, money: 0, energy: 3, blood: 1, effect: "需要+1體力收服", pts: 6 },
-            { level: 2, hp: 5, att: 4, money: 2, energy: 1, blood: 0, effect: "玩家防禦力2以上先攻", pts: 8 },
-            { level: 2, hp: 5, att: 4, money: 2, energy: 0, blood: 1, effect: "玩家受傷最多獲得3經驗", pts: 7 },
-            { level: 2, hp: 5, att: 4, money: 0, energy: 2, blood: 1, effect: "此回合沒有殺怪的玩家-2分", pts: 7 },
-            { level: 2, hp: 5, att: 3, money: 2, energy: 2, blood: 0, effect: "血減半時，攻擊力+1", pts: 6 },
-            { level: 3, hp: 13, att: 3, money: 0, energy: 0, blood: 3, effect: "不在森林的玩家-2血", pts: 15 },
-            { level: 3, hp: 12, att: 3, money: 1, energy: 3, blood: 0, effect: "血減半時，攻擊力+1", pts: 15 },
-            { level: 3, hp: 12, att: 4, money: 0, energy: 1, blood: 2, effect: "玩家防禦力5以上先攻", pts: 16 },
-            { level: 3, hp: 11, att: 3, money: 2, energy: 2, blood: 0, effect: "此回合沒有殺怪的玩家-2分", pts: 14 },
-            { level: 3, hp: 11, att: 5, money: 2, energy: 1, blood: 1, effect: "每次玩家攻擊-1體力", pts: 16 },
-            { level: 3, hp: 11, att: 4, money: 1, energy: 3, blood: 0, effect: "玩家需多-3體力來攻擊此怪獸", pts: 15 },
-            { level: 3, hp: 11, att: 4, money: 2, energy: 2, blood: 0, effect: "死亡時，玩家及在森林裡的玩家-1血", pts: 15 },
-            { level: 3, hp: 11, att: 5, money: 1, energy: 0, blood: 2, effect: "玩家防禦力4以上先攻", pts: 16 },
-            { level: 3, hp: 10, att: 4, money: 3, energy: 1, blood: 0, effect: "這回合其他怪獸+1血", pts: 14 },
-            { level: 3, hp: 10, att: 4, money: 4, energy: 0, blood: 0, effect: "不怕手榴彈、炸彈、炸藥", pts: 14 },
-            { level: 3, hp: 10, att: 4, money: 0, energy: 4, blood: 0, effect: "玩家防禦力4以上先攻", pts: 14 },
-            { level: 3, hp: 10, att: 5, money: 2, energy: 1, blood: 0, effect: "玩家受傷最多獲得4經驗", pts: 16 }
+            { level: 1, hp: 4, att: 1, money: 3, energy: 1, blood: 0, effect: "無", effectId: 1, pts: 2 },
+            { level: 1, hp: 4, att: 1, money: 0, energy: 3, blood: 0, effect: "血減半時，攻擊力+1", effectId: 2, pts: 3 },
+            { level: 1, hp: 4, att: 2, money: 2, energy: 1, blood: 0, effect: "偷走玩家2金幣", effectId: 3, pts: 4 },
+            { level: 1, hp: 3, att: 2, money: 0, energy: 1, blood: 1, effect: "死亡時，玩家及在森林裡的玩家-1血", effectId: 4, pts: 3 },
+            { level: 1, hp: 3, att: 1, money: 0, energy: 0, blood: 1, effect: "玩家受傷無法獲得經驗", effectId: 5, pts: 2 },
+            { level: 1, hp: 3, att: 2, money: 0, energy: 0, blood: 1, effect: "玩家需多-1體力來攻擊此怪獸", effectId: 6, pts: 4 },
+            { level: 1, hp: 3, att: 1, money: 1, energy: 1, blood: 0, effect: "玩家防禦力1以上先攻", effectId: 7, pts: 2 },
+            { level: 1, hp: 3, att: 2, money: 0, energy: 2, blood: 1, effect: "這回合其他怪獸+1血", effectId: 8, pts: 2 },
+            { level: 1, hp: 3, att: 3, money: 2, energy: 1, blood: 0, effect: "不在森林的玩家-1血", effectId: 9, pts: 4 },
+            { level: 1, hp: 2, att: 3, money: 0, energy: 1, blood: 1, effect: "每次玩家攻擊-1體力", effectId: 10, pts: 3 },
+            { level: 1, hp: 2, att: 3, money: 0, energy: 2, blood: 0, effect: "遭受攻擊後若沒有死亡+1血", effectId: 11, pts: 4 },
+            { level: 1, hp: 2, att: 3, money: 3, energy: 0, blood: 0, effect: "不怕手榴彈", effectId: 12, pts: 3 },
+            { level: 2, hp: 7, att: 2, money: 3, energy: 1, blood: 0, effect: "不在森林的玩家-1血", effectId: 13, pts: 7 },
+            { level: 2, hp: 7, att: 2, money: 0, energy: 3, blood: 0, effect: "玩家需多-1體力來攻擊此怪獸", effectId: 14, pts: 8 },
+            { level: 2, hp: 7, att: 2, money: 2, energy: 1, blood: 0, effect: "不怕手榴彈、炸彈", effectId: 15, pts: 8 },
+            { level: 2, hp: 7, att: 3, money: 2, energy: 2, blood: 1, effect: "這回合其他怪獸+1血", effectId: 16, pts: 6 },
+            { level: 2, hp: 6, att: 2, money: 1, energy: 2, blood: 0, effect: "玩家防禦力3以上先攻", effectId: 17, pts: 6 },
+            { level: 2, hp: 6, att: 3, money: 2, energy: 0, blood: 1, effect: "玩家防禦力2以上先攻", effectId: 18, pts: 7 },
+            { level: 2, hp: 6, att: 4, money: 3, energy: 1, blood: 0, effect: "每次玩家攻擊-1體力", effectId: 19, pts: 8 },
+            { level: 2, hp: 6, att: 3, money: 0, energy: 3, blood: 1, effect: "需要+1體力收服", effectId: 20, pts: 6 },
+            { level: 2, hp: 5, att: 4, money: 2, energy: 1, blood: 0, effect: "玩家防禦力2以上先攻", effectId: 21, pts: 8 },
+            { level: 2, hp: 5, att: 4, money: 2, energy: 0, blood: 1, effect: "玩家受傷最多獲得2經驗", effectId: 22, pts: 7 },
+            { level: 2, hp: 5, att: 4, money: 0, energy: 2, blood: 1, effect: "不在森林的玩家-1分", effectId: 23, pts: 7 },
+            { level: 2, hp: 5, att: 3, money: 2, energy: 2, blood: 0, effect: "血減半時，攻擊力+1", effectId: 24, pts: 6 },
+            { level: 3, hp: 13, att: 3, money: 0, energy: 0, blood: 3, effect: "不在森林的玩家-2血", effectId: 25, pts: 15 },
+            { level: 3, hp: 12, att: 3, money: 1, energy: 3, blood: 0, effect: "血減半時，攻擊力+1", effectId: 26, pts: 15 },
+            { level: 3, hp: 12, att: 4, money: 0, energy: 1, blood: 2, effect: "玩家防禦力3以上先攻", effectId: 27, pts: 16 },
+            { level: 3, hp: 11, att: 3, money: 2, energy: 2, blood: 0, effect: "不在森林的玩家-2分", effectId: 28, pts: 14 },
+            { level: 3, hp: 11, att: 5, money: 2, energy: 1, blood: 1, effect: "每次玩家攻擊-1體力", effectId: 29, pts: 16 },
+            { level: 3, hp: 11, att: 4, money: 1, energy: 3, blood: 0, effect: "玩家需多-2體力來攻擊此怪獸", effectId: 30, pts: 15 },
+            { level: 3, hp: 11, att: 4, money: 2, energy: 2, blood: 0, effect: "死亡時，玩家及在森林裡的玩家-1血", effectId: 31, pts: 15 },
+            { level: 3, hp: 11, att: 5, money: 1, energy: 0, blood: 2, effect: "玩家防禦力4以上先攻", effectId: 32, pts: 16 },
+            { level: 3, hp: 10, att: 4, money: 3, energy: 1, blood: 0, effect: "這回合其他怪獸+1血", effectId: 33, pts: 14 },
+            { level: 3, hp: 10, att: 4, money: 4, energy: 0, blood: 0, effect: "玩家受傷最多獲得4經驗", effectId: 34, pts: 14 },
+            { level: 3, hp: 10, att: 4, money: 0, energy: 4, blood: 0, effect: "玩家防禦力3以上先攻", effectId: 35, pts: 14 },
+            { level: 3, hp: 10, att: 5, money: 2, energy: 1, blood: 0, effect: "不怕手榴彈、炸彈、炸藥", effectId: 36, pts: 16 }
         ];
 
         // Organize by level and add index for unique identification
@@ -4881,6 +4905,271 @@ class Game {
         });
 
         return organized;
+    }
+    
+    // Monster Effect System Functions
+    applySelectionEffect(effectId, playerId) {
+        // Apply effects that trigger when a monster is selected
+        const player = this.players.find(p => p.id === playerId);
+        if (!player) return;
+        
+        switch(effectId) {
+            case 3: // Player loses 2 money
+                const moneyLoss = Math.min(player.resources.money, 2);
+                if (moneyLoss > 0) {
+                    this.modifyResource(player.id, 'money', -moneyLoss);
+                    this.showEffectNotification(
+                        `Monster steals ${moneyLoss} money from ${player.name}!`,
+                        `This monster has the ability to steal money when selected.`
+                    );
+                }
+                break;
+                
+            case 6: // Player needs 1 extra EP to select
+            case 14: // Player needs 1 extra EP to select
+                // This is handled in the selection phase by adding to EP cost
+                break;
+                
+            case 30: // Player needs 2 extra EP to select
+                // This is handled in the selection phase by adding to EP cost
+                break;
+        }
+    }
+    
+    applyRoundEffect(effectId) {
+        // Apply effects that affect all players for the round
+        if (this.roundEffectsApplied) return; // Only apply once per round
+        
+        switch(effectId) {
+            case 8: // Other monsters gain +1 HP this round
+            case 16: // Other monsters gain +1 HP this round  
+            case 33: // Other monsters gain +1 HP this round
+                // This will be applied to other monsters when they are selected
+                this.activeMonsterEffects.push({ type: 'otherMonstersHPBonus', value: 1 });
+                this.showEffectNotification(
+                    `All other monsters gain +1 HP this round!`,
+                    `This monster's presence strengthens all other monsters in the forest.`
+                );
+                break;
+                
+            case 9: // Players not in forest lose 1 HP
+            case 13: // Players not in forest lose 1 HP
+                const affectedPlayers9 = [];
+                this.players.forEach(p => {
+                    if (!this.forestPlayersThisRound.has(p.id) && p.resources.hp > 1) {
+                        this.modifyResource(p.id, 'hp', -1);
+                        affectedPlayers9.push(p.name);
+                    }
+                });
+                if (affectedPlayers9.length > 0) {
+                    this.showEffectNotification(
+                        `Players not in forest lose 1 HP: ${affectedPlayers9.join(', ')}`,
+                        `This monster's aura damages all players who chose not to enter the forest.`
+                    );
+                }
+                break;
+                
+            case 23: // Players not in forest lose 1 point
+                const affectedPlayers23 = [];
+                this.players.forEach(p => {
+                    if (!this.forestPlayersThisRound.has(p.id)) {
+                        p.score = Math.max(0, p.score - 1);
+                        affectedPlayers23.push(p.name);
+                    }
+                });
+                if (affectedPlayers23.length > 0) {
+                    this.showEffectNotification(
+                        `Players not in forest lose 1 point: ${affectedPlayers23.join(', ')}`,
+                        `This monster's curse affects the scores of those who avoid the forest.`
+                    );
+                }
+                break;
+                
+            case 25: // Players not in forest lose 2 HP
+                const affectedPlayers25 = [];
+                this.players.forEach(p => {
+                    if (!this.forestPlayersThisRound.has(p.id)) {
+                        const hpLoss = Math.min(p.resources.hp - 1, 2);
+                        if (hpLoss > 0) {
+                            this.modifyResource(p.id, 'hp', -hpLoss);
+                            affectedPlayers25.push(`${p.name} (-${hpLoss} HP)`);
+                        }
+                    }
+                });
+                if (affectedPlayers25.length > 0) {
+                    this.showEffectNotification(
+                        `Players not in forest lose HP: ${affectedPlayers25.join(', ')}`,
+                        `This powerful monster's aura severely damages those outside the forest.`
+                    );
+                }
+                break;
+                
+            case 28: // Players not in forest lose 2 points
+                this.players.forEach(p => {
+                    if (!this.forestPlayersThisRound.has(p.id)) {
+                        p.score = Math.max(0, p.score - 2);
+                        this.addLogEntry(`📉 ${p.name} loses 2 points (not in forest)`, 'effect');
+                    }
+                });
+                break;
+        }
+    }
+    
+    checkBattleOrder(effectId, defenseCount) {
+        // Check if monster attacks first based on player's defense
+        const defense = defenseCount || 0;
+        
+        switch(effectId) {
+            case 7: // Monster attacks first if defense < 1
+                return defense < 1;
+                
+            case 17: // Monster attacks first if defense < 3
+            case 27: // Monster attacks first if defense < 3
+            case 35: // Monster attacks first if defense < 3
+                return defense < 3;
+                
+            case 18: // Monster attacks first if defense < 2
+            case 21: // Monster attacks first if defense < 2
+                return defense < 2;
+                
+            case 32: // Monster attacks first if defense < 4
+                return defense < 4;
+                
+            default:
+                return false; // Normal order (player attacks first)
+        }
+    }
+    
+    applyBattleEffect(effectId, battle, context) {
+        // Apply effects during battle
+        const player = this.players.find(p => p.id === battle.playerId);
+        const monster = battle.monster;
+        
+        switch(effectId) {
+            case 2: // Attack +1 when HP < half
+            case 24: // Attack +1 when HP < half
+            case 26: // Attack +1 when HP < half
+                if (context === 'monsterAttack' && monster.hp <= Math.floor(monster.maxHp / 2)) {
+                    return { attackBonus: 1 };
+                }
+                break;
+                
+            case 5: // Player gains no EXP from damage
+                if (context === 'playerDamaged') {
+                    return { noEXP: true };
+                }
+                break;
+                
+            case 22: // Player gains max 2 EXP from damage
+                if (context === 'playerDamaged') {
+                    return { maxEXP: 2 };
+                }
+                break;
+                
+            case 34: // Player gains max 4 EXP from damage
+                if (context === 'playerDamaged') {
+                    return { maxEXP: 4 };
+                }
+                break;
+                
+            case 10: // Player loses 1 EP per attack
+            case 19: // Player loses 1 EP per attack
+            case 29: // Player loses 1 EP per attack
+                if (context === 'playerAttack') {
+                    const epLoss = Math.min(player.resources.ep, 1);
+                    if (epLoss > 0) {
+                        this.modifyResource(player.id, 'ep', -epLoss);
+                        this.logBattleAction(`${player.name} loses 1 EP from monster effect`);
+                    }
+                }
+                break;
+                
+            case 11: // Monster gains +1 HP when attacked but not defeated
+                if (context === 'monsterDamaged' && monster.hp > 0) {
+                    monster.hp += 1;
+                    monster.maxHp = Math.max(monster.maxHp, monster.hp);
+                    this.logBattleAction(`Monster gains +1 HP from its effect (${monster.hp} HP)`);
+                }
+                break;
+                
+            case 12: // No grenades allowed
+                if (context === 'checkItemRestriction') {
+                    return { restrictedItems: ['Grenade'] };
+                }
+                break;
+                
+            case 15: // No grenades or bombs allowed
+                if (context === 'checkItemRestriction') {
+                    return { restrictedItems: ['Grenade', 'Bomb'] };
+                }
+                break;
+                
+            case 36: // No grenades, bombs, or dynamite allowed
+                if (context === 'checkItemRestriction') {
+                    return { restrictedItems: ['Grenade', 'Bomb', 'Dynamite'] };
+                }
+                break;
+                
+            case 20: // +1 EP cost to tame
+                if (context === 'checkTamingCost') {
+                    return { extraEPCost: 1 };
+                }
+                break;
+        }
+        
+        return {};
+    }
+    
+    applyDeathEffect(effectId, defeaterPlayerId) {
+        // Apply effects when a monster is defeated
+        switch(effectId) {
+            case 4: // Forest players lose 1 HP (except those at 1 HP)
+            case 31: // Forest players lose 1 HP (except those at 1 HP)
+                const affectedPlayers = [];
+                this.forestPlayersThisRound.forEach(playerId => {
+                    const player = this.players.find(p => p.id === playerId);
+                    if (player && player.resources.hp > 1) {
+                        this.modifyResource(playerId, 'hp', -1);
+                        affectedPlayers.push(player.name);
+                    }
+                });
+                if (affectedPlayers.length > 0) {
+                    this.showEffectNotification(
+                        `Monster's death curse! Forest players lose 1 HP: ${affectedPlayers.join(', ')}`,
+                        `Upon death, this monster releases a curse that damages all hunters in the forest.`
+                    );
+                }
+                break;
+        }
+    }
+    
+    cleanupRoundEffects() {
+        // Clean up all round effects after forest battles complete
+        this.activeMonsterEffects = [];
+        this.currentMonsterEffect = null;
+        this.roundEffectsApplied = false;
+        this.forestPlayersThisRound.clear();
+    }
+    
+    getExtraEPCost(effectId) {
+        // Get extra EP cost for selecting a monster
+        switch(effectId) {
+            case 6: // 1 extra EP
+            case 14: // 1 extra EP
+                return 1;
+            case 30: // 2 extra EP
+                return 2;
+            default:
+                return 0;
+        }
+    }
+    
+    showEffectNotification(message, effectDescription) {
+        // Show pop-up notification
+        alert(`⚠️ Monster Effect Activated!\n\n${message}\n\n${effectDescription}`);
+        
+        // Add to log
+        this.addLogEntry(`⚡ <strong>Monster Effect:</strong> ${message}`, 'effect');
     }
 
     selectRandomAvailableMonster(level) {
@@ -5041,6 +5330,9 @@ class Game {
         this.modifyResource(playerId, 'ep', -totalEPCost);
         this.monsterSelectionEPSpent = 0; // Reset EP spending tracker
         
+        // Track forest players for round effects
+        this.forestPlayersThisRound.add(playerId);
+        
         // Select random available monster from the level
         const selectedMonster = this.selectRandomAvailableMonster(monsterLevel);
         if (!selectedMonster) {
@@ -5051,6 +5343,22 @@ class Game {
         // Store original HP
         selectedMonster.maxHp = selectedMonster.hp;
         
+        // Check if monster requires extra EP (effects 6, 14, 30)
+        const extraEPCost = this.getExtraEPCost(selectedMonster.effectId);
+        if (extraEPCost > 0) {
+            // Deduct extra EP cost
+            if (player.resources.ep >= extraEPCost) {
+                this.modifyResource(playerId, 'ep', -extraEPCost);
+                this.showEffectNotification(
+                    `${player.name} must pay ${extraEPCost} extra EP!`,
+                    `This monster requires additional energy to engage in combat.`
+                );
+            } else {
+                // This shouldn't happen as we check total cost before, but just in case
+                console.warn(`Player doesn't have enough EP for extra cost`);
+            }
+        }
+        
         // Check if player's apprentice is also in Forest for -1 HP bonus
         if (player.tokens.apprentice === 7) { // Forest location
             selectedMonster.hp = Math.max(1, selectedMonster.hp - 1);
@@ -5059,6 +5367,29 @@ class Game {
 
         // Store selected monster
         this.currentSelectedMonster = selectedMonster;
+        
+        // Apply monster effects when selected
+        if (selectedMonster.effectId) {
+            // Store the current monster effect
+            this.currentMonsterEffect = selectedMonster.effectId;
+            this.activeMonsterEffects.push(selectedMonster.effectId);
+            
+            // Apply selection-time effects
+            this.applySelectionEffect(selectedMonster.effectId, playerId);
+            
+            // Apply round-wide effects (only once per round, when first player enters forest)
+            if (!this.roundEffectsApplied && this.forestPlayersThisRound.size === 1) {
+                this.applyRoundEffect(selectedMonster.effectId);
+                this.roundEffectsApplied = true;
+            }
+            
+            // Apply effects to other monsters already in play
+            if ([8, 16, 33].includes(selectedMonster.effectId)) {
+                // This round other monsters get +1 HP
+                console.log(`Monster effect ${selectedMonster.effectId}: Other monsters this round get +1 HP`);
+                // This will be handled during each player's battle
+            }
+        }
         
         // Check if this is a bot player - if so, skip monster selection UI
         if (player.isBot) {
@@ -5104,6 +5435,32 @@ class Game {
         console.log('Player found:', player);
         console.log('Player is bot:', player?.isBot);
         
+        // Check if player exists before accessing weapon
+        if (!player) {
+            console.error('Player not found for battle!');
+            return;
+        }
+        
+        // Apply battle effects before combat starts
+        if (battle.monster.effectId) {
+            // Check if monster attacks first based on defense
+            const defenseCount = player.weapon?.currentDefenseDice || 0;
+            const attacksFirst = this.checkBattleOrder(battle.monster.effectId, defenseCount);
+            
+            if (attacksFirst) {
+                console.log(`Monster effect ${battle.monster.effectId}: Monster attacks first (player defense: ${defenseCount})`);
+                this.showEffectNotification(
+                    `Monster attacks first!`,
+                    `${player.name}'s defense (${defenseCount} dice) is too low. The monster gains initiative!`
+                );
+                // Set battle to start with monster attack
+                battle.turn = 'monster_attack_first';
+            }
+            
+            // Apply other battle effects
+            this.applyBattleEffect(battle.monster.effectId, player.id);
+        }
+        
         // Check if player is a bot
         if (player.isBot) {
             console.log('Calling handleBotBattle for bot player');
@@ -5148,6 +5505,13 @@ class Game {
         document.getElementById('battle-monster-level').textContent = battle.monster.level;
         document.getElementById('battle-monster-hp').textContent = `${battle.monster.hp}/${battle.monster.maxHp}`;
         document.getElementById('battle-monster-att').textContent = battle.monster.att;
+        
+        // Display monster effect if present
+        const effectElement = document.getElementById('battle-monster-effect');
+        if (effectElement && battle.monster.effect) {
+            effectElement.textContent = battle.monster.effect;
+            effectElement.style.display = battle.monster.effect === '無' ? 'none' : 'block';
+        }
         
         // Display monster rewards
         this.updateMonsterRewards(battle.monster);
@@ -5287,7 +5651,18 @@ class Game {
         // Check if needs ammo but has none
         const needsAmmoButHasNone = (isRifle && bullets === 0) || (isPlasma && batteries === 0 && !hasPlasmaInfiniteAmmo);
         
-        if (battle.turn === 'player') {
+        if (battle.turn === 'monster_attack_first') {
+            // Monster attacks first due to effect
+            turnText.textContent = 'Monster attacks first!';
+            attackBtn.style.display = 'none';
+            tameBtn.style.display = 'none';
+            defenseBtn.style.display = 'none';
+            tripleDamageBtn.style.display = 'none';
+            
+            // Trigger monster attack
+            battle.turn = 'monster';
+            setTimeout(() => this.monsterAttackPlayer(), 1000);
+        } else if (battle.turn === 'player') {
             // If out of ammo, skip directly to defense phase
             if (needsAmmoButHasNone) {
                 turnText.textContent = isRifle ? 'No bullets! Prepare to defend!' : 'No batteries! Prepare to defend!';
@@ -5836,6 +6211,23 @@ class Game {
         const battle = this.currentBattle;
         const player = this.players.find(p => p.id === battle.playerId);
         
+        // Calculate monster's actual attack value (including HP threshold effects)
+        let monsterAttack = battle.monster.att;
+        
+        // Check for HP threshold effects (effects 2 and 24)
+        if (battle.monster.effectId === 2 || battle.monster.effectId === 24) {
+            // Monster gains +1 attack when HP is at half or less
+            const currentHp = battle.monster.hp;
+            const maxHp = battle.monster.maxHp;
+            if (currentHp <= Math.floor(maxHp / 2)) {
+                monsterAttack += 1;
+                this.showEffectNotification(
+                    `Monster becomes enraged! Attack increased to ${monsterAttack}!`,
+                    `When wounded to half HP or less, this monster gains +1 attack power.`
+                );
+            }
+        }
+        
         // Player defends
         const defenseRolls = this.rollDice(player.weapon.currentDefenseDice);
         let totalDefense = 0;
@@ -5850,10 +6242,10 @@ class Game {
             if (roll >= defenseThreshold) totalDefense += 1;
         });
         
-        const finalDamage = Math.max(0, battle.monster.att - totalDefense);
+        const finalDamage = Math.max(0, monsterAttack - totalDefense);
         
         // Log attack
-        this.logBattleAction(`Monster attacks for ${battle.monster.att} damage! ${player.name} defends: [${defenseRolls.join(', ')}] = ${totalDefense} defense. Final damage: ${finalDamage}`);
+        this.logBattleAction(`Monster attacks for ${monsterAttack} damage! ${player.name} defends: [${defenseRolls.join(', ')}] = ${totalDefense} defense. Final damage: ${finalDamage}`);
         
         // Sword Level 3 Power nerfed: only works on attack dice, not defense
         
@@ -5968,6 +6360,16 @@ class Game {
             }
         }
         
+        // Check for monster effect that requires +1 EP to tame (effect 20)
+        if (monster.effectId === 20) {
+            requiredEP += 1;
+            console.log(`Monster effect 20: Requires +1 EP to tame (total: ${requiredEP} EP)`);
+            this.showEffectNotification(
+                `This monster requires +1 EP to tame!`,
+                `This monster is harder to tame than usual. Total EP cost: ${requiredEP}`
+            );
+        }
+        
         // Check if taming is possible (consider Chain weapon special HP requirement)
         let canTameHP = monster.hp === 1;
         if (player.weapon.name === 'Chain' && player.weapon.powerTrackPosition >= 1) {
@@ -6073,7 +6475,10 @@ class Game {
         // Advance weapon power track based on monster level
         this.advanceWeaponPowerTrack(battle.playerId, monster.level);
         
-        
+        // Apply death effects if the monster has one
+        if (monster.effectId) {
+            this.applyDeathEffect(monster.effectId, battle.playerId);
+        }
         
         this.endMonsterBattle(true);
     }
@@ -7672,6 +8077,9 @@ class Game {
         if (this.isAutomatedMode) {
             console.log(`[${new Date().toISOString()}] Starting next round phase - Round ${this.currentRound}`);
         }
+        
+        // Clear all monster effects from this round
+        this.cleanupRoundEffects();
         
         // Clear the board - bring all tokens back to players
         if (!this.isAutomatedMode) {
