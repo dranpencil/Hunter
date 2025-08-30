@@ -451,7 +451,7 @@ class BotPlayer {
             if (currentBatteries < 3) {
                 // Prioritize batteries until we have at least 3
                 itemPriority = [
-                    { name: 'Battery', price: 3, size: 1 },
+                    { name: 'Battery', price: 2, size: 1 }, // Plasma Lv1: batteries cost $2
                     { name: 'Dynamite', price: 6, size: 4 },
                     { name: 'Bomb', price: 4, size: 3 },
                     { name: 'Grenade', price: 2, size: 2 },
@@ -466,7 +466,7 @@ class BotPlayer {
                     { name: 'Bomb', price: 4, size: 3 },
                     { name: 'Grenade', price: 2, size: 2 },
                     { name: 'Fake Blood', price: 2, size: 2 },
-                    { name: 'Battery', price: 3, size: 1 },
+                    { name: 'Battery', price: 2, size: 1 }, // Plasma Lv1: batteries cost $2
                     { name: 'Blood Bag', price: 2, size: 1 },
                     { name: 'Beer', price: 2, size: 1 }
                 ];
@@ -1034,7 +1034,7 @@ class Game {
             { name: 'Rifle', reqExpAttack: 6, reqExpDefense: 3, capacity: 8, initialMoney: 2, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 1, 2, 2], priority: 10,
               lv1Power: '可購買子彈:2$，每次攻擊花費1子彈', lv2Power: '回合開始+2$', lv3Power: '商店價格-1$', preferLocation: 'work site' },
             { name: 'Plasma', reqExpAttack: 7, reqExpDefense: 3, capacity: 8, initialMoney: 3, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 2, 2, 2], priority: 11,
-              lv1Power: '可購買電池:3$，每次攻擊花費1電池', lv2Power: '回合開始+3$', lv3Power: '無限電池', preferLocation: 'work site' },
+              lv1Power: '可購買電池:2$，每次攻擊花費1電池', lv2Power: '回合開始+2$', lv3Power: '無限電池', preferLocation: 'work site' },
             { name: 'Chain', reqExpAttack: 4, reqExpDefense: 3, capacity: 6, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 1, 1, 1], priority: 6,
               lv1Power: '怪獸於血量3以下即可收服', lv2Power: '回合開始+2啤酒', lv3Power: '寵物攻擊x2', preferLocation: 'bar' },
             { name: 'Axe', reqExpAttack: 4, reqExpDefense: 3, capacity: 6, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 1, 1, 1], priority: 4,
@@ -6446,7 +6446,7 @@ class Game {
             const batteryItem = { 
                 name: 'Battery', 
                 size: 1, 
-                price: 3, 
+                price: 2, // Level 1 power: batteries cost $2 instead of $3
                 effect: 'plasma_power', 
                 icon: '🔋',
                 isSpecial: true,
@@ -6574,7 +6574,7 @@ class Game {
             const currentBatteries = player.inventory.filter(item => item.name === 'Battery').length;
             if (currentBatteries < 3) {
                 itemPriority = [
-                    { name: 'Battery', price: 3, size: 1 },
+                    { name: 'Battery', price: 2, size: 1 }, // Plasma Lv1 power: batteries cost $2
                     { name: 'Dynamite', price: 6, size: 4 },
                     { name: 'Bomb', price: 4, size: 3 },
                     { name: 'Grenade', price: 2, size: 2 },
@@ -7805,10 +7805,10 @@ class Game {
                 console.log(`Rifle Lv2 Power: ${player.name} receives +2$ at round start`);
             }
             
-            // Plasma Level 2 Power: +3$ at round start
+            // Plasma Level 2 Power: +2$ at round start
             if (player.weapon.name === 'Plasma' && player.weapon.powerTrackPosition >= 3) {
-                this.modifyResource(player.id, 'money', 3);
-                console.log(`Plasma Lv2 Power: ${player.name} receives +3$ at round start`);
+                this.modifyResource(player.id, 'money', 2);
+                console.log(`Plasma Lv2 Power: ${player.name} receives +2$ at round start`);
             }
         });
         
