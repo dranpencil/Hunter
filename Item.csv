@@ -4,4 +4,4 @@ Blood Bag, 1, 2, gain 1 Blood
 Grenade, 2, 2, reduce 1 monster's HP
 Bomb, 3, 4, reduce 2 monster's HP
 Dynamite, 4, 6, reduce 3 monster's HP
-Fake Blood, 2, 2, when defeating the monster gain points equal to monster's level
+Fake Blood, 2, 2, when defeating the monster gain 2 points

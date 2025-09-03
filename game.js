@@ -697,22 +697,30 @@ class BotPlayer {
                 player.resources.hp++; // Also increase current HP
                 
                 // Check for milestone bonuses
-                if (player.maxResources.hp === 8 && !player.milestones.hp8) {
+                if (player.maxResources.hp === 6 && !player.milestones.hp6) {
                     game.addScore(player.id, 2, 'milestone');
+                    player.milestones.hp6 = true;
+                    if (!game.isAutomatedMode) {
+                        const checkbox = document.getElementById(`p${player.id}-hp-milestone-6`);
+                        if (checkbox) checkbox.checked = true;
+                    }
+                    logActions.push(`upgraded max HP to ${player.maxResources.hp} (+2 milestone points)`);
+                } else if (player.maxResources.hp === 8 && !player.milestones.hp8) {
+                    game.addScore(player.id, 4, 'milestone');
                     player.milestones.hp8 = true;
                     if (!game.isAutomatedMode) {
                         const checkbox = document.getElementById(`p${player.id}-hp-milestone-8`);
                         if (checkbox) checkbox.checked = true;
                     }
-                    logActions.push(`upgraded max HP to ${player.maxResources.hp} (+2 milestone points)`);
+                    logActions.push(`upgraded max HP to ${player.maxResources.hp} (+4 milestone points)`);
                 } else if (player.maxResources.hp === 10 && !player.milestones.hp10) {
-                    game.addScore(player.id, 4, 'milestone');
+                    game.addScore(player.id, 6, 'milestone');
                     player.milestones.hp10 = true;
                     if (!game.isAutomatedMode) {
                         const checkbox = document.getElementById(`p${player.id}-hp-milestone-10`);
                         if (checkbox) checkbox.checked = true;
                     }
-                    logActions.push(`upgraded max HP to ${player.maxResources.hp} (+4 milestone points)`);
+                    logActions.push(`upgraded max HP to ${player.maxResources.hp} (+6 milestone points)`);
                 } else {
                     logActions.push(`upgraded max HP to ${player.maxResources.hp}`);
                 }
@@ -1028,20 +1036,20 @@ class Game {
     constructor() {
         this.weapons = [
             { name: 'Bat', reqExpAttack: 4, reqExpDefense: 3, capacity: 6, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 1, 1, 1], priority: 3, 
-              lv1Power: '徒弟在資源區域撞其他獵人+1區域資源', lv2Power: '回合開始+1生命或+1體力', lv3Power: '命中的骰子再骰，直到沒有骰子命中，傷害為所有傷害加總', preferLocation: 'plaza' },
+              lv1Power: '徒弟在資源區域撞其他獵人+1區域資源', lv2Power: '回合開始+1ep或+1hp', lv3Power: '命中的骰子再骰1次，傷害為所有傷害加總', preferLocation: 'plaza' },
             { name: 'Katana', reqExpAttack: 5, reqExpDefense: 3, capacity: 4, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 1, 1, 1, 1], priority: 8,
-              lv1Power: '1血袋換1體力', lv2Power: '回合開始+1經驗', lv3Power: '攻擊骰總點數大於27則一擊必殺', preferLocation: 'dojo' },
-            { name: 'Rifle', reqExpAttack: 6, reqExpDefense: 3, capacity: 8, initialMoney: 2, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 1, 2, 2], priority: 10,
-              lv1Power: '可購買子彈:2$，每次攻擊花費1子彈', lv2Power: '回合開始+2$', lv3Power: '商店價格-1$', preferLocation: 'work site' },
-            { name: 'Plasma', reqExpAttack: 7, reqExpDefense: 3, capacity: 8, initialMoney: 3, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 2, 2, 2], priority: 11,
-              lv1Power: '可購買電池:2$，每次攻擊花費1電池', lv2Power: '回合開始+2$', lv3Power: '無限電池', preferLocation: 'work site' },
+              lv1Power: '1血袋換1啤酒', lv2Power: '回合開始+1經驗', lv3Power: '攻擊骰總點數大於27則一擊必殺', preferLocation: 'dojo' },
+            { name: 'Rifle', reqExpAttack: 6, reqExpDefense: 3, capacity: 8, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 1, 2, 2], priority: 10,
+              lv1Power: '可購買子彈:2$，每次戰鬥花費1子彈', lv2Power: '回合開始+2$', lv3Power: '商店價格-1$', preferLocation: 'work site' },
+            { name: 'Plasma', reqExpAttack: 7, reqExpDefense: 3, capacity: 8, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 2, 2, 2], priority: 11,
+              lv1Power: '可購買電池:2$，每次戰鬥花費1電池', lv2Power: '回合開始+2$', lv3Power: '無限電池', preferLocation: 'work site' },
             { name: 'Chain', reqExpAttack: 4, reqExpDefense: 3, capacity: 6, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 1, 1, 1], priority: 6,
               lv1Power: '怪獸於血量3以下即可收服', lv2Power: '回合開始+2啤酒', lv3Power: '寵物攻擊x2', preferLocation: 'bar' },
-            { name: 'Axe', reqExpAttack: 4, reqExpDefense: 3, capacity: 6, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 1, 1, 1], priority: 4,
+            { name: 'Axe', reqExpAttack: 4, reqExpDefense: 3, capacity: 6, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 0, 1, 1], priority: 4,
               lv1Power: '玩家受傷時反擊怪獸受1點傷害', lv2Power: '回合開始+1血袋', lv3Power: '玩家受傷時反擊怪獸受一樣的傷害', preferLocation: 'hospital' },
             { name: 'Whip', reqExpAttack: 4, reqExpDefense: 3, capacity: 6, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 1, 1, 1], priority: 5,
               lv1Power: '寵物和收服怪獸體力-1', lv2Power: '回合開始+2啤酒', lv3Power: '寵物和收服不耗體力', preferLocation: 'bar' },
-            { name: 'Bow', reqExpAttack: 5, reqExpDefense: 3, capacity: 6, initialMoney: 4, attackDice: 1, defenseDice: 0, damage: [0, 0, 0, 0, 0, 4], priority: 1,
+            { name: 'Bow', reqExpAttack: 5, reqExpDefense: 3, capacity: 6, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 0, 0, 4], priority: 1,
               lv1Power: '閃避率+16%', lv2Power: '回合開始+1經驗', lv3Power: '傷害x2', preferLocation: 'plaza' },
             { name: 'Sword', reqExpAttack: 5, reqExpDefense: 3, capacity: 4, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 1, 1, 2], priority: 9,
               lv1Power: '遊戲開始防禦力+1', lv2Power: '回合開始+1經驗', lv3Power: '每骰到至少1個1即+1分', preferLocation: 'dojo' },
@@ -1433,15 +1441,19 @@ class Game {
     setupDummyTokens(playerCount) {
         switch (playerCount) {
             case 2:
-                this.dummyTokens = [2, 4, 6];
+                // 2 dummy tokens at Dojo (4) and Bar (2)
+                this.dummyTokens = [4, 2];
                 break;
             case 3:
-                this.dummyTokens = [2, 5];
-                break;
-            case 4:
+                // 1 dummy token at Station (3)
                 this.dummyTokens = [3];
                 break;
+            case 4:
+                // No dummy tokens
+                this.dummyTokens = [];
+                break;
             case 5:
+                // No dummy tokens
                 this.dummyTokens = [];
                 break;
         }
@@ -1499,8 +1511,9 @@ class Game {
                 milestones: {
                     ep8: false,  // Max EP 8 milestone (2 points)
                     ep10: false, // Max EP 10 milestone (4 points)
-                    hp8: false,  // Max HP 8 milestone (2 points)
-                    hp10: false  // Max HP 10 milestone (4 points)
+                    hp6: false,  // Max HP 6 milestone (2 points)
+                    hp8: false,  // Max HP 8 milestone (4 points)
+                    hp10: false  // Max HP 10 milestone (6 points)
                 },
                 score: 0,
                 // Track score sources for data analysis
@@ -2040,7 +2053,7 @@ class Game {
             { name: 'Dynamite', price: 6, size: 4 },
             { name: 'Fake Blood', price: 2, size: 2 },
             { name: 'Bullet', price: 2, size: 1 },
-            { name: 'Battery', price: 3, size: 1 }
+            { name: 'Battery', price: 2, size: 1 }
         ];
     }
     
@@ -2344,12 +2357,16 @@ class Game {
                     </div>
                     <div class="upgrade-milestones">
                         <label class="milestone-checkbox">
+                            <input type="checkbox" id="p${player.id}-hp-milestone-6" disabled>
+                            <span>Max:6 2 points</span>
+                        </label>
+                        <label class="milestone-checkbox">
                             <input type="checkbox" id="p${player.id}-hp-milestone-8" disabled>
-                            <span>Max:8 2 points</span>
+                            <span>Max:8 4 points</span>
                         </label>
                         <label class="milestone-checkbox">
                             <input type="checkbox" id="p${player.id}-hp-milestone-10" disabled>
-                            <span>Max:10 4 points</span>
+                            <span>Max:10 6 points</span>
                         </label>
                     </div>
                 </div>
@@ -2703,9 +2720,9 @@ class Game {
         if (locationId === 7 && tokenType === 'hunter' && !this.currentPlayer.isBot && !this.hasRequiredAmmunition(this.currentPlayer)) {
             let warningMessage = 'You are entering the Forest without ammunition. ';
             if (this.currentPlayer.weapon.name === 'Rifle') {
-                warningMessage += 'Rifle weapons need bullets to attack. You can still use combat items (Grenades, Bombs, Dynamite) to fight monsters.';
+                warningMessage += 'Rifle weapons need 1 bullet per battle. You can still use combat items (Grenades, Bombs, Dynamite) to fight monsters.';
             } else if (this.currentPlayer.weapon.name === 'Plasma') {
-                warningMessage += 'Plasma weapons need batteries to attack. You can still use combat items (Grenades, Bombs, Dynamite) to fight monsters.';
+                warningMessage += 'Plasma weapons need 1 battery per battle. You can still use combat items (Grenades, Bombs, Dynamite) to fight monsters.';
             }
             warningMessage += '\n\nAre you sure you want to enter the Forest?';
             
@@ -3724,31 +3741,34 @@ class Game {
         console.log('Initial state - Player HP:', currentPlayerHP, 'Monster HP:', currentMonsterHP);
         let battleRound = 1;
         
-        while (currentPlayerHP > 0 && currentMonsterHP > 0) {
-            battleActions.push(`--- Round ${battleRound} ---`);
-            
-            // Check if bot can attack (ammunition check for Rifle/Plasma)
-            let canAttack = true;
-            if (player.weapon.name === 'Rifle' && player.weapon.powerTrackPosition >= 1) {
+        // Check ammunition at battle start (already consumed in startMonsterBattle)
+        let canAttack = true;
+        if (player.weapon.name === 'Rifle' && player.weapon.powerTrackPosition >= 1) {
+            // Check if ammunition was consumed at battle start
+            if (!battle.ammunitionConsumed) {
                 const bullets = player.inventory.filter(item => item.name === 'Bullet').length;
                 if (bullets === 0) {
                     canAttack = false;
-                    battleActions.push(`${player.name} cannot attack - no bullets left!`);
+                    battleActions.push(`${player.name} has no bullets for battle!`);
+                    currentPlayerHP = 0;
+                    battleActions.push(`${player.name} defeated due to lack of ammunition!`);
                 }
-            } else if (player.weapon.name === 'Plasma' && player.weapon.powerTrackPosition >= 1 && player.weapon.powerTrackPosition < 7) {
+            }
+        } else if (player.weapon.name === 'Plasma' && player.weapon.powerTrackPosition >= 1 && player.weapon.powerTrackPosition < 7) {
+            // Check if ammunition was consumed at battle start
+            if (!battle.ammunitionConsumed) {
                 const batteries = player.inventory.filter(item => item.name === 'Battery').length;
                 if (batteries === 0) {
                     canAttack = false;
-                    battleActions.push(`${player.name} cannot attack - no batteries left!`);
+                    battleActions.push(`${player.name} has no batteries for battle!`);
+                    currentPlayerHP = 0;
+                    battleActions.push(`${player.name} defeated due to lack of ammunition!`);
                 }
             }
-            
-            if (!canAttack) {
-                // Bot loses due to lack of ammunition
-                currentPlayerHP = 0;
-                battleActions.push(`${player.name} defeated due to lack of ammunition!`);
-                break;
-            }
+        }
+        
+        while (currentPlayerHP > 0 && currentMonsterHP > 0 && canAttack) {
+            battleActions.push(`--- Round ${battleRound} ---`);
             
             // Bot's turn - attack first
             const attackDice = player.weapon.currentAttackDice;
@@ -3759,25 +3779,7 @@ class Game {
             
             let playerDamage = this.calculateDamage(player.id, attackRolls);
             
-            // Consume ammunition for Rifle/Plasma weapons
-            if (player.weapon.name === 'Rifle' && player.weapon.powerTrackPosition >= 1) {
-                const bulletIndex = player.inventory.findIndex(item => item.name === 'Bullet');
-                if (bulletIndex >= 0) {
-                    player.inventory.splice(bulletIndex, 1);
-                    battleActions.push(`${player.name} uses 1 bullet to attack!`);
-                    // Update bullet display for bot
-                    this.updateBulletDisplay(player.id);
-                }
-            } else if (player.weapon.name === 'Plasma' && player.weapon.powerTrackPosition >= 1 && player.weapon.powerTrackPosition < 7) {
-                // Plasma consumes batteries unless at Level 3 (infinite)
-                const batteryIndex = player.inventory.findIndex(item => item.name === 'Battery');
-                if (batteryIndex >= 0) {
-                    player.inventory.splice(batteryIndex, 1);
-                    battleActions.push(`${player.name} uses 1 battery to attack!`);
-                    // Update battery display for bot
-                    this.updateBatteryDisplay(player.id);
-                }
-            }
+            // Ammunition already consumed at battle start - no per-attack consumption
             
             // Add pet damage if present
             let petDamage = 0;
@@ -4047,22 +4049,30 @@ class Game {
             player.resources.hp++;
             
             // Check for milestone bonuses
-            if (player.maxResources.hp === 8 && !player.milestones.hp8) {
+            if (player.maxResources.hp === 6 && !player.milestones.hp6) {
                 this.addScore(player.id, 2, 'milestone');
+                player.milestones.hp6 = true;
+                if (!this.isAutomatedMode) {
+                    const checkbox = document.getElementById(`p${player.id}-hp-milestone-6`);
+                    if (checkbox) checkbox.checked = true;
+                }
+                actions.push(`upgraded max HP to ${player.maxResources.hp} (+2 milestone points)`);
+            } else if (player.maxResources.hp === 8 && !player.milestones.hp8) {
+                this.addScore(player.id, 4, 'milestone');
                 player.milestones.hp8 = true;
                 if (!this.isAutomatedMode) {
                     const checkbox = document.getElementById(`p${player.id}-hp-milestone-8`);
                     if (checkbox) checkbox.checked = true;
                 }
-                actions.push(`upgraded max HP to ${player.maxResources.hp} (+2 milestone points)`);
+                actions.push(`upgraded max HP to ${player.maxResources.hp} (+4 milestone points)`);
             } else if (player.maxResources.hp === 10 && !player.milestones.hp10) {
-                this.addScore(player.id, 4, 'milestone');
+                this.addScore(player.id, 6, 'milestone');
                 player.milestones.hp10 = true;
                 if (!this.isAutomatedMode) {
                     const checkbox = document.getElementById(`p${player.id}-hp-milestone-10`);
                     if (checkbox) checkbox.checked = true;
                 }
-                actions.push(`upgraded max HP to ${player.maxResources.hp} (+4 milestone points)`);
+                actions.push(`upgraded max HP to ${player.maxResources.hp} (+6 milestone points)`);
             } else {
                 actions.push(`upgraded max HP to ${player.maxResources.hp}`);
             }
@@ -4405,6 +4415,19 @@ class Game {
         }
     }
     
+    getPopularityLevelPoints(level) {
+        // Return the point value for each popularity level
+        const pointMap = {
+            0: 0,   // Lv0 = 0 points
+            1: 1,   // Lv1 = 1 point
+            2: 2,   // Lv2 = 2 points
+            3: 4,   // Lv3 = 4 points
+            4: 7,   // Lv4 = 7 points
+            5: 11   // Lv5 = 11 points
+        };
+        return pointMap[level] || 0;
+    }
+    
     processPopularityTrackLogic() {
         // This function contains only the game logic, no DOM updates
         // Can be called in both interactive and automated modes
@@ -4510,7 +4533,8 @@ class Game {
                 // Give points for newly reached level
                 if (!player.popularityTrack.levelReached[newRewardLevel]) {
                     player.popularityTrack.levelReached[newRewardLevel] = true;
-                    this.addScore(player.id, newRewardLevel, 'popularity'); // Add level value as points
+                    const points = this.getPopularityLevelPoints(newRewardLevel);
+                    this.addScore(player.id, points, 'popularity'); // Add correct point value for level
                 }
             }
         });
@@ -4527,9 +4551,9 @@ class Game {
         
         // Define track levels with rewards
         const trackLevels = [
-            { level: 5, points: 5, reward: '5🏆' },
-            { level: 4, points: 4, reward: '4⭐' },
-            { level: 3, points: 3, reward: '3🩸' },
+            { level: 5, points: 11, reward: '5🏆' },
+            { level: 4, points: 7, reward: '4⭐' },
+            { level: 3, points: 4, reward: '3🩸' },
             { level: 2, points: 2, reward: '2💰' },
             { level: 1, points: 1, reward: '1🍺' },
             { level: 0, points: 0, reward: 'None' }
@@ -5165,11 +5189,15 @@ class Game {
     }
     
     showEffectNotification(message, effectDescription) {
-        // Show pop-up notification
-        alert(`⚠️ Monster Effect Activated!\n\n${message}\n\n${effectDescription}`);
+        // Only show pop-up notification if not in automated mode
+        if (!this.isAutomatedMode) {
+            alert(`⚠️ Monster Effect Activated!\n\n${message}\n\n${effectDescription}`);
+        }
         
-        // Add to log
-        this.addLogEntry(`⚡ <strong>Monster Effect:</strong> ${message}`, 'effect');
+        // Add to log (but skip in automated mode for performance)
+        if (!this.isAutomatedMode) {
+            this.addLogEntry(`⚡ <strong>Monster Effect:</strong> ${message}`, 'effect');
+        }
     }
 
     selectRandomAvailableMonster(level) {
@@ -5304,9 +5332,11 @@ class Game {
                 );
             } else {
                 // Player can't afford extra EP - cannot fight this monster
-                alert(`You need ${extraEPCost} extra EP to fight this monster! Choose a different monster or cancel.`);
-                // Show the monster selection modal again
-                document.getElementById('monster-selection-modal').style.display = 'flex';
+                if (!this.isAutomatedMode) {
+                    alert(`You need ${extraEPCost} extra EP to fight this monster! Choose a different monster or cancel.`);
+                    // Show the monster selection modal again
+                    document.getElementById('monster-selection-modal').style.display = 'flex';
+                }
                 return;
             }
         }
@@ -5367,7 +5397,9 @@ class Game {
         const totalEPCost = parseInt(document.getElementById('total-ep-cost').textContent);
         
         if (player.resources.ep < totalEPCost) {
-            alert(`${player.name} needs ${totalEPCost} EP for this battle!`);
+            if (!this.isAutomatedMode) {
+                alert(`${player.name} needs ${totalEPCost} EP for this battle!`);
+            }
             return;
         }
         
@@ -5384,7 +5416,9 @@ class Game {
         // Select random available monster from the level
         const selectedMonster = this.selectRandomAvailableMonster(monsterLevel);
         if (!selectedMonster) {
-            alert(`No available monsters at level ${monsterLevel}!`);
+            if (!this.isAutomatedMode) {
+                alert(`No available monsters at level ${monsterLevel}!`);
+            }
             return;
         }
 
@@ -5463,10 +5497,49 @@ class Game {
             hasAttacked: false, // Track if player has attacked this battle
             tripleDamageUsed: false, // Track if Knife Lv2 triple damage was used
             canUseTripleDamage: false, // Track if Knife Lv2 triple damage is available
-            lastAttackDamage: 0 // Track last attack damage for triple damage calculation
+            lastAttackDamage: 0, // Track last attack damage for triple damage calculation
+            ammunitionConsumed: false // Track if ammunition was consumed for this battle
         };
         
         console.log('Current battle set up:', this.currentBattle);
+        
+        // Consume ammunition at the start of battle (once per monster)
+        const player = this.players.find(p => p.id === playerId);
+        
+        // Check and consume ammunition for Rifle
+        if (player.weapon.name === 'Rifle' && player.weapon.powerTrackPosition >= 1) {
+            const bulletIndex = player.inventory.findIndex(item => item.name === 'Bullet');
+            if (bulletIndex >= 0) {
+                // Consume one bullet for this battle
+                player.inventory.splice(bulletIndex, 1);
+                this.currentBattle.ammunitionConsumed = true;
+                this.addLogEntry(`${player.name} uses 1 bullet for this battle!`, 'battle');
+                
+                // Update bullet displays
+                this.updateBulletDisplay(player.id);
+            } else {
+                // No bullets available - battle will fail
+                this.addLogEntry(`${player.name} has no bullets for battle!`, 'battle');
+            }
+        }
+        
+        // Check and consume ammunition for Plasma (unless Level 3 infinite)
+        if (player.weapon.name === 'Plasma' && player.weapon.powerTrackPosition >= 1 && player.weapon.powerTrackPosition < 7) {
+            const batteryIndex = player.inventory.findIndex(item => item.name === 'Battery');
+            if (batteryIndex >= 0) {
+                // Consume one battery for this battle
+                player.inventory.splice(batteryIndex, 1);
+                this.currentBattle.ammunitionConsumed = true;
+                this.addLogEntry(`${player.name} uses 1 battery for this battle!`, 'battle');
+                
+                // Update battery displays
+                this.updateBatteryDisplay(player.id);
+            } else {
+                // No batteries available - battle will fail
+                this.addLogEntry(`${player.name} has no batteries for battle!`, 'battle');
+            }
+        }
+        
         console.log('About to call showMonsterBattleUI...');
         this.showMonsterBattleUI();
     }
@@ -6025,42 +6098,36 @@ class Game {
         const battle = this.currentBattle;
         const player = this.players.find(p => p.id === battle.playerId);
         
-        // Check if Rifle player has bullets to attack
+        // Check if Rifle player has ammunition to attack (but don't consume - already consumed at battle start)
         if (player.weapon.name === 'Rifle' && player.weapon.powerTrackPosition >= 1) {
-            const bulletIndex = player.inventory.findIndex(item => item.name === 'Bullet');
-            if (bulletIndex === -1) {
-                // No bullets available
-                alert('No bullets left! Cannot attack.');
-                return;
+            // Check if ammunition was consumed at battle start
+            if (!battle.ammunitionConsumed) {
+                const bulletIndex = player.inventory.findIndex(item => item.name === 'Bullet');
+                if (bulletIndex === -1) {
+                    // No bullets available
+                    alert('No bullets available for attack!');
+                    return;
+                }
             }
-            
-            // Consume one bullet
-            player.inventory.splice(bulletIndex, 1);
-            this.logBattleAction(`${player.name} uses 1 bullet to attack!`);
-            
-            // Update bullet displays
-            this.updateBulletDisplay(player.id);
+            // Update bullet display (in case it changed from items)
             if (this.currentBattle && this.currentBattle.playerId === player.id) {
                 const bullets = player.inventory.filter(item => item.name === 'Bullet').length;
                 document.getElementById('battle-bullet-count').textContent = `${bullets}/6`;
             }
         }
         
-        // Check if Plasma player has batteries to attack (unless infinite at Level 3)
+        // Check if Plasma player has ammunition to attack (unless infinite at Level 3)
         if (player.weapon.name === 'Plasma' && player.weapon.powerTrackPosition >= 1 && player.weapon.powerTrackPosition < 7) {
-            const batteryIndex = player.inventory.findIndex(item => item.name === 'Battery');
-            if (batteryIndex === -1) {
-                // No batteries available
-                alert('No batteries left! Cannot attack.');
-                return;
+            // Check if ammunition was consumed at battle start
+            if (!battle.ammunitionConsumed) {
+                const batteryIndex = player.inventory.findIndex(item => item.name === 'Battery');
+                if (batteryIndex === -1) {
+                    // No batteries available
+                    alert('No batteries available for attack!');
+                    return;
+                }
             }
-            
-            // Consume one battery
-            player.inventory.splice(batteryIndex, 1);
-            this.logBattleAction(`${player.name} uses 1 battery to attack!`);
-            
-            // Update battery displays
-            this.updateBatteryDisplay(player.id);
+            // Update battery display (in case it changed from items)
             if (this.currentBattle && this.currentBattle.playerId === player.id) {
                 const batteries = player.inventory.filter(item => item.name === 'Battery').length;
                 document.getElementById('battle-battery-count').textContent = `${batteries}/6`;
@@ -6073,38 +6140,34 @@ class Game {
         let totalDicePips = 0; // Track total dice value for Katana instant kill
         let allAttackRolls = []; // Track all dice rolls for Sword Level 3 power
         
-        // Check for Bat Level 3 explosive dice
+        // Check for Bat Level 3 bonus dice
         if (player.weapon.name === 'Bat' && player.weapon.powerTrackPosition >= 7) {
-            // Explosive dice mechanic - reroll only dice that hit successfully
-            let keepRolling = true;
-            let explosionCount = 0;
-            let diceToRoll = player.weapon.currentAttackDice; // Start with full dice count
+            // First roll with normal attack dice
+            const firstRolls = this.rollDice(player.weapon.currentAttackDice);
+            const firstDamage = this.calculateDamage(battle.playerId, firstRolls);
             
-            while (keepRolling && diceToRoll > 0) {
-                const attackRolls = this.rollDice(diceToRoll);
-                const damage = this.calculateDamage(battle.playerId, attackRolls);
+            // Count how many dice hit successfully (4, 5, or 6 for Bat)
+            const hitCount = firstRolls.filter(roll => roll >= 4).length;
+            
+            // Add first roll results
+            allRolls.push(`[${firstRolls.join(', ')}]`);
+            allAttackRolls.push(...firstRolls); // Track all rolls for other weapon powers
+            playerDamage += firstDamage;
+            totalDicePips += firstRolls.reduce((sum, roll) => sum + roll, 0);
+            
+            // Second roll with bonus dice (only if there were hits)
+            if (hitCount > 0) {
+                const bonusRolls = this.rollDice(hitCount);
+                const bonusDamage = this.calculateDamage(battle.playerId, bonusRolls);
                 
-                // Count how many dice hit successfully (4, 5, or 6 for Bat)
-                const hitCount = attackRolls.filter(roll => roll >= 4).length;
+                allRolls.push(`[${bonusRolls.join(', ')}]`);
+                allAttackRolls.push(...bonusRolls);
+                playerDamage += bonusDamage;
+                totalDicePips += bonusRolls.reduce((sum, roll) => sum + roll, 0);
                 
-                allRolls.push(`[${attackRolls.join(', ')}]`);
-                allAttackRolls.push(...attackRolls); // Track all rolls for other weapon powers
-                playerDamage += damage;
-                totalDicePips += attackRolls.reduce((sum, roll) => sum + roll, 0);
-                explosionCount++;
-                
-                if (hitCount === 0) {
-                    keepRolling = false;
-                    this.logBattleAction(`Bat Lv3 Power: Explosive dice ended after ${explosionCount} roll(s) - no hits`);
-                } else if (explosionCount >= 10) {
-                    // Safety limit to prevent infinite loops
-                    keepRolling = false;
-                    this.logBattleAction(`Bat Lv3 Power: Explosive dice capped at 10 explosions!`);
-                } else {
-                    // Next roll will be only the dice that hit
-                    diceToRoll = hitCount;
-                    this.logBattleAction(`Bat Lv3 Power: ${hitCount} dice hit - rolling ${hitCount} dice again`);
-                }
+                this.logBattleAction(`Bat Lv3 Power: ${hitCount} dice hit - rolled ${hitCount} bonus dice (${bonusDamage} bonus damage)`);
+            } else {
+                this.logBattleAction(`Bat Lv3 Power: No hits - no bonus dice`);
             }
         } else {
             // Normal attack
