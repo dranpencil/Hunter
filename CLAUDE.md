@@ -314,3 +314,4 @@ Each weapon features:
 - add to memory.
 - to memorize
 - to memorize
+- add to memory.

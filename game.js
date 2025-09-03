@@ -5279,11 +5279,59 @@ class Game {
         
         // Continue with battle using the selected monster
         const playerId = this.currentMonsterPlayer;
+        const player = this.players.find(p => p.id === playerId);
         const monster = this.currentSelectedMonster;
         
         if (!monster) {
             console.error('No monster selected for battle');
             return;
+        }
+        
+        if (!player) {
+            console.error('Player not found for battle');
+            return;
+        }
+
+        // Check if monster requires extra EP (effects 6, 14, 30)
+        const extraEPCost = this.getExtraEPCost(monster.effectId);
+        if (extraEPCost > 0) {
+            // Check if player can afford extra EP
+            if (player.resources.ep >= extraEPCost) {
+                this.modifyResource(playerId, 'ep', -extraEPCost);
+                this.showEffectNotification(
+                    `${player.name} must pay ${extraEPCost} extra EP!`,
+                    `This monster requires additional energy to engage in combat.`
+                );
+            } else {
+                // Player can't afford extra EP - cannot fight this monster
+                alert(`You need ${extraEPCost} extra EP to fight this monster! Choose a different monster or cancel.`);
+                // Show the monster selection modal again
+                document.getElementById('monster-selection-modal').style.display = 'flex';
+                return;
+            }
+        }
+
+        // Apply monster effects when confirmed
+        if (monster.effectId) {
+            // Store the current monster effect
+            this.currentMonsterEffect = monster.effectId;
+            this.activeMonsterEffects.push(monster.effectId);
+            
+            // Apply selection-time effects
+            this.applySelectionEffect(monster.effectId, playerId);
+            
+            // Apply round-wide effects (only once per round, when first player enters forest)
+            if (!this.roundEffectsApplied && this.forestPlayersThisRound.size === 1) {
+                this.applyRoundEffect(monster.effectId);
+                this.roundEffectsApplied = true;
+            }
+            
+            // Apply effects to other monsters already in play
+            if ([8, 16, 33].includes(monster.effectId)) {
+                // This round other monsters get +1 HP
+                console.log(`Monster effect ${monster.effectId}: Other monsters this round get +1 HP`);
+                // This will be handled during each player's battle
+            }
         }
 
         // Start the battle
@@ -5343,22 +5391,6 @@ class Game {
         // Store original HP
         selectedMonster.maxHp = selectedMonster.hp;
         
-        // Check if monster requires extra EP (effects 6, 14, 30)
-        const extraEPCost = this.getExtraEPCost(selectedMonster.effectId);
-        if (extraEPCost > 0) {
-            // Deduct extra EP cost
-            if (player.resources.ep >= extraEPCost) {
-                this.modifyResource(playerId, 'ep', -extraEPCost);
-                this.showEffectNotification(
-                    `${player.name} must pay ${extraEPCost} extra EP!`,
-                    `This monster requires additional energy to engage in combat.`
-                );
-            } else {
-                // This shouldn't happen as we check total cost before, but just in case
-                console.warn(`Player doesn't have enough EP for extra cost`);
-            }
-        }
-        
         // Check if player's apprentice is also in Forest for -1 HP bonus
         if (player.tokens.apprentice === 7) { // Forest location
             selectedMonster.hp = Math.max(1, selectedMonster.hp - 1);
@@ -5368,33 +5400,46 @@ class Game {
         // Store selected monster
         this.currentSelectedMonster = selectedMonster;
         
-        // Apply monster effects when selected
-        if (selectedMonster.effectId) {
-            // Store the current monster effect
-            this.currentMonsterEffect = selectedMonster.effectId;
-            this.activeMonsterEffects.push(selectedMonster.effectId);
-            
-            // Apply selection-time effects
-            this.applySelectionEffect(selectedMonster.effectId, playerId);
-            
-            // Apply round-wide effects (only once per round, when first player enters forest)
-            if (!this.roundEffectsApplied && this.forestPlayersThisRound.size === 1) {
-                this.applyRoundEffect(selectedMonster.effectId);
-                this.roundEffectsApplied = true;
-            }
-            
-            // Apply effects to other monsters already in play
-            if ([8, 16, 33].includes(selectedMonster.effectId)) {
-                // This round other monsters get +1 HP
-                console.log(`Monster effect ${selectedMonster.effectId}: Other monsters this round get +1 HP`);
-                // This will be handled during each player's battle
-            }
-        }
-        
         // Check if this is a bot player - if so, skip monster selection UI
         if (player.isBot) {
             // Bots go directly to battle without monster selection UI
             console.log(`Bot ${player.name} skipping monster selection UI`);
+            
+            // For bots, apply effects immediately since they don't use the UI
+            // Check if monster requires extra EP (effects 6, 14, 30)
+            const extraEPCost = this.getExtraEPCost(selectedMonster.effectId);
+            if (extraEPCost > 0) {
+                // Deduct extra EP cost
+                if (player.resources.ep >= extraEPCost) {
+                    this.modifyResource(playerId, 'ep', -extraEPCost);
+                    console.log(`Bot ${player.name} pays ${extraEPCost} extra EP for monster effect`);
+                } else {
+                    // Bot can't afford extra EP - this shouldn't happen with good bot logic
+                    console.warn(`Bot ${player.name} doesn't have enough EP for extra cost`);
+                }
+            }
+
+            // Apply monster effects for bots
+            if (selectedMonster.effectId) {
+                // Store the current monster effect
+                this.currentMonsterEffect = selectedMonster.effectId;
+                this.activeMonsterEffects.push(selectedMonster.effectId);
+                
+                // Apply selection-time effects
+                this.applySelectionEffect(selectedMonster.effectId, playerId);
+                
+                // Apply round-wide effects (only once per round, when first player enters forest)
+                if (!this.roundEffectsApplied && this.forestPlayersThisRound.size === 1) {
+                    this.applyRoundEffect(selectedMonster.effectId);
+                    this.roundEffectsApplied = true;
+                }
+                
+                // Apply effects to other monsters already in play
+                if ([8, 16, 33].includes(selectedMonster.effectId)) {
+                    console.log(`Monster effect ${selectedMonster.effectId}: Other monsters this round get +1 HP`);
+                }
+            }
+            
             this.startMonsterBattle(playerId, selectedMonster, this.selectedPets);
         } else {
             // Human players see the monster selection UI
