@@ -2302,6 +2302,11 @@ class Game {
             board.style.borderWidth = '3px';
         }
         
+        // Check if buttons should be disabled
+        const buttonsDisabled = this.shouldDisablePlayerButtons(player.id);
+        const disabledAttr = buttonsDisabled ? ' disabled' : '';
+        const disabledTitle = buttonsDisabled ? ' title="Cannot interact with this player board"' : '';
+        
         board.innerHTML = `
             <h2 id="player-${player.id}-name">
                 ${player.color ? `<span class="player-color-indicator" style="background-color: ${player.color.background}; border-color: ${player.color.border};"></span>` : ''}
@@ -2336,7 +2341,7 @@ class Game {
                     <div class="upgrade-header">
                         <span>EP Upgrade:</span>
                         <span class="progress" id="p${player.id}-ep-progress">${player.upgradeProgress.ep}/4</span>
-                        <button class="small-btn" id="p${player.id}-ep-upgrade-btn" onclick="game.addToUpgrade(${player.id}, 'ep')">+🍺</button>
+                        <button class="small-btn" id="p${player.id}-ep-upgrade-btn" onclick="game.addToUpgrade(${player.id}, 'ep')"${disabledAttr}${disabledTitle}>+🍺</button>
                     </div>
                     <div class="upgrade-milestones">
                         <label class="milestone-checkbox">
@@ -2353,7 +2358,7 @@ class Game {
                     <div class="upgrade-header">
                         <span>HP Upgrade:</span>
                         <span class="progress" id="p${player.id}-hp-progress">${player.upgradeProgress.hp}/3</span>
-                        <button class="small-btn" id="p${player.id}-hp-upgrade-btn" onclick="game.addToUpgrade(${player.id}, 'hp')">+🩸</button>
+                        <button class="small-btn" id="p${player.id}-hp-upgrade-btn" onclick="game.addToUpgrade(${player.id}, 'hp')"${disabledAttr}${disabledTitle}>+🩸</button>
                     </div>
                     <div class="upgrade-milestones">
                         <label class="milestone-checkbox">
@@ -3086,6 +3091,15 @@ class Game {
         });
     }
     
+    shouldDisablePlayerButtons(playerId) {
+        // Disable buttons if:
+        // 1. The player is a bot (no one can interact with bot boards)
+        // 2. The game is over (no one can interact with any boards)
+        const player = this.players.find(p => p.id === playerId);
+        if (!player) return true;
+        return player.isBot || this.roundPhase === 'gameover';
+    }
+    
     updateInventoryDisplay(playerId) {
         // Skip UI updates in automated mode for performance
         if (this.isAutomatedMode) return;
@@ -3125,6 +3139,9 @@ class Game {
         
         console.log(`Item counts:`, itemCounts);
         
+        // Check if buttons should be disabled for this player
+        const buttonsDisabled = this.shouldDisablePlayerButtons(playerId);
+        
         // Display all items with their counts (0 if not owned)
         const htmlContent = allItems
             .map(item => {
@@ -3136,21 +3153,24 @@ class Game {
                     if (item.name === 'Beer') {
                         // Can use beer if EP is not at maximum
                         canUse = player.resources.ep < player.maxResources.ep;
-                        const disabled = !canUse ? ' disabled' : '';
-                        const title = canUse ? 'Use Beer (+1 EP)' : 'EP is already at maximum';
+                        const disabled = (!canUse || buttonsDisabled) ? ' disabled' : '';
+                        const title = buttonsDisabled ? 'Cannot interact with this player board' : 
+                                     (canUse ? 'Use Beer (+1 EP)' : 'EP is already at maximum');
                         useButton = `<button class="small-btn"${disabled} onclick="game.useInventoryItem(${playerId}, '${item.name}')" title="${title}">Use</button>`;
                         
                     } else if (item.name === 'Blood Bag') {
                         // Can use blood bag if HP is not at maximum
                         canUse = player.resources.hp < player.maxResources.hp;
-                        const disabled = !canUse ? ' disabled' : '';
-                        const title = canUse ? 'Use Blood Bag (+1 HP)' : 'HP is already at maximum';
+                        const disabled = (!canUse || buttonsDisabled) ? ' disabled' : '';
+                        const title = buttonsDisabled ? 'Cannot interact with this player board' :
+                                     (canUse ? 'Use Blood Bag (+1 HP)' : 'HP is already at maximum');
                         useButton = `<button class="small-btn"${disabled} onclick="game.useInventoryItem(${playerId}, '${item.name}')" title="${title}">Use</button>`;
                         
                         // Katana Level 1 Power: Blood Bag to Beer conversion
                         if (player.weapon.name === 'Katana' && player.weapon.powerTrackPosition >= 1 && count > 0) {
-                            const convertTitle = 'Convert Blood Bag to Beer (Katana Power)';
-                            useButton += `<button class="small-btn katana-convert" onclick="game.convertBloodBagToBeer(${playerId})" title="${convertTitle}">🍺</button>`;
+                            const convertDisabled = buttonsDisabled ? ' disabled' : '';
+                            const convertTitle = buttonsDisabled ? 'Cannot interact with this player board' : 'Convert Blood Bag to Beer (Katana Power)';
+                            useButton += `<button class="small-btn katana-convert"${convertDisabled} onclick="game.convertBloodBagToBeer(${playerId})" title="${convertTitle}">🍺</button>`;
                         }
                     }
                 }
@@ -8145,6 +8165,14 @@ class Game {
         if (!this.isAutomatedMode) {
             document.getElementById('status-message').textContent = 
                 `🎉 Game Over! ${winner.name} wins with ${winner.score} points! 🎉`;
+            
+            // Refresh all player displays to disable buttons
+            this.players.forEach(player => {
+                this.updateInventoryDisplay(player.id);
+            });
+            
+            // Recreate player boards to disable upgrade buttons
+            this.createPlayerBoards();
         } else {
             console.log(`Game ${this.automatedGamesCompleted + 1} complete: ${winner.name} wins with ${winner.score} points`);
         }
@@ -8381,6 +8409,9 @@ class Game {
         const itemsList = document.getElementById('capacity-items');
         itemsList.innerHTML = '';
         
+        // Check if buttons should be disabled
+        const buttonsDisabled = this.shouldDisablePlayerButtons(playerId);
+        
         player.inventory.forEach((item, index) => {
             const itemElement = document.createElement('div');
             itemElement.className = 'capacity-item';
@@ -8396,14 +8427,22 @@ class Game {
                 const canUpgrade = (item.name === 'Beer' && player.maxResources.ep < 10) ||
                                   (item.name === 'Blood Bag' && player.maxResources.hp < 10);
                 
+                const useDisabled = !canUse || buttonsDisabled;
+                const upgradeDisabled = !canUpgrade || buttonsDisabled;
+                const discardDisabled = buttonsDisabled;
+                
+                const disabledTitle = buttonsDisabled ? 'Cannot interact with this player board' : '';
+                
                 buttonsHTML = `
-                    <button onclick="game.useItemFromOverflow(${playerId}, ${index})" class="use-btn" ${!canUse ? 'disabled' : ''} title="${canUse ? 'Use item' : (item.name === 'Beer' ? 'EP is at maximum' : 'HP is at maximum')}">Use</button>
-                    <button onclick="game.addToUpgradeFromOverflow(${playerId}, ${index})" class="upgrade-btn" ${!canUpgrade ? 'disabled' : ''} title="${canUpgrade ? 'Add to upgrade progress' : 'Max resource is already 10'}">Upgrade</button>
-                    <button onclick="game.removeItem(${playerId}, ${index})" class="remove-btn">Discard</button>
+                    <button onclick="game.useItemFromOverflow(${playerId}, ${index})" class="use-btn" ${useDisabled ? 'disabled' : ''} title="${buttonsDisabled ? disabledTitle : (canUse ? 'Use item' : (item.name === 'Beer' ? 'EP is at maximum' : 'HP is at maximum'))}">Use</button>
+                    <button onclick="game.addToUpgradeFromOverflow(${playerId}, ${index})" class="upgrade-btn" ${upgradeDisabled ? 'disabled' : ''} title="${buttonsDisabled ? disabledTitle : (canUpgrade ? 'Add to upgrade progress' : 'Max resource is already 10')}">Upgrade</button>
+                    <button onclick="game.removeItem(${playerId}, ${index})" class="remove-btn" ${discardDisabled ? 'disabled' : ''} title="${buttonsDisabled ? disabledTitle : 'Discard item'}">Discard</button>
                 `;
             } else {
                 // Grenade, Bomb, Dynamite, Fake Blood: Discard only
-                buttonsHTML = `<button onclick="game.removeItem(${playerId}, ${index})" class="remove-btn">Discard</button>`;
+                const discardDisabled = buttonsDisabled;
+                const disabledTitle = buttonsDisabled ? 'Cannot interact with this player board' : 'Discard item';
+                buttonsHTML = `<button onclick="game.removeItem(${playerId}, ${index})" class="remove-btn" ${discardDisabled ? 'disabled' : ''} title="${disabledTitle}">Discard</button>`;
             }
             
             itemElement.innerHTML = `
