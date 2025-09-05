@@ -697,22 +697,31 @@ class BotPlayer {
                 player.resources.hp++; // Also increase current HP
                 
                 // Check for milestone bonuses
-                const hpMilestones = [
-                    { value: 6, points: 2, key: 'hp6' },
-                    { value: 8, points: 3, key: 'hp8' },
-                    { value: 10, points: 4, key: 'hp10' }
-                ];
-                let milestoneAwarded = false;
-                for (const m of hpMilestones) {
-                    if (player.maxResources.hp === m.value) {
-                        if (game.checkAndAwardMilestone(player, 'hp', m.value, m.points, m.key)) {
-                            logActions.push(`upgraded max HP to ${player.maxResources.hp} (+${m.points} milestone points)`);
-                            milestoneAwarded = true;
-                        }
-                        break;
+                if (player.maxResources.hp === 6 && !player.milestones.hp6) {
+                    game.addScore(player.id, 2, 'milestone');
+                    player.milestones.hp6 = true;
+                    if (!game.isAutomatedMode) {
+                        const checkbox = document.getElementById(`p${player.id}-hp-milestone-6`);
+                        if (checkbox) checkbox.checked = true;
                     }
-                }
-                if (!milestoneAwarded) {
+                    logActions.push(`upgraded max HP to ${player.maxResources.hp} (+2 milestone points)`);
+                } else if (player.maxResources.hp === 8 && !player.milestones.hp8) {
+                    game.addScore(player.id, 3, 'milestone');
+                    player.milestones.hp8 = true;
+                    if (!game.isAutomatedMode) {
+                        const checkbox = document.getElementById(`p${player.id}-hp-milestone-8`);
+                        if (checkbox) checkbox.checked = true;
+                    }
+                    logActions.push(`upgraded max HP to ${player.maxResources.hp} (+3 milestone points)`);
+                } else if (player.maxResources.hp === 10 && !player.milestones.hp10) {
+                    game.addScore(player.id, 4, 'milestone');
+                    player.milestones.hp10 = true;
+                    if (!game.isAutomatedMode) {
+                        const checkbox = document.getElementById(`p${player.id}-hp-milestone-10`);
+                        if (checkbox) checkbox.checked = true;
+                    }
+                    logActions.push(`upgraded max HP to ${player.maxResources.hp} (+4 milestone points)`);
+                } else {
                     logActions.push(`upgraded max HP to ${player.maxResources.hp}`);
                 }
                 
@@ -2822,7 +2831,19 @@ class Game {
         this.checkSelectionComplete();
     }
     
-    // Removed duplicate - using the version at line 1917
+    checkSelectionComplete() {
+        const player = this.currentPlayer;
+        const bothSelected = player.selectedCards.hunter !== null && player.selectedCards.apprentice !== null;
+        
+        // Enable/disable confirm button
+        const confirmButton = document.getElementById('confirm-selection');
+        confirmButton.disabled = !bothSelected;
+        
+        if (bothSelected) {
+            document.getElementById('status-message').textContent = 
+                `${player.name}: Confirm your selections - Hunter to ${this.getLocationName(player.selectedCards.hunter)}, Apprentice to ${this.getLocationName(player.selectedCards.apprentice)}`;
+        }
+    }
     
     getLocationName(locationId) {
         const location = this.locations.find(loc => loc.id === locationId);
@@ -3174,62 +3195,27 @@ class Game {
         });
     }
     
-    // Unified player display update function
-    updatePlayerDisplay(playerId) {
+    updateInventoryDisplay(playerId) {
+        // Skip UI updates in automated mode for performance
         if (this.isAutomatedMode) return;
-        
+        console.log(`updateInventoryDisplay called for player ${playerId}`);
+        console.log(`Current roundPhase: ${this.roundPhase}`);
         const player = this.players.find(p => p.id === playerId);
-        if (!player) return;
-        
-        const prefix = `p${playerId}`;
-        
-        // Update upgrade progress
-        const epProgress = document.getElementById(`${prefix}-ep-progress`);
-        const hpProgress = document.getElementById(`${prefix}-hp-progress`);
-        if (epProgress) epProgress.textContent = `${player.upgradeProgress.ep}/4`;
-        if (hpProgress) hpProgress.textContent = `${player.upgradeProgress.hp}/3`;
-        
-        // Update weapon display
-        const weaponName = document.getElementById(`${prefix}-weapon-name`);
-        if (weaponName) weaponName.textContent = player.weapon.name;
-        
-        const attackDice = document.getElementById(`${prefix}-attack-dice`);
-        const defenseDice = document.getElementById(`${prefix}-defense-dice`);
-        if (attackDice) attackDice.textContent = player.weapon.currentAttackDice;
-        if (defenseDice) defenseDice.textContent = player.weapon.currentDefenseDice;
-        
-        const capacity = document.getElementById(`${prefix}-capacity`);
-        if (capacity) capacity.textContent = `${this.getInventorySize(player)}/${player.maxInventoryCapacity}`;
-        
-        const reqExpAttack = document.getElementById(`${prefix}-req-exp-attack`);
-        const reqExpDefense = document.getElementById(`${prefix}-req-exp-defense`);
-        if (reqExpAttack) reqExpAttack.textContent = player.weapon.reqExpAttack;
-        if (reqExpDefense) reqExpDefense.textContent = player.weapon.reqExpDefense;
-        
-        // Update damage grid
-        this.updateDamageGrid(playerId);
-        
-        // Update weapon power display
-        this.updateWeaponPowerDisplay(playerId);
-        this.updateWeaponPowerDescriptions(playerId);
-        
-        // Update ammunition displays
-        this.updateBulletDisplay(playerId);
-        this.updateBatteryDisplay(playerId);
-        
-        // Update inventory items
-        this.updateInventoryItems(playerId);
-    }
-    
-    // Separate function for inventory items only
-    updateInventoryItems(playerId) {
-        if (this.isAutomatedMode) return;
-        
-        const player = this.players.find(p => p.id === playerId);
-        if (!player) return;
+        if (!player) {
+            console.error(`Player ${playerId} not found`);
+            return;
+        }
         
         const inventoryContainer = document.getElementById(`p${playerId}-inventory`);
-        if (!inventoryContainer) return;
+        if (!inventoryContainer) {
+            console.error(`Inventory container not found for player ${playerId}`);
+            console.log(`Looking for element with ID: p${playerId}-inventory`);
+            console.log(`Available elements:`, document.querySelectorAll('[id*="inventory"]'));
+            return;
+        }
+        
+        console.log(`Updating inventory for player ${playerId}, items:`, player.inventory);
+        console.log(`Container found:`, inventoryContainer);
         
         // Get all possible items and their current counts
         const allItems = [
@@ -3246,6 +3232,8 @@ class Game {
         player.inventory.forEach(item => {
             itemCounts[item.name] = (itemCounts[item.name] || 0) + 1;
         });
+        
+        console.log(`Item counts:`, itemCounts);
         
         // Check if buttons should be disabled for this player
         const buttonsDisabled = this.shouldDisablePlayerButtons(playerId);
@@ -3290,12 +3278,9 @@ class Game {
                 </div>`;
             }).join('');
         
+        console.log(`Setting innerHTML to:`, htmlContent);
         inventoryContainer.innerHTML = htmlContent;
-    }
-    
-    // Legacy compatibility - will be removed after refactoring all calls
-    updateInventoryDisplay(playerId) {
-        this.updatePlayerDisplay(playerId);
+        console.log(`Final container innerHTML:`, inventoryContainer.innerHTML);
     }
     
     modifyResource(playerId, resourceType, amount) {
@@ -3358,23 +3343,9 @@ class Game {
         console.log(`Player ${playerId} inventory after adding:`, player.inventory);
         
         // Update displays
-        this.updateAllDisplays(playerId);
-    }
-    
-    // Helper function to check and award milestones
-    checkAndAwardMilestone(player, resourceType, value, points, milestoneKey) {
-        if (player.milestones[milestoneKey]) return false;
-        
-        player.milestones[milestoneKey] = true;
-        this.addScore(player.id, points, 'milestone');
-        
-        if (!this.isAutomatedMode) {
-            const checkbox = document.getElementById(`p${player.id}-${resourceType}-milestone-${value}`);
-            if (checkbox) checkbox.checked = true;
-        }
-        
-        console.log(`Player ${player.id} reached ${resourceType.toUpperCase()} max ${value} milestone - awarded ${points} points`);
-        return true;
+        this.updateResourceDisplay();
+        this.updateInventoryDisplayOld();
+        this.updateInventoryDisplay(playerId);
     }
     
     levelUpMaxResource(playerId, resourceType, amount) {
@@ -3398,13 +3369,53 @@ class Game {
         
         if (resourceType === 'hp') {
             // HP milestones: 6 (2 pts), 8 (3 pts), 10 (4 pts)
-            if (maxValue >= 6) this.checkAndAwardMilestone(player, 'hp', 6, 2, 'hp6');
-            if (maxValue >= 8) this.checkAndAwardMilestone(player, 'hp', 8, 3, 'hp8');
-            if (maxValue >= 10) this.checkAndAwardMilestone(player, 'hp', 10, 4, 'hp10');
+            if (maxValue >= 6 && !player.milestones.hp6) {
+                player.milestones.hp6 = true;
+                this.addScore(playerId, 2, 'milestone');
+                if (!this.isAutomatedMode) {
+                    const checkbox = document.getElementById(`p${playerId}-hp-milestone-6`);
+                    if (checkbox) checkbox.checked = true;
+                }
+                console.log(`Player ${playerId} reached HP max 6 milestone - awarded 2 points`);
+            }
+            if (maxValue >= 8 && !player.milestones.hp8) {
+                player.milestones.hp8 = true;
+                this.addScore(playerId, 3, 'milestone');
+                if (!this.isAutomatedMode) {
+                    const checkbox = document.getElementById(`p${playerId}-hp-milestone-8`);
+                    if (checkbox) checkbox.checked = true;
+                }
+                console.log(`Player ${playerId} reached HP max 8 milestone - awarded 3 points`);
+            }
+            if (maxValue >= 10 && !player.milestones.hp10) {
+                player.milestones.hp10 = true;
+                this.addScore(playerId, 4, 'milestone');
+                if (!this.isAutomatedMode) {
+                    const checkbox = document.getElementById(`p${playerId}-hp-milestone-10`);
+                    if (checkbox) checkbox.checked = true;
+                }
+                console.log(`Player ${playerId} reached HP max 10 milestone - awarded 4 points`);
+            }
         } else if (resourceType === 'ep') {
             // EP milestones: 8 (2 pts), 10 (4 pts)
-            if (maxValue >= 8) this.checkAndAwardMilestone(player, 'ep', 8, 2, 'ep8');
-            if (maxValue >= 10) this.checkAndAwardMilestone(player, 'ep', 10, 4, 'ep10');
+            if (maxValue >= 8 && !player.milestones.ep8) {
+                player.milestones.ep8 = true;
+                this.addScore(playerId, 2, 'milestone');
+                if (!this.isAutomatedMode) {
+                    const checkbox = document.getElementById(`p${playerId}-ep-milestone-8`);
+                    if (checkbox) checkbox.checked = true;
+                }
+                console.log(`Player ${playerId} reached EP max 8 milestone - awarded 2 points`);
+            }
+            if (maxValue >= 10 && !player.milestones.ep10) {
+                player.milestones.ep10 = true;
+                this.addScore(playerId, 4, 'milestone');
+                if (!this.isAutomatedMode) {
+                    const checkbox = document.getElementById(`p${playerId}-ep-milestone-10`);
+                    if (checkbox) checkbox.checked = true;
+                }
+                console.log(`Player ${playerId} reached EP max 10 milestone - awarded 4 points`);
+            }
         }
         
         // Disable upgrade button if at maximum (10)
@@ -4472,29 +4483,43 @@ class Game {
         });
     }
     
-    // Unified update dispatcher - replaces multiple update calls
-    updateAllDisplays(playerId = null) {
-        if (this.isAutomatedMode) return;
-        
-        // Update resource display once
-        this.updateResourceDisplay();
-        
-        // Update player-specific displays
-        if (playerId !== null) {
-            // Update specific player
-            this.updatePlayerDisplay(playerId);
-        } else {
-            // Update all players
-            this.players.forEach(player => {
-                this.updatePlayerDisplay(player.id);
-            });
-        }
-    }
-    
-    // Legacy compatibility - will be removed after refactoring
     updateInventoryDisplayOld() {
+        // Skip UI updates in automated mode for performance
+        if (this.isAutomatedMode) return;
         this.players.forEach(player => {
-            this.updatePlayerDisplay(player.id);
+            // Update upgrade progress only now
+            const prefix = `p${player.id}`;
+            document.getElementById(`${prefix}-ep-progress`).textContent = `${player.upgradeProgress.ep}/4`;
+            document.getElementById(`${prefix}-hp-progress`).textContent = `${player.upgradeProgress.hp}/3`;
+            
+            // Update weapon display
+            console.log(`Updating weapon display for player ${player.id}:`, player.weapon);
+            const weaponNameElement = document.getElementById(`${prefix}-weapon-name`);
+            console.log(`Weapon name element:`, weaponNameElement);
+            if (weaponNameElement && player.weapon && player.weapon.name) {
+                weaponNameElement.textContent = player.weapon.name;
+                console.log(`Set weapon name to: ${player.weapon.name}`);
+            } else {
+                console.error(`Missing data - weaponNameElement: ${weaponNameElement}, weapon: ${player.weapon}, weapon.name: ${player.weapon?.name}`);
+            }
+            document.getElementById(`${prefix}-attack-dice`).textContent = player.weapon.currentAttackDice;
+            document.getElementById(`${prefix}-defense-dice`).textContent = player.weapon.currentDefenseDice;
+            document.getElementById(`${prefix}-capacity`).textContent = `${this.getInventorySize(player)}/${player.maxInventoryCapacity}`;
+            document.getElementById(`${prefix}-req-exp-attack`).textContent = player.weapon.reqExpAttack;
+            document.getElementById(`${prefix}-req-exp-defense`).textContent = player.weapon.reqExpDefense;
+            
+            // Update damage grid display
+            this.updateDamageGrid(player.id);
+            
+            // Update weapon power display
+            this.updateWeaponPowerDisplay(player.id);
+            this.updateWeaponPowerDescriptions(player.id);
+            
+            // Update bullet count display
+            this.updateBulletDisplay(player.id);
+            
+            // Update battery count display
+            this.updateBatteryDisplay(player.id);
         });
     }
 
@@ -5208,24 +5233,8 @@ class Game {
         }
     }
     
-    // Overloaded version for simple damage cap queries
-    applyBattleEffect(monsterOrEffectId, battleOrContext, context) {
-        // Handle overloaded calls for damage cap
-        if (typeof monsterOrEffectId === 'object' && battleOrContext === 'damageCap') {
-            const monster = monsterOrEffectId;
-            const effectId = monster.effectId;
-            
-            switch(effectId) {
-                case 6: return 2;   // 2 damage cap
-                case 14: return 4;  // 4 damage cap  
-                case 30: return 6;  // 6 damage cap
-                default: return null;
-            }
-        }
-        
-        // Original implementation for complex battle effects
-        const effectId = monsterOrEffectId;
-        const battle = battleOrContext;
+    applyBattleEffect(effectId, battle, context) {
+        // Apply effects during battle
         const player = this.players.find(p => p.id === battle.playerId);
         const monster = battle.monster;
         
@@ -5244,7 +5253,21 @@ class Game {
                 }
                 break;
                 
-            // Damage cap cases handled in overloaded version above
+            case 6: // Player cannot deal more than 2 damage
+                if (context === 'damageCap') {
+                    return 2;
+                }
+                break;
+            case 14: // Player cannot deal more than 4 damage
+                if (context === 'damageCap') {
+                    return 4;
+                }
+                break;
+            case 30: // Player cannot deal more than 6 damage
+                if (context === 'damageCap') {
+                    return 6;
+                }
+                break;
                 
             case 22: // Player gains max 2 EXP from damage
                 if (context === 'playerDamaged') {
