@@ -1029,7 +1029,7 @@ class Game {
             { name: 'Bat', reqExpAttack: 4, reqExpDefense: 3, capacity: 6, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 1, 1, 1], priority: 3, 
               lv1Power: '徒弟在資源區域撞其他獵人+1區域資源', lv2Power: '回合開始+1ep或+1hp', lv3Power: '命中的骰子再骰1次，傷害為所有傷害加總', preferLocation: 'plaza' },
             { name: 'Katana', reqExpAttack: 5, reqExpDefense: 3, capacity: 4, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 1, 1, 1, 1], priority: 8,
-              lv1Power: '1血袋換1啤酒', lv2Power: '回合開始+1經驗', lv3Power: '攻擊骰總點數大於27則一擊必殺', preferLocation: 'dojo' },
+              lv1Power: '無', lv2Power: '單獨存在區域+1經驗', lv3Power: '攻擊骰總點數大於27則一擊必殺', preferLocation: 'dojo' },
             { name: 'Rifle', reqExpAttack: 6, reqExpDefense: 3, capacity: 8, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 1, 2, 2], priority: 10,
               lv1Power: '可購買子彈:2$，每次戰鬥花費1子彈', lv2Power: '回合開始+2$', lv3Power: '商店價格-1$', preferLocation: 'work site' },
             { name: 'Plasma', reqExpAttack: 7, reqExpDefense: 3, capacity: 8, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 2, 2, 2], priority: 11,
@@ -1043,9 +1043,9 @@ class Game {
             { name: 'Bow', reqExpAttack: 5, reqExpDefense: 3, capacity: 6, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 0, 0, 4], priority: 1,
               lv1Power: '閃避率+16%', lv2Power: '回合開始+1經驗', lv3Power: '傷害x2', preferLocation: 'plaza' },
             { name: 'Sword', reqExpAttack: 5, reqExpDefense: 3, capacity: 4, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 1, 1, 2], priority: 9,
-              lv1Power: '遊戲開始防禦力+1', lv2Power: '回合開始+1經驗', lv3Power: '每骰到至少1個1即+1分', preferLocation: 'dojo' },
+              lv1Power: '無', lv2Power: '單獨存在區域+1經驗', lv3Power: '每骰到至少1個1即+1分', preferLocation: 'dojo' },
             { name: 'Knife', reqExpAttack: 3, reqExpDefense: 3, capacity: 10, initialMoney: 8, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 0, 1, 1], priority: 2,
-              lv1Power: '可將一次的攻擊力x2', lv2Power: '回合開始+1分', lv3Power: '打贏的資源獎勵x2', preferLocation: 'plaza' },
+              lv1Power: '可將一次的攻擊力x2', lv2Power: '單獨存在區域+1分', lv3Power: '打贏的資源獎勵x2', preferLocation: 'plaza' },
             { name: 'Gloves', reqExpAttack: 4, reqExpDefense: 3, capacity: 6, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 0, 1, 1], priority: 7,
               lv1Power: '基礎攻擊力=1，當hp少於一半時攻擊力+1', lv2Power: '回合開始+1血袋', lv3Power: '每次遭受攻擊而扣血，攻擊力+1', preferLocation: 'hospital' }
         ];
@@ -1432,8 +1432,8 @@ class Game {
     setupDummyTokens(playerCount) {
         switch (playerCount) {
             case 2:
-                // 2 dummy tokens at Dojo (4) and Bar (2)
-                this.dummyTokens = [4, 2];
+                // 2 dummy tokens at Bar (2) and Dojo (5)
+                this.dummyTokens = [2, 5];
                 break;
             case 3:
                 // 1 dummy token at Station (3)
@@ -2403,11 +2403,11 @@ class Game {
                         </label>
                         <label class="milestone-checkbox">
                             <input type="checkbox" id="p${player.id}-hp-milestone-8" disabled>
-                            <span>Max:8 4 points</span>
+                            <span>Max:8 3 points</span>
                         </label>
                         <label class="milestone-checkbox">
                             <input type="checkbox" id="p${player.id}-hp-milestone-10" disabled>
-                            <span>Max:10 6 points</span>
+                            <span>Max:10 4 points</span>
                         </label>
                     </div>
                 </div>
@@ -2673,7 +2673,7 @@ class Game {
             { background: '#3498db', border: '#2980b9', name: 'Blue' },
             { background: '#9b59b6', border: '#8e44ad', name: 'Purple' },
             { background: '#e74c3c', border: '#c0392b', name: 'Red' },
-            { background: '#f39c12', border: '#e67e22', name: 'Yellow' },
+            { background: '#f5f50a', border: '#828205', name: 'Yellow' },
             { background: '#000000', border: '#333333', name: 'Black' }
         ];
         
@@ -3274,12 +3274,7 @@ class Game {
                                      (canUse ? 'Use Blood Bag (+1 HP)' : 'HP is already at maximum');
                         useButton = `<button class="small-btn"${disabled} onclick="game.useInventoryItem(${playerId}, '${item.name}')" title="${title}">Use</button>`;
                         
-                        // Katana Level 1 Power: Blood Bag to Beer conversion
-                        if (player.weapon.name === 'Katana' && player.weapon.powerTrackPosition >= 1 && count > 0) {
-                            const convertDisabled = buttonsDisabled ? ' disabled' : '';
-                            const convertTitle = buttonsDisabled ? 'Cannot interact with this player board' : 'Convert Blood Bag to Beer (Katana Power)';
-                            useButton += `<button class="small-btn katana-convert"${convertDisabled} onclick="game.convertBloodBagToBeer(${playerId})" title="${convertTitle}">🍺</button>`;
-                        }
+                        // Katana Level 1 Power removed (no longer has Level 1 power)
                     }
                 }
                 
@@ -4623,6 +4618,24 @@ class Game {
             let tokenMoved = false;
             
             if (isAlone) {
+                // Sword and Katana Level 2 Power: +1 EXP when hunter is alone
+                if ((player.weapon.name === 'Sword' || player.weapon.name === 'Katana') && 
+                    player.weapon.powerTrackPosition >= 3) {
+                    this.modifyResource(player.id, 'exp', 1);
+                    if (!this.isAutomatedMode) {
+                        console.log(`${player.weapon.name} Lv2 Power: ${player.name} receives +1 EXP for being alone at location`);
+                    }
+                }
+                
+                // Knife Level 2 Power: +1 point when hunter is alone
+                if (player.weapon.name === 'Knife' && player.weapon.powerTrackPosition >= 3) {
+                    this.addScore(player.id, 1, 'other');
+                    if (!this.isAutomatedMode) {
+                        console.log(`Knife Lv2 Power: ${player.name} receives +1 point for being alone at location`);
+                        this.addLogEntry(`🔪 ${player.name} receives +1 point from Knife Lv2 Power`, 'power');
+                    }
+                }
+                
                 const oldRewardLevel = player.popularityTrack.rewardToken;
                 player.popularityTrack.rewardToken = Math.min(5, player.popularityTrack.rewardToken + 1);
                 
@@ -5657,8 +5670,8 @@ class Game {
             petsUsed: selectedPets, // Track pets being used in this battle
             glovesPowerLevel: 0, // Track Gloves power level (damage taken)
             hasAttacked: false, // Track if player has attacked this battle
-            tripleDamageUsed: false, // Track if Knife Lv2 triple damage was used
-            canUseTripleDamage: false, // Track if Knife Lv2 triple damage is available
+            tripleDamageUsed: false, // Track if Knife Lv1 double damage was used
+            canUseTripleDamage: false, // Track if Knife Lv1 double damage is available
             lastAttackDamage: 0, // Track last attack damage for triple damage calculation
             ammunitionConsumed: false // Track if ammunition was consumed for this battle
         };
@@ -8537,17 +8550,8 @@ class Game {
                 console.log(`Gloves Lv2 Power: ${player.name} receives +1 blood bag at round start`);
             }
             
-            // Katana Level 2 Power: +1 EXP at round start
-            if (player.weapon.name === 'Katana' && player.weapon.powerTrackPosition >= 3) {
-                this.modifyResource(player.id, 'exp', 1);
-                console.log(`Katana Lv2 Power: ${player.name} receives +1 EXP at round start`);
-            }
-            
-            // Sword Level 2 Power: +1 EXP at round start
-            if (player.weapon.name === 'Sword' && player.weapon.powerTrackPosition >= 3) {
-                this.modifyResource(player.id, 'exp', 1);
-                console.log(`Sword Lv2 Power: ${player.name} receives +1 EXP at round start`);
-            }
+            // Katana and Sword Level 2 powers moved to resource distribution phase
+            // They now give +1 EXP when hunter is alone at a location
             
             // Rifle Level 2 Power: +2$ at round start
             if (player.weapon.name === 'Rifle' && player.weapon.powerTrackPosition >= 3) {
@@ -8561,12 +8565,8 @@ class Game {
                 console.log(`Plasma Lv2 Power: ${player.name} receives +2$ at round start`);
             }
             
-            // Knife Level 2 Power: +1 point at round start
-            if (player.weapon.name === 'Knife' && player.weapon.powerTrackPosition >= 3) {
-                this.addScore(player.id, 1, 'other');
-                console.log(`Knife Lv2 Power: ${player.name} receives +1 point at round start`);
-                this.addLogEntry(`🔪 ${player.name} receives +1 point from Knife Lv2 Power`, 'power');
-            }
+            // Knife Level 2 power moved to resource distribution phase
+            // Now gives +1 point when hunter is alone at a location
         });
         
         // Update displays after applying round start effects
@@ -8857,47 +8857,7 @@ class Game {
         }
     }
     
-    convertBloodBagToBeer(playerId) {
-        const player = this.players.find(p => p.id === playerId);
-        if (!player) return;
-        
-        // Check if player has Katana and power is unlocked
-        if (player.weapon.name !== 'Katana' || player.weapon.powerTrackPosition < 1) {
-            console.log('Katana Level 1 power not available');
-            return;
-        }
-        
-        // Find a blood bag item in inventory
-        const bloodBagIndex = player.inventory.findIndex(item => item.name === 'Blood Bag');
-        if (bloodBagIndex === -1) {
-            console.log('No blood bag in inventory to convert');
-            return;
-        }
-        
-        // Remove one blood bag
-        player.inventory.splice(bloodBagIndex, 1);
-        player.resources.bloodBag = Math.max(0, player.resources.bloodBag - 1);
-        
-        // Add one beer
-        this.addItemToInventory(playerId, 'Beer', 1);
-        player.resources.beer += 1;
-        
-        console.log(`Katana Lv1 Power: ${player.name} converts 1 blood bag to 1 beer`);
-        
-        // Update displays
-        this.updateResourceDisplay();
-        this.updateInventoryDisplay(playerId);
-        
-        // Update battle UI if in battle
-        if (this.currentBattle && this.currentBattle.playerId === playerId) {
-            // Update might not be needed as inventory updates should handle it
-        }
-        
-        // Update location card states if needed
-        if (this.roundPhase === 'selection' && player.id === this.currentPlayer.id) {
-            this.updateLocationCardStates();
-        }
-    }
+    // convertBloodBagToBeer removed - Katana no longer has Level 1 power
     
     updateStoreCapacityDisplay() {
         if (this.roundPhase !== 'store') return;
