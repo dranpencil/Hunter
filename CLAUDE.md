@@ -18,8 +18,11 @@ Hunter & Apprentice is a strategic digital board game for 2-4 players where each
 
 ### 1. Selection Phase
 - Players secretly select locations for Hunter and Apprentice tokens
-- Forest requires 2+ EP and appropriate ammunition (Rifle/Plasma weapons)
+- Forest requirements: 2+ EP and ammunition for Rifle/Plasma weapons
+- Human players can select Forest without requirements (warning shown at confirmation)
 - Bots use probabilistic entry system with weapon preferences
+  - Forest entries: -100 penalty without ammunition (Rifle/Plasma)
+  - Normal entries (4 base) with at least 1 ammunition
 
 ### 2. Resource Distribution Phase  
 - Players collect resources from all locations except Forest
@@ -112,12 +115,12 @@ Each weapon features:
 
 **Bat**
 - Lv1: Apprentice gets +1 resource when sharing location with hunters
-- Lv2: +1 blood bag, +1 EP at round start
+- Lv2: +1 HP or +1 EP at round start (player choice)
 - Lv3: Re-roll successful hits until miss, sum all damage
 
 **Katana**
-- Lv1: Trade beer for blood bags
-- Lv2: +1 EXP at round start
+- Lv1: None
+- Lv2: +1 EXP when hunter is alone at location
 - Lv3: Instant kill if attack dice total > 27
 
 **Rifle**
@@ -126,18 +129,18 @@ Each weapon features:
 - Lv3: Store prices -1$
 
 **Plasma**
-- Lv1: Uses batteries ($3 each), 1 per attack
-- Lv2: +3$ at round start
+- Lv1: Uses batteries ($2 each), 1 per attack
+- Lv2: +2$ at round start
 - Lv3: Infinite ammunition
 
 **Chain**
-- Lv1: Can tame monsters at HP < 4
+- Lv1: Can tame monsters at HP ≤ 3
 - Lv2: +2 beer at round start
 - Lv3: Pet damage x2
 
 **Axe**
 - Lv1: Deal 1 damage when taking damage
-- Lv2: +2 blood bags at round start
+- Lv2: +1 blood bag at round start
 - Lv3: Deal equal damage when taking damage
 
 **Whip**
@@ -147,17 +150,17 @@ Each weapon features:
 
 **Bow**
 - Lv1: +16% dodge chance
-- Lv2: +2 EXP at round start
+- Lv2: +1 EXP at round start
 - Lv3: Damage x2
 
 **Sword**
-- Lv1: Start game with +1 defense die
-- Lv2: +1 EXP at round start
+- Lv1: None
+- Lv2: +1 EXP when hunter is alone at location
 - Lv3: +1 point per die showing 1
 
 **Knife**
-- Lv1: Popularity token doesn't decrease
-- Lv2: Can triple damage once per battle
+- Lv1: Can double damage once per battle
+- Lv2: +1 point when hunter is alone at location
 - Lv3: Battle rewards x2
 - Special: Only receives popularity track resources when token moves up (exception: at max level 5)
 
@@ -207,12 +210,22 @@ Each weapon features:
 
 ## Recent Improvements
 
+### Game Balance Changes (Latest Session)
+- **Player Count**: Changed from 2-5 to 2-4 players maximum
+- **Dummy Tokens**: 2-player games now start at Bar and Dojo
+- **Forest Selection**: Human players can now select Forest without meeting requirements
+  - Warning popup shows at confirmation stage (not during selection)
+  - Lists missing EP/ammunition requirements
+  - Reminds players about Store phase opportunities
+  - Allows strategic planning ahead
+
 ### Bot System Enhancements
 - Tactical item usage during combat phases
 - CSV-based decision tables for consistency
 - Weapon-specific resource priorities
 - Stage-based Forest entry requirements
 - Automatic capacity overflow resolution
+- Forest selection logic: -100 entry penalty without ammunition
 
 ### Bug Fixes
 - Fixed double resource distribution issue
@@ -249,7 +262,7 @@ Each weapon features:
 ## Data Collection System
 
 ### CSV Data Export
-- **Automated Game Running**: Configurable batch processing (1-1000 games, 2-5 players)
+- **Automated Game Running**: Configurable batch processing (1-1000 games, 2-4 players)
 - **Performance Optimized**: 0ms delays, DOM updates skipped in automated mode
 - **15 Data Points Per Player**:
   - `game_id`, `player_count`, `rounds`, `player_id`, `weapon`, `level`, `score`, `rank`

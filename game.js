@@ -2752,22 +2752,6 @@ class Game {
             return; // Don't allow selection of disabled cards
         }
         
-        // Check for Forest ammunition warning (only for human players, not bots)
-        if (locationId === 7 && tokenType === 'hunter' && !this.currentPlayer.isBot && !this.hasRequiredAmmunition(this.currentPlayer)) {
-            let warningMessage = 'You are entering the Forest without ammunition. ';
-            if (this.currentPlayer.weapon.name === 'Rifle') {
-                warningMessage += 'Rifle weapons need 1 bullet per battle. You can still use combat items (Grenades, Bombs, Dynamite) to fight monsters.';
-            } else if (this.currentPlayer.weapon.name === 'Plasma') {
-                warningMessage += 'Plasma weapons need 1 battery per battle. You can still use combat items (Grenades, Bombs, Dynamite) to fight monsters.';
-            }
-            warningMessage += '\n\nAre you sure you want to enter the Forest?';
-            
-            if (!confirm(warningMessage)) {
-                console.log('Player canceled Forest entry due to ammunition warning');
-                return; // Player canceled the selection
-            }
-        }
-        
         // Get current player's colors
         const playerColors = this.getPlayerColors(this.currentPlayer.id);
         
@@ -2839,6 +2823,51 @@ class Game {
         if (this.currentPlayer.selectedCards.hunter === null || this.currentPlayer.selectedCards.apprentice === null) {
             console.log(`[DEBUG] Player ${this.currentPlayerIndex} selections incomplete: H=${this.currentPlayer.selectedCards.hunter}, A=${this.currentPlayer.selectedCards.apprentice}`);
             return;
+        }
+        
+        // Check Forest requirements warning for human players
+        if (!this.currentPlayer.isBot && this.currentPlayer.selectedCards.hunter === 7) {
+            let warningMessages = [];
+            let canGetInStore = false;
+            
+            // Check EP requirement
+            if (this.currentPlayer.resources.ep < 2) {
+                warningMessages.push('• You need at least 2 EP to enter the Forest (you have ' + this.currentPlayer.resources.ep + ' EP)');
+                canGetInStore = true;
+            }
+            
+            // Check ammunition requirement for Rifle/Plasma
+            if (!this.hasRequiredAmmunition(this.currentPlayer)) {
+                if (this.currentPlayer.weapon.name === 'Rifle') {
+                    const bulletCount = this.currentPlayer.inventory.filter(item => item.name === 'Bullet').length;
+                    warningMessages.push('• Rifle needs bullets for combat (you have ' + bulletCount + ' bullets)');
+                    canGetInStore = true;
+                } else if (this.currentPlayer.weapon.name === 'Plasma') {
+                    const batteryCount = this.currentPlayer.inventory.filter(item => item.name === 'Battery').length;
+                    warningMessages.push('• Plasma needs batteries for combat (you have ' + batteryCount + ' batteries)');
+                    canGetInStore = true;
+                }
+            }
+            
+            // Show warning if any requirements are missing
+            if (warningMessages.length > 0) {
+                let fullMessage = '⚠️ Forest Entry Warning\n\n';
+                fullMessage += 'Your Hunter is entering the Forest but lacks the following:\n\n';
+                fullMessage += warningMessages.join('\n');
+                fullMessage += '\n\n';
+                
+                if (canGetInStore) {
+                    fullMessage += 'You can still obtain these resources in the Store phase.\n';
+                    fullMessage += 'Combat items (Grenades, Bombs, Dynamite) can also be used to fight monsters.\n\n';
+                }
+                
+                fullMessage += 'Do you want to proceed with this selection?';
+                
+                if (!confirm(fullMessage)) {
+                    console.log('Player canceled Forest entry during confirmation');
+                    return; // Player canceled, don't confirm selection
+                }
+            }
         }
         
         // Store the selection message for batch logging later (only for human players, bots already added theirs)
@@ -3064,19 +3093,15 @@ class Game {
                 card.classList.add('disabled');
                 card.title = 'Location occupied by dummy token';
             }
-            // Check Forest requirements for hunter cards only (if not already disabled)
+            // Show Forest requirements as tooltip for hunter cards (but don't disable)
             else if (tokenType === 'hunter' && locationId === 7) { // Forest
                 if (this.currentPlayer.resources.ep < 2) {
-                    card.classList.add('disabled');
-                    card.title = 'Requires at least 2 EP';
+                    card.title = 'Requires at least 2 EP (can be obtained in Store phase)';
                 } else if (!this.hasRequiredAmmunition(this.currentPlayer)) {
-                    card.classList.add('disabled');
                     if (this.currentPlayer.weapon.name === 'Rifle') {
-                        card.title = 'Need bullets for Rifle in Forest';
+                        card.title = 'Rifle needs bullets for Forest (can be purchased in Store phase)';
                     } else if (this.currentPlayer.weapon.name === 'Plasma') {
-                        card.title = 'Need batteries for Plasma in Forest';
-                    } else {
-                        card.title = 'Need ammunition for Forest';
+                        card.title = 'Plasma needs batteries for Forest (can be purchased in Store phase)';
                     }
                 }
             }
