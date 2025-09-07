@@ -1,7 +1,7 @@
 # Hunter & Apprentice Board Game System Documentation
 
 ## Overview
-Hunter & Apprentice is a strategic digital board game for 2-5 players where each player controls a Hunter and an Apprentice token, placing them on 7 different locations to gather resources, fight monsters, and score points. The game features sophisticated AI opponents, 11 unique weapons with special powers, and dynamic resource management.
+Hunter & Apprentice is a strategic digital board game for 2-4 players where each player controls a Hunter and an Apprentice token, placing them on 7 different locations to gather resources, fight monsters, and score points. The game features sophisticated AI opponents, 11 unique weapons with special powers, and dynamic resource management.
 
 ## Core Game Architecture
 
@@ -11,7 +11,7 @@ Hunter & Apprentice is a strategic digital board game for 2-5 players where each
 
 ### Game State Management
 - Phase tracking via `roundPhase`: 'selection', 'distribution', 'station', 'store', 'battle', 'nextround'
-- Dynamic player count configurations (2-5 players)
+- Dynamic player count configurations (2-4 players)
 - Dummy token system for game balance across different player counts
 
 ## Game Flow
@@ -26,7 +26,7 @@ Hunter & Apprentice is a strategic digital board game for 2-5 players where each
 - Rewards scale based on token density:
   - 2 players: [6,4] rewards
   - 3 players: [7,5,4] rewards  
-  - 4+ players: [8,6,5,4] rewards
+  - 4 players: [8,6,5,4] rewards
 - Only Hunters collect resources (exception: Bat weapon power)
 
 ### 3. Station Choice Phase
@@ -315,3 +315,5 @@ Each weapon features:
 - to memorize
 - to memorize
 - add to memory.
+- to memorize
+- to memorize

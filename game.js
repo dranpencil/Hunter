@@ -1105,7 +1105,6 @@ class Game {
             { type: 'player', active: true },
             { type: 'closed', active: false },
             { type: 'closed', active: false },
-            { type: 'closed', active: false },
             { type: 'closed', active: false }
         ];
         
@@ -1250,7 +1249,7 @@ class Game {
             }
         }
         
-        // 4-player and 5-player rewards
+        // 4-player rewards
         if (this.playerCount >= 4) {
             switch (locationName) {
                 case 'work':
@@ -1440,10 +1439,6 @@ class Game {
                 this.dummyTokens = [3];
                 break;
             case 4:
-                // No dummy tokens
-                this.dummyTokens = [];
-                break;
-            case 5:
                 // No dummy tokens
                 this.dummyTokens = [];
                 break;
