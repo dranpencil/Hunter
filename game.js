@@ -1102,13 +1102,54 @@ class Game {
         
         // Solo play mode configuration
         this.soloModeSlots = [
-            { type: 'player', active: true },
-            { type: 'closed', active: false },
-            { type: 'closed', active: false },
-            { type: 'closed', active: false }
+            { type: 'player', active: true, color: 'random', weapon: 'random' },
+            { type: 'closed', active: false, color: 'random', weapon: 'random' },
+            { type: 'closed', active: false, color: 'random', weapon: 'random' },
+            { type: 'closed', active: false, color: 'random', weapon: 'random' }
         ];
         
+        this.showMainMenu();
+    }
+    
+    showMainMenu() {
+        // Hide all screens
+        const selectionScreen = document.getElementById('player-count-selection');
+        const playerBoards = document.getElementById('player-boards-container');
+        const gameBoard = document.querySelector('.game-board');
+        const playerArea = document.querySelector('.player-area');
+        const gameStatus = document.querySelector('.game-status');
+        const gameLog = document.getElementById('game-log-section');
+        
+        if (selectionScreen) selectionScreen.style.display = 'none';
+        if (playerBoards) playerBoards.style.display = 'none';
+        if (gameBoard) gameBoard.style.display = 'none';
+        if (playerArea) playerArea.style.display = 'none';
+        if (gameStatus) gameStatus.style.display = 'none';
+        if (gameLog) gameLog.style.display = 'none';
+        
+        // Show main menu
+        const mainMenu = document.getElementById('main-menu');
+        if (mainMenu) mainMenu.style.display = 'flex';
+    }
+    
+    showLocalPlay() {
+        // Hide main menu
+        const mainMenu = document.getElementById('main-menu');
+        if (mainMenu) mainMenu.style.display = 'none';
+        
+        // Show player configuration screen
         this.showPlayerCountSelection();
+    }
+    
+    showOnlinePlay() {
+        // Placeholder for future online play functionality
+        console.log('Online play coming soon!');
+        // Could show a message or do nothing for now
+    }
+    
+    backToModeSelection() {
+        // Go back to main menu
+        this.showMainMenu();
     }
     
     showPlayerCountSelection() {
@@ -1813,8 +1854,8 @@ class Game {
         const newGameButton = document.getElementById('new-game-btn');
         if (newGameButton) {
             newGameButton.onclick = () => {
-                // Reset game and show player count selection
-                this.showPlayerCountSelection();
+                // Reset game and show main menu
+                this.showMainMenu();
             };
         }
         
@@ -2111,6 +2152,8 @@ class Game {
             // Activate the slot
             slot.active = true;
             slot.type = 'player'; // Default to player when activated
+            slot.color = 'random'; // Reset to random when activated
+            slot.weapon = 'random'; // Reset to random when activated
         } else {
             // Deactivate the slot (close it)
             slot.active = false;
@@ -2120,8 +2163,49 @@ class Game {
         this.updateSoloModeUI();
     }
     
+    changeSlotColor(slotIndex, color) {
+        if (this.soloModeSlots[slotIndex]) {
+            this.soloModeSlots[slotIndex].color = color;
+            console.log(`Slot ${slotIndex + 1} color changed to: ${color}`);
+        }
+    }
+    
+    changeSlotWeapon(slotIndex, weapon) {
+        if (this.soloModeSlots[slotIndex]) {
+            this.soloModeSlots[slotIndex].weapon = weapon;
+            console.log(`Slot ${slotIndex + 1} weapon changed to: ${weapon}`);
+        }
+    }
+    
     updateSoloModeUI() {
         const slots = document.querySelectorAll('.player-slot');
+        
+        // Define color and weapon options
+        const colorOptions = [
+            { value: 'random', label: 'Random' },
+            { value: 'orange', label: 'Orange' },
+            { value: 'green', label: 'Green' },
+            { value: 'blue', label: 'Blue' },
+            { value: 'purple', label: 'Purple' },
+            { value: 'red', label: 'Red' },
+            { value: 'yellow', label: 'Yellow' },
+            { value: 'black', label: 'Black' }
+        ];
+        
+        const weaponOptions = [
+            { value: 'random', label: 'Random' },
+            { value: 'Bat', label: 'Bat' },
+            { value: 'Katana', label: 'Katana' },
+            { value: 'Rifle', label: 'Rifle' },
+            { value: 'Plasma', label: 'Plasma' },
+            { value: 'Chain', label: 'Chain' },
+            { value: 'Axe', label: 'Axe' },
+            { value: 'Whip', label: 'Whip' },
+            { value: 'Bow', label: 'Bow' },
+            { value: 'Sword', label: 'Sword' },
+            { value: 'Knife', label: 'Knife' },
+            { value: 'Gloves', label: 'Gloves' }
+        ];
         
         slots.forEach((slotElement, index) => {
             const slot = this.soloModeSlots[index];
@@ -2135,14 +2219,46 @@ class Game {
                     slotElement.classList.add('bot');
                 }
                 
+                // Build color dropdown
+                const colorDropdown = `
+                    <select class="slot-color-select" onchange="game.changeSlotColor(${index}, this.value)">
+                        ${colorOptions.map(opt => 
+                            `<option value="${opt.value}" ${slot.color === opt.value ? 'selected' : ''}>${opt.label}</option>`
+                        ).join('')}
+                    </select>
+                `;
+                
+                // Build weapon dropdown
+                const weaponDropdown = `
+                    <select class="slot-weapon-select" onchange="game.changeSlotWeapon(${index}, this.value)">
+                        ${weaponOptions.map(opt => 
+                            `<option value="${opt.value}" ${slot.weapon === opt.value ? 'selected' : ''}>${opt.label}</option>`
+                        ).join('')}
+                    </select>
+                `;
+                
                 // Update content for active slot
                 slotElement.innerHTML = `
-                    <span class="slot-number">${index + 1}</span>
-                    <span class="slot-type">${slot.type === 'player' ? 'Player' : 'Bot'}</span>
-                    <button class="slot-toggle" onclick="game.toggleSlotType(${index})">
-                        Change to ${slot.type === 'player' ? 'Bot' : 'Player'}
-                    </button>
-                    ${index > 0 ? `<button class="slot-activate" onclick="game.activateSlot(${index})">Remove</button>` : ''}
+                    <div class="slot-header">
+                        <span class="slot-number">${index + 1}</span>
+                        <span class="slot-type">${slot.type === 'player' ? 'Player' : 'Bot'}</span>
+                    </div>
+                    <div class="slot-options">
+                        <div class="slot-option">
+                            <label>Color:</label>
+                            ${colorDropdown}
+                        </div>
+                        <div class="slot-option">
+                            <label>Weapon:</label>
+                            ${weaponDropdown}
+                        </div>
+                    </div>
+                    <div class="slot-buttons">
+                        <button class="slot-toggle" onclick="game.toggleSlotType(${index})">
+                            Change to ${slot.type === 'player' ? 'Bot' : 'Player'}
+                        </button>
+                        ${index > 0 ? `<button class="slot-activate" onclick="game.activateSlot(${index})">Remove</button>` : ''}
+                    </div>
                 `;
             } else {
                 slotElement.classList.add('closed');
@@ -2272,11 +2388,12 @@ class Game {
         
         this.setupDummyTokens(playerCount);
         
-        const assignedWeapons = this.getRandomWeapons(playerCount);
-        console.log('Assigned weapons:', assignedWeapons);
+        // Use selected weapons/colors from slots instead of random
+        const assignedWeapons = this.getSelectedWeapons();
+        console.log('Assigned weapons:', assignedWeapons.map(w => w.name));
         
-        this.playerColors = this.getRandomPlayerColors(playerCount);
-        console.log('Assigned colors:', this.playerColors);
+        this.playerColors = this.getSelectedColors();
+        console.log('Assigned colors:', Object.values(this.playerColors).map(c => c.name));
         
         // Create bot configuration based on slot types
         const botConfiguration = {
@@ -2506,6 +2623,99 @@ class Game {
         
         console.log('Randomly assigned weapons:', selectedWeapons.map(w => w.name));
         return selectedWeapons;
+    }
+    
+    getSelectedWeapons() {
+        const activeSlots = this.soloModeSlots.filter(slot => slot.active);
+        const availableWeapons = [...this.weapons];
+        const selectedWeapons = [];
+        
+        // First pass: assign non-random selections
+        const nonRandomSelections = [];
+        activeSlots.forEach((slot, index) => {
+            if (slot.weapon !== 'random') {
+                // Find the weapon object
+                const weapon = this.weapons.find(w => w.name === slot.weapon);
+                if (weapon) {
+                    selectedWeapons[index] = weapon;
+                    nonRandomSelections.push(weapon.name);
+                    // Remove from available weapons
+                    const availIndex = availableWeapons.findIndex(w => w.name === weapon.name);
+                    if (availIndex !== -1) {
+                        availableWeapons.splice(availIndex, 1);
+                    }
+                }
+            }
+        });
+        
+        // Second pass: assign random weapons from remaining pool
+        activeSlots.forEach((slot, index) => {
+            if (slot.weapon === 'random' && !selectedWeapons[index]) {
+                if (availableWeapons.length > 0) {
+                    const randomIndex = Math.floor(Math.random() * availableWeapons.length);
+                    selectedWeapons[index] = availableWeapons[randomIndex];
+                    availableWeapons.splice(randomIndex, 1);
+                } else {
+                    // If no weapons left, use a random weapon from full list (shouldn't happen with 11 weapons and max 4 players)
+                    const randomIndex = Math.floor(Math.random() * this.weapons.length);
+                    selectedWeapons[index] = this.weapons[randomIndex];
+                }
+            }
+        });
+        
+        console.log('Selected weapons:', selectedWeapons.map(w => w.name));
+        return selectedWeapons;
+    }
+    
+    getSelectedColors() {
+        const activeSlots = this.soloModeSlots.filter(slot => slot.active);
+        const colorPalette = [
+            { background: '#e67e22', border: '#d35400', name: 'orange' },
+            { background: '#27ae60', border: '#229954', name: 'green' },
+            { background: '#3498db', border: '#2980b9', name: 'blue' },
+            { background: '#9b59b6', border: '#8e44ad', name: 'purple' },
+            { background: '#e74c3c', border: '#c0392b', name: 'red' },
+            { background: '#f5f50a', border: '#828205', name: 'yellow' },
+            { background: '#000000', border: '#333333', name: 'black' }
+        ];
+        
+        const availableColors = [...colorPalette];
+        const playerColors = {};
+        
+        // First pass: assign non-random selections
+        const nonRandomSelections = [];
+        activeSlots.forEach((slot, index) => {
+            if (slot.color !== 'random') {
+                const color = colorPalette.find(c => c.name === slot.color);
+                if (color) {
+                    playerColors[index + 1] = color;
+                    nonRandomSelections.push(color.name);
+                    // Remove from available colors
+                    const availIndex = availableColors.findIndex(c => c.name === color.name);
+                    if (availIndex !== -1) {
+                        availableColors.splice(availIndex, 1);
+                    }
+                }
+            }
+        });
+        
+        // Second pass: assign random colors from remaining pool
+        activeSlots.forEach((slot, index) => {
+            if (slot.color === 'random' && !playerColors[index + 1]) {
+                if (availableColors.length > 0) {
+                    const randomIndex = Math.floor(Math.random() * availableColors.length);
+                    playerColors[index + 1] = availableColors[randomIndex];
+                    availableColors.splice(randomIndex, 1);
+                } else {
+                    // If no colors left, use a random color from full palette
+                    const randomIndex = Math.floor(Math.random() * colorPalette.length);
+                    playerColors[index + 1] = colorPalette[randomIndex];
+                }
+            }
+        });
+        
+        console.log('Selected colors:', Object.values(playerColors).map(c => c.name));
+        return playerColors;
     }
     
     // Duplicate init() function removed - was overriding the main init() function
