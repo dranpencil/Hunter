@@ -4100,30 +4100,42 @@ class Game {
         console.log('Initial state - Player HP:', currentPlayerHP, 'Monster HP:', currentMonsterHP);
         let battleRound = 1;
         
-        // Check ammunition at battle start (already consumed in startMonsterBattle)
+        // Check ammunition - if entrance fee paid (ammunitionConsumed = true), bot can attack
         let canAttack = true;
         if (player.weapon.name === 'Rifle' && player.weapon.powerTrackPosition >= 1) {
-            // Check if ammunition was consumed at battle start
+            // If ammunition not consumed yet, check and consume
             if (!battle.ammunitionConsumed) {
-                const bullets = player.inventory.filter(item => item.name === 'Bullet').length;
-                if (bullets === 0) {
+                const bulletIndex = player.inventory.findIndex(item => item.name === 'Bullet');
+                if (bulletIndex === -1) {
                     canAttack = false;
                     battleActions.push(`${player.name} has no bullets for battle!`);
                     currentPlayerHP = 0;
                     battleActions.push(`${player.name} defeated due to lack of ammunition!`);
+                } else {
+                    // Consume one bullet as entrance fee
+                    player.inventory.splice(bulletIndex, 1);
+                    battle.ammunitionConsumed = true;
+                    battleActions.push(`${player.name} uses 1 bullet as entrance fee for this battle!`);
                 }
             }
+            // If ammunitionConsumed is true, bot can attack freely
         } else if (player.weapon.name === 'Plasma' && player.weapon.powerTrackPosition >= 1 && player.weapon.powerTrackPosition < 7) {
-            // Check if ammunition was consumed at battle start
+            // If ammunition not consumed yet, check and consume
             if (!battle.ammunitionConsumed) {
-                const batteries = player.inventory.filter(item => item.name === 'Battery').length;
-                if (batteries === 0) {
+                const batteryIndex = player.inventory.findIndex(item => item.name === 'Battery');
+                if (batteryIndex === -1) {
                     canAttack = false;
                     battleActions.push(`${player.name} has no batteries for battle!`);
                     currentPlayerHP = 0;
                     battleActions.push(`${player.name} defeated due to lack of ammunition!`);
+                } else {
+                    // Consume one battery as entrance fee
+                    player.inventory.splice(batteryIndex, 1);
+                    battle.ammunitionConsumed = true;
+                    battleActions.push(`${player.name} uses 1 battery as entrance fee for this battle!`);
                 }
             }
+            // If ammunitionConsumed is true, bot can attack freely
         }
         
         while (currentPlayerHP > 0 && currentMonsterHP > 0 && canAttack) {
@@ -5915,10 +5927,10 @@ class Game {
         if (player.weapon.name === 'Rifle' && player.weapon.powerTrackPosition >= 1) {
             const bulletIndex = player.inventory.findIndex(item => item.name === 'Bullet');
             if (bulletIndex >= 0) {
-                // Consume one bullet for this battle
+                // Consume one bullet as entrance fee for Forest
                 player.inventory.splice(bulletIndex, 1);
                 this.currentBattle.ammunitionConsumed = true;
-                this.addLogEntry(`${player.name} uses 1 bullet for this battle!`, 'battle');
+                this.addLogEntry(`${player.name} pays 1 bullet as Forest entrance fee (unlimited attacks)!`, 'battle');
                 
                 // Update bullet displays
                 this.updateBulletDisplay(player.id);
@@ -5932,10 +5944,10 @@ class Game {
         if (player.weapon.name === 'Plasma' && player.weapon.powerTrackPosition >= 1 && player.weapon.powerTrackPosition < 7) {
             const batteryIndex = player.inventory.findIndex(item => item.name === 'Battery');
             if (batteryIndex >= 0) {
-                // Consume one battery for this battle
+                // Consume one battery as entrance fee for Forest
                 player.inventory.splice(batteryIndex, 1);
                 this.currentBattle.ammunitionConsumed = true;
-                this.addLogEntry(`${player.name} uses 1 battery for this battle!`, 'battle');
+                this.addLogEntry(`${player.name} pays 1 battery as Forest entrance fee (unlimited attacks)!`, 'battle');
                 
                 // Update battery displays
                 this.updateBatteryDisplay(player.id);
@@ -6154,7 +6166,8 @@ class Game {
             canTame = battle.monster.hp === 1 && player.resources.ep >= requiredEP;
         }
         
-        // Check if Rifle/Plasma player can attack (has ammo)
+        // Check if Rifle/Plasma player can attack
+        // If entrance fee has been paid (ammunitionConsumed = true), player can always attack
         const isRifle = player.weapon.name === 'Rifle' && player.weapon.powerTrackPosition >= 1;
         const isPlasma = player.weapon.name === 'Plasma' && player.weapon.powerTrackPosition >= 1;
         const bullets = player.inventory.filter(item => item.name === 'Bullet').length;
@@ -6163,7 +6176,12 @@ class Game {
         // Plasma Level 3 has infinite batteries
         const hasPlasmaInfiniteAmmo = player.weapon.name === 'Plasma' && player.weapon.powerTrackPosition >= 7;
         
-        const canAttack = (!isRifle || bullets > 0) && (!isPlasma || batteries > 0 || hasPlasmaInfiniteAmmo);
+        // Can attack if:
+        // 1. Not using Rifle/Plasma, OR
+        // 2. Entrance fee already paid (ammunitionConsumed), OR
+        // 3. Has ammunition to pay entrance fee
+        const canAttack = (!isRifle || battle.ammunitionConsumed || bullets > 0) && 
+                         (!isPlasma || battle.ammunitionConsumed || batteries > 0 || hasPlasmaInfiniteAmmo);
         
         // Check if player has combat items (grenade, bomb, dynamite)
         const combatItems = ['Grenade', 'Bomb', 'Dynamite'];
@@ -6171,8 +6189,9 @@ class Game {
             player.inventory.some(item => item.name === itemName)
         );
         
-        // Check if needs ammo but has none
-        const needsAmmoButHasNone = (isRifle && bullets === 0) || (isPlasma && batteries === 0 && !hasPlasmaInfiniteAmmo);
+        // Check if needs ammo but has none AND hasn't paid entrance fee yet
+        const needsAmmoButHasNone = ((isRifle && bullets === 0 && !battle.ammunitionConsumed) || 
+                                     (isPlasma && batteries === 0 && !hasPlasmaInfiniteAmmo && !battle.ammunitionConsumed));
         
         if (battle.turn === 'monster_attack_first') {
             // Monster attacks first due to effect
@@ -6503,9 +6522,10 @@ class Game {
         const battle = this.currentBattle;
         const player = this.players.find(p => p.id === battle.playerId);
         
-        // Check if Rifle player has ammunition to attack (but don't consume - already consumed at battle start)
+        // Check if Rifle player has paid entrance fee (ammunition)
         if (player.weapon.name === 'Rifle' && player.weapon.powerTrackPosition >= 1) {
-            // Check if ammunition was consumed at battle start
+            // If ammunition was already consumed (entrance fee paid), allow attack
+            // If not consumed yet, check for and consume ammunition
             if (!battle.ammunitionConsumed) {
                 const bulletIndex = player.inventory.findIndex(item => item.name === 'Bullet');
                 if (bulletIndex === -1) {
@@ -6513,17 +6533,23 @@ class Game {
                     alert('No bullets available for attack!');
                     return;
                 }
+                // Consume ammunition on first attack if not consumed at battle start
+                player.inventory.splice(bulletIndex, 1);
+                battle.ammunitionConsumed = true;
+                this.addLogEntry(`${player.name} uses 1 bullet as entrance fee for this battle!`, 'battle');
             }
             // Update bullet display (in case it changed from items)
             if (this.currentBattle && this.currentBattle.playerId === player.id) {
                 const bullets = player.inventory.filter(item => item.name === 'Bullet').length;
                 document.getElementById('battle-bullet-count').textContent = `${bullets}/6`;
             }
+            // If ammunitionConsumed is true, proceed with attack (entrance fee paid)
         }
         
-        // Check if Plasma player has ammunition to attack (unless infinite at Level 3)
+        // Check if Plasma player has paid entrance fee (ammunition) - unless infinite at Level 3
         if (player.weapon.name === 'Plasma' && player.weapon.powerTrackPosition >= 1 && player.weapon.powerTrackPosition < 7) {
-            // Check if ammunition was consumed at battle start
+            // If ammunition was already consumed (entrance fee paid), allow attack
+            // If not consumed yet, check for and consume ammunition
             if (!battle.ammunitionConsumed) {
                 const batteryIndex = player.inventory.findIndex(item => item.name === 'Battery');
                 if (batteryIndex === -1) {
@@ -6531,12 +6557,17 @@ class Game {
                     alert('No batteries available for attack!');
                     return;
                 }
+                // Consume ammunition on first attack if not consumed at battle start
+                player.inventory.splice(batteryIndex, 1);
+                battle.ammunitionConsumed = true;
+                this.addLogEntry(`${player.name} uses 1 battery as entrance fee for this battle!`, 'battle');
             }
             // Update battery display (in case it changed from items)
             if (this.currentBattle && this.currentBattle.playerId === player.id) {
                 const batteries = player.inventory.filter(item => item.name === 'Battery').length;
                 document.getElementById('battle-battery-count').textContent = `${batteries}/6`;
             }
+            // If ammunitionConsumed is true, proceed with attack (entrance fee paid)
         }
         
         // Player attacks
