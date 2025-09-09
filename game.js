@@ -5595,11 +5595,7 @@ class Game {
     getExtraEPCost(effectId) {
         // Get extra EP cost for selecting a monster
         switch(effectId) {
-            case 6: // 1 extra EP
-            case 14: // 1 extra EP
-                return 1;
-            case 30: // 2 extra EP
-                return 2;
+            // Removed cases 6, 14, 30 - these monsters now only have damage cap, no EP cost
             default:
                 return 0;
         }
