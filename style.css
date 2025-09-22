@@ -2511,13 +2511,196 @@ button {
     letter-spacing: 1px;
 }
 
+/* Game Stats Display */
+.game-stats-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.85);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+    overflow-y: auto;
+    padding: 20px;
+}
+
+.game-stats-container {
+    background: #1a1a1a;
+    border-radius: 15px;
+    box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+    max-width: 1400px;
+    width: 100%;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.stats-header {
+    background: linear-gradient(135deg, #2c3e50, #3498db);
+    color: white;
+    padding: 20px;
+    border-radius: 15px 15px 0 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.stats-header h2 {
+    margin: 0;
+    font-size: 1.8rem;
+}
+
+.stats-close-btn {
+    background: transparent;
+    border: none;
+    color: white;
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 5px 10px;
+    border-radius: 5px;
+    transition: background 0.3s;
+}
+
+.stats-close-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.game-stats-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.player-stats-card {
+    background: #2a2a2a;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+.stats-card-header {
+    padding: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: white;
+}
+
+.stats-card-header h3 {
+    margin: 0;
+    font-size: 1.2rem;
+}
+
+.weapon-name {
+    background: rgba(0, 0, 0, 0.3);
+    padding: 5px 10px;
+    border-radius: 5px;
+    font-size: 0.9rem;
+}
+
+.stats-card-body {
+    padding: 15px;
+}
+
+.stats-section {
+    margin-bottom: 20px;
+}
+
+.stats-section h4 {
+    color: #3498db;
+    margin: 0 0 10px 0;
+    font-size: 1rem;
+    border-bottom: 1px solid #444;
+    padding-bottom: 5px;
+}
+
+.stat-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 5px 0;
+    color: #ccc;
+}
+
+.stat-label {
+    font-size: 0.9rem;
+}
+
+.stat-value {
+    font-weight: bold;
+    color: white;
+}
+
+.stats-footer {
+    background: #2a2a2a;
+    padding: 20px;
+    border-radius: 0 0 15px 15px;
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+}
+
+.stats-button {
+    background: #3498db;
+    color: white;
+    border: none;
+    padding: 10px 25px;
+    border-radius: 5px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.stats-button:hover {
+    background: #2980b9;
+    transform: translateY(-2px);
+}
+
+.stats-button.exit-button {
+    background: #e74c3c;
+}
+
+.stats-button.exit-button:hover {
+    background: #c0392b;
+}
+
+/* Control buttons styling */
+.control-button {
+    background: #3498db;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    font-size: 1rem;
+    cursor: pointer;
+    margin: 0 5px;
+    transition: all 0.3s;
+}
+
+.control-button:hover {
+    background: #2980b9;
+    transform: translateY(-2px);
+}
+
 /* Hide log on smaller screens */
 @media (max-width: 1400px) {
     .game-log-section {
         display: none !important;
     }
-    
+
     .game-container {
         margin-left: 0;
+    }
+
+    .stats-grid {
+        grid-template-columns: 1fr;
     }
 }

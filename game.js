@@ -1576,6 +1576,19 @@ class Game {
                     level1: 0,
                     level2: 0,
                     level3: 0
+                },
+                // Game statistics tracking
+                hunterAloneCount: 0,
+                apprenticeWithHuntersCount: 0,
+                monstersDefeated: { level1: 0, level2: 0, level3: 0 },
+                locationSelections: {
+                    1: { hunter: 0, apprentice: 0 }, // Work Site
+                    2: { hunter: 0, apprentice: 0 }, // Bar
+                    3: { hunter: 0, apprentice: 0 }, // Station
+                    4: { hunter: 0, apprentice: 0 }, // Hospital
+                    5: { hunter: 0, apprentice: 0 }, // Dojo
+                    6: { hunter: 0, apprentice: 0 }, // Plaza
+                    7: { hunter: 0, apprentice: 0 }  // Forest
                 }
             };
             
@@ -3089,7 +3102,13 @@ class Game {
                 type: 'selection'
             });
         }
-        
+
+        // Track location selections for statistics
+        const hunterLocation = this.currentPlayer.selectedCards.hunter;
+        const apprenticeLocation = this.currentPlayer.selectedCards.apprentice;
+        this.currentPlayer.locationSelections[hunterLocation].hunter++;
+        this.currentPlayer.locationSelections[apprenticeLocation].apprentice++;
+
         // Move to next player
         this.currentPlayerIndex++;
         
@@ -4904,18 +4923,12 @@ class Game {
             
             const newRewardLevel = player.popularityTrack.rewardToken;
             
-            // Knife weapon special logic: only get rewards if token moved up or at max level
+            // Knife weapon: receives rewards like other weapons (removed special restriction)
             if (player.weapon.name === 'Knife') {
-                if ((tokenMoved && newRewardLevel > oldRewardLevel) || shouldGiveRewards) {
-                    // Token moved up or was at max level - give rewards
+                if (newRewardLevel > 0 || shouldGiveRewards) {
                     this.distributePopularityRewards(player.id, shouldGiveRewards ? 5 : newRewardLevel);
                     if (!this.isAutomatedMode) {
-                        console.log(`Knife weapon: ${player.name} receives popularity rewards (token moved from ${oldRewardLevel} to ${newRewardLevel})`);
-                    }
-                } else {
-                    // Token didn't move or moved down - no rewards
-                    if (!this.isAutomatedMode) {
-                        console.log(`Knife weapon: ${player.name} does not receive popularity rewards (token stayed at ${newRewardLevel})`);
+                        console.log(`Knife weapon: ${player.name} receives popularity rewards at level ${newRewardLevel}`);
                     }
                 }
             } else {
@@ -7008,9 +7021,15 @@ class Game {
         const battle = this.currentBattle;
         const player = this.players.find(p => p.id === battle.playerId);
         const monster = battle.monster;
-        
+
         this.logBattleAction(`${player.name} defeats the Level ${monster.level} monster!`);
-        
+
+        // Track monsters defeated for statistics
+        if (!player.monstersDefeated) {
+            player.monstersDefeated = { level1: 0, level2: 0, level3: 0 };
+        }
+        player.monstersDefeated[`level${monster.level}`]++;
+
         // Mark monster as defeated so it can't be selected again
         this.markMonsterDefeated(monster);
         
@@ -7383,12 +7402,12 @@ class Game {
     loadStoreItems() {
         // Load store items from Item.csv
         return [
-            { name: 'Beer', size: 1, price: 2, effect: 'gain_1_energy', icon: '🍺' },
-            { name: 'Blood Bag', size: 1, price: 2, effect: 'gain_1_blood', icon: '🩸' },
-            { name: 'Grenade', size: 2, price: 2, effect: 'reduce_1_monster_hp', icon: '💣' },
-            { name: 'Bomb', size: 3, price: 4, effect: 'reduce_2_monster_hp', icon: '💥' },
-            { name: 'Dynamite', size: 4, price: 6, effect: 'reduce_3_monster_hp', icon: '🧨' },
-            { name: 'Fake Blood', size: 2, price: 2, effect: 'bonus_points_on_kill', icon: '🩹' }
+            { name: 'Beer', size: 1, price: 2, effect: 'gain_1_energy', icon: '🍺', description: 'Restores 1 EP / Upgrade EP max' },
+            { name: 'Blood Bag', size: 1, price: 2, effect: 'gain_1_blood', icon: '🩸', description: 'Restores 1 HP / Upgrade HP max' },
+            { name: 'Grenade', size: 2, price: 2, effect: 'reduce_1_monster_hp', icon: '💣', description: '+1 damage to monster' },
+            { name: 'Bomb', size: 3, price: 4, effect: 'reduce_2_monster_hp', icon: '💥', description: '+2 damage to monster' },
+            { name: 'Dynamite', size: 4, price: 6, effect: 'reduce_3_monster_hp', icon: '🧨', description: '+3 damage to monster' },
+            { name: 'Fake Blood', size: 2, price: 2, effect: 'bonus_points_on_kill', icon: '🩹', description: '+2 points when defeating monster' }
         ];
     }
     
@@ -7435,26 +7454,28 @@ class Game {
         
         // Add bullets for Rifle players (Level 1 power)
         if (player.weapon.name === 'Rifle' && player.weapon.powerTrackPosition >= 1) {
-            const bulletItem = { 
-                name: 'Bullet', 
-                size: 0, 
-                price: 2, 
-                effect: 'rifle_ammo', 
+            const bulletItem = {
+                name: 'Bullet',
+                size: 0,
+                price: 2,
+                effect: 'rifle_ammo',
                 icon: '🔫',
+                description: 'Ammunition required for Rifle weapon',
                 isSpecial: true,
                 maxCount: 6
             };
             availableItems.unshift(bulletItem); // Add bullets at the beginning
         }
-        
+
         // Add batteries for Plasma players (Level 1-2 power, not Level 3 infinite battery)
         if (player.weapon.name === 'Plasma' && player.weapon.powerTrackPosition >= 1 && player.weapon.powerTrackPosition < 7) {
-            const batteryItem = { 
-                name: 'Battery', 
-                size: 1, 
+            const batteryItem = {
+                name: 'Battery',
+                size: 1,
                 price: 2, // Level 1 power: batteries cost $2 instead of $3
-                effect: 'plasma_power', 
+                effect: 'plasma_power',
                 icon: '🔋',
+                description: 'Ammunition required for Plasma weapon',
                 isSpecial: true,
                 maxCount: 6
             };
@@ -7465,6 +7486,10 @@ class Game {
             const itemElement = document.createElement('div');
             itemElement.className = 'store-item-card';
             if (item.isSpecial) itemElement.classList.add('special-item');
+            // Add tooltip with item description
+            if (item.description) {
+                itemElement.title = item.description;
+            }
             
             const currentSize = this.getInventorySize(player);
             let actualPrice = item.price;
@@ -8065,7 +8090,10 @@ class Game {
             `🛒 <strong>${player.name}</strong> bought ${itemName} for $${price}`,
             'store-purchase'
         );
-        
+
+        // Refresh the store display to update capacity warnings and money
+        this.showStore();
+
         // alert(`${player.name} bought ${itemName}!`); // Removed popup as requested
     }
     
@@ -8142,12 +8170,48 @@ class Game {
             }
         });
         
+        // Track hunter alone and apprentice with hunters statistics
+        this.locations.forEach(location => {
+            // Count hunters at this location
+            let huntersAtLocation = [];
+            let apprenticesAtLocation = [];
+
+            this.players.forEach(player => {
+                if (player.tokens.hunter === location.id) {
+                    huntersAtLocation.push(player);
+                }
+                if (player.tokens.apprentice === location.id) {
+                    apprenticesAtLocation.push(player);
+                }
+            });
+
+            // Track hunter alone count (only 1 hunter, no other tokens including dummies)
+            if (huntersAtLocation.length === 1) {
+                const totalTokens = huntersAtLocation.length + apprenticesAtLocation.length +
+                                   (this.dummyTokens.includes(location.id) ? 1 : 0);
+                if (totalTokens === 1) {
+                    huntersAtLocation[0].hunterAloneCount++;
+                }
+            }
+
+            // Track apprentice with hunters count
+            if (huntersAtLocation.length > 0) {
+                apprenticesAtLocation.forEach(player => {
+                    // Check if there's at least one OTHER player's hunter at this location
+                    const hasOtherHunters = huntersAtLocation.some(h => h.id !== player.id);
+                    if (hasOtherHunters) {
+                        player.apprenticeWithHuntersCount++;
+                    }
+                });
+            }
+        });
+
         // Update popularity track based on hunter placement
         this.updatePopularityTrack();
-        
+
         // Ensure dummy tokens are displayed
         this.updateDummyTokenDisplay();
-        
+
         // Distribute resources for all locations except Forest
         this.distributeNormalResources();
     }
@@ -8631,6 +8695,138 @@ class Game {
         }
     }
     
+    showGameStats() {
+        const statsContent = document.getElementById('game-stats-content');
+        if (!statsContent) return;
+
+        // Calculate rankings
+        const rankings = this.calculatePlayerRankings();
+
+        // Sort players by rank
+        const sortedPlayers = [...this.players].sort((a, b) => {
+            return rankings[a.id] - rankings[b.id];
+        });
+
+        // Build stats HTML
+        let statsHTML = '<div class="stats-grid">';
+
+        sortedPlayers.forEach(player => {
+            const locationNames = ['Work Site', 'Bar', 'Station', 'Hospital', 'Dojo', 'Plaza', 'Forest'];
+
+            statsHTML += `
+                <div class="player-stats-card">
+                    <div class="stats-card-header" style="background-color: ${player.color?.background || '#ddd'};">
+                        <h3>${player.name}</h3>
+                        <span class="weapon-name">${player.weapon.name}</span>
+                    </div>
+                    <div class="stats-card-body">
+                        <div class="stats-section">
+                            <h4>Final Results</h4>
+                            <div class="stat-row">
+                                <span class="stat-label">Rank:</span>
+                                <span class="stat-value">#${rankings[player.id]}</span>
+                            </div>
+                            <div class="stat-row">
+                                <span class="stat-label">Total Score:</span>
+                                <span class="stat-value">${player.score}</span>
+                            </div>
+                            <div class="stat-row">
+                                <span class="stat-label">Popularity Level:</span>
+                                <span class="stat-value">${player.popularityTrack.pointToken}</span>
+                            </div>
+                            <div class="stat-row">
+                                <span class="stat-label">Weapon Power:</span>
+                                <span class="stat-value">Level ${Math.floor((player.weapon.powerTrackPosition - 1) / 2) + 1}</span>
+                            </div>
+                        </div>
+
+                        <div class="stats-section">
+                            <h4>Combat Statistics</h4>
+                            <div class="stat-row">
+                                <span class="stat-label">Defeated Monsters:</span>
+                                <span class="stat-value">
+                                    Lv1: ${player.monstersDefeated?.level1 || 0} |
+                                    Lv2: ${player.monstersDefeated?.level2 || 0} |
+                                    Lv3: ${player.monstersDefeated?.level3 || 0}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="stats-section">
+                            <h4>Score Breakdown</h4>
+                            <div class="stat-row">
+                                <span class="stat-label">From Monsters:</span>
+                                <span class="stat-value">${player.scoreFromMonsters || 0}</span>
+                            </div>
+                            <div class="stat-row">
+                                <span class="stat-label">From Popularity:</span>
+                                <span class="stat-value">${player.scoreFromPopularity || 0}</span>
+                            </div>
+                            <div class="stat-row">
+                                <span class="stat-label">From Plaza:</span>
+                                <span class="stat-value">${player.scoreFromPlaza || 0}</span>
+                            </div>
+                            <div class="stat-row">
+                                <span class="stat-label">From Milestones:</span>
+                                <span class="stat-value">${player.scoreFromMilestones || 0}</span>
+                            </div>
+                            <div class="stat-row">
+                                <span class="stat-label">From Other:</span>
+                                <span class="stat-value">${player.scoreFromOther || 0}</span>
+                            </div>
+                        </div>
+
+                        <div class="stats-section">
+                            <h4>Placement Statistics</h4>
+                            <div class="stat-row">
+                                <span class="stat-label">Hunter Alone:</span>
+                                <span class="stat-value">${player.hunterAloneCount} times</span>
+                            </div>
+                            <div class="stat-row">
+                                <span class="stat-label">Apprentice with Hunters:</span>
+                                <span class="stat-value">${player.apprenticeWithHuntersCount} times</span>
+                            </div>
+                        </div>
+
+                        <div class="stats-section">
+                            <h4>Location Selections</h4>
+                            ${locationNames.map((name, index) => {
+                                const locationId = index + 1;
+                                const hunterCount = player.locationSelections[locationId].hunter;
+                                const apprenticeCount = player.locationSelections[locationId].apprentice;
+                                return `
+                                    <div class="stat-row">
+                                        <span class="stat-label">${name}:</span>
+                                        <span class="stat-value">H: ${hunterCount} | A: ${apprenticeCount}</span>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        statsHTML += '</div>';
+        statsContent.innerHTML = statsHTML;
+
+        // Show the stats overlay
+        document.getElementById('game-stats-overlay').style.display = 'flex';
+    }
+
+    toggleGameStats() {
+        const overlay = document.getElementById('game-stats-overlay');
+        if (overlay) {
+            overlay.style.display = overlay.style.display === 'none' ? 'flex' : 'none';
+        }
+    }
+
+    exitToMainMenu() {
+        // Reset the game and show main menu
+        this.resetMilestoneCheckboxes();
+        location.reload();
+    }
+
     endGame(winner) {
         this.roundPhase = 'gameover';
         
@@ -8666,21 +8862,43 @@ class Game {
         }
         
         // Show game over message for regular games
-        document.getElementById('status-message').textContent = 
+        document.getElementById('status-message').innerHTML =
             `🎉 Game Over! ${winner.name} wins with ${winner.score} points! 🎉`;
-        
+
         // Hide game controls
         document.getElementById('confirm-selection').style.display = 'none';
         document.getElementById('next-player').style.display = 'none';
-        
-        // Show restart option
+
+        // Clear controls and add game end buttons
+        const controls = document.querySelector('.controls');
+        controls.innerHTML = '';
+
+        // Add View Stats button
+        const statsButton = document.createElement('button');
+        statsButton.textContent = 'View Game Stats';
+        statsButton.className = 'control-button';
+        statsButton.onclick = () => this.showGameStats();
+        controls.appendChild(statsButton);
+
+        // Add New Game button
         const restartButton = document.createElement('button');
         restartButton.textContent = 'Start New Game';
+        restartButton.className = 'control-button';
         restartButton.onclick = () => {
             this.resetMilestoneCheckboxes();
             location.reload();
         };
-        document.querySelector('.controls').appendChild(restartButton);
+        controls.appendChild(restartButton);
+
+        // Add Exit to Menu button
+        const exitButton = document.createElement('button');
+        exitButton.textContent = 'Exit to Main Menu';
+        exitButton.className = 'control-button';
+        exitButton.onclick = () => this.exitToMainMenu();
+        controls.appendChild(exitButton);
+
+        // Automatically show game stats
+        this.showGameStats();
     }
     
     startNextRoundPhase() {

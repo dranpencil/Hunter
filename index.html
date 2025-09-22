@@ -378,6 +378,23 @@
         </div>
     </div>
 
+    <!-- Game Stats Display -->
+    <div id="game-stats-overlay" class="game-stats-overlay" style="display: none;">
+        <div class="game-stats-container">
+            <div class="stats-header">
+                <h2>Game Statistics</h2>
+                <button class="stats-close-btn" onclick="game.toggleGameStats()">✕</button>
+            </div>
+            <div id="game-stats-content" class="game-stats-content">
+                <!-- Stats will be dynamically generated here -->
+            </div>
+            <div class="stats-footer">
+                <button class="stats-button" onclick="game.toggleGameStats()">Close Stats</button>
+                <button class="stats-button exit-button" onclick="game.exitToMainMenu()">Exit to Main Menu</button>
+            </div>
+        </div>
+    </div>
+
     <script src="game.js"></script>
 </body>
 </html>
