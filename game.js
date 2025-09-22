@@ -4879,21 +4879,21 @@ class Game {
             let tokenMoved = false;
             
             if (isAlone) {
-                // Sword and Katana Level 2 Power: +1 EXP when hunter is alone
-                if ((player.weapon.name === 'Sword' || player.weapon.name === 'Katana') && 
+                // Sword and Katana Level 2 Power: +2 EXP when hunter is alone
+                if ((player.weapon.name === 'Sword' || player.weapon.name === 'Katana') &&
                     player.weapon.powerTrackPosition >= 3) {
-                    this.modifyResource(player.id, 'exp', 1);
+                    this.modifyResource(player.id, 'exp', 2);
                     if (!this.isAutomatedMode) {
-                        console.log(`${player.weapon.name} Lv2 Power: ${player.name} receives +1 EXP for being alone at location`);
+                        console.log(`${player.weapon.name} Lv2 Power: ${player.name} receives +2 EXP for being alone at location`);
                     }
                 }
-                
-                // Knife Level 2 Power: +1 point when hunter is alone
+
+                // Knife Level 2 Power: +2 points when hunter is alone
                 if (player.weapon.name === 'Knife' && player.weapon.powerTrackPosition >= 3) {
-                    this.addScore(player.id, 1, 'other');
+                    this.addScore(player.id, 2, 'other');
                     if (!this.isAutomatedMode) {
-                        console.log(`Knife Lv2 Power: ${player.name} receives +1 point for being alone at location`);
-                        this.addLogEntry(`🔪 ${player.name} receives +1 point from Knife Lv2 Power`, 'power');
+                        console.log(`Knife Lv2 Power: ${player.name} receives +2 points for being alone at location`);
+                        this.addLogEntry(`🔪 ${player.name} receives +2 points from Knife Lv2 Power`, 'power');
                     }
                 }
                 

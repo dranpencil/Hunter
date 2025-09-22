@@ -120,7 +120,7 @@ Each weapon features:
 
 **Katana**
 - Lv1: None
-- Lv2: +1 EXP when hunter is alone at location
+- Lv2: +2 EXP when hunter is alone at location
 - Lv3: Instant kill if attack dice total > 27
 
 **Rifle**
@@ -155,12 +155,12 @@ Each weapon features:
 
 **Sword**
 - Lv1: None
-- Lv2: +1 EXP when hunter is alone at location
+- Lv2: +2 EXP when hunter is alone at location
 - Lv3: +1 point per die showing 1
 
 **Knife**
 - Lv1: Can double damage once per battle
-- Lv2: +1 point when hunter is alone at location
+- Lv2: +2 points when hunter is alone at location
 - Lv3: Battle rewards x2
 
 **Gloves**
