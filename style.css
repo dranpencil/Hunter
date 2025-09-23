@@ -69,9 +69,10 @@ body {
 }
 
 .game-container {
-    max-width: 1200px;
+    max-width: 1600px;
     width: 100%;
     padding: 20px;
+    margin: 0 auto;
 }
 
 .game-header {
@@ -117,20 +118,26 @@ h1 {
     display: grid;
     gap: 10px;
     margin-bottom: 15px;
+    width: 100%;
 }
 
 /* Dynamic grid layouts based on player count */
 .player-boards.players-2 {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, 550px);
+    justify-content: center;
 }
 
 .player-boards.players-3 {
-    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-columns: repeat(2, 550px);
+    grid-template-rows: 1fr 1fr;
+    justify-content: center;
+    align-items: start;
 }
 
 .player-boards.players-4 {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, 550px);
     grid-template-rows: 1fr 1fr;
+    justify-content: center;
 }
 
 .player-boards.players-5 {
@@ -145,10 +152,15 @@ h1 {
 
 .player-board {
     background-color: #34495e;
-    padding: 8px;
+    padding: 10px;
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-    font-size: 14px;
+    font-size: 12px;
+    display: grid;
+    grid-template-columns: 1fr 1.5fr 1fr;
+    gap: 10px;
+    min-height: 280px;
+    width: 550px;
 }
 
 .player-board h2 {
@@ -156,6 +168,321 @@ h1 {
     margin-bottom: 8px;
     color: #ecf0f1;
     font-size: 20px;
+}
+
+/* New Player Board Layout Sections */
+.board-left-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.board-center-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 0 10px;
+    border-left: 1px solid #2c3e50;
+    border-right: 1px solid #2c3e50;
+}
+
+.board-right-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* HP, EP, and Money Sections */
+.hp-section, .ep-section, .money-section {
+    background: #2c3e50;
+    padding: 8px;
+    border-radius: 5px;
+}
+
+.stat-header {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+.stat-label {
+    background: #1a1a1a;
+    padding: 2px 6px;
+    border-radius: 3px;
+    color: #3498db;
+}
+
+/* Specific colors for each resource */
+.hp-section .stat-label {
+    color: #e74c3c; /* Red */
+}
+.hp-section .stat-value {
+    color: #ec7063; /* Light red */
+}
+
+.ep-section .stat-label {
+    color: #5dade2; /* Light blue */
+}
+.ep-section .stat-value {
+    color: #85c1e2; /* Lighter blue */
+}
+
+.dice-stats .exp-header {
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #34495e;
+}
+
+.dice-stats .exp-header .stat-label {
+    color: #58d68d; /* Light green */
+}
+
+.dice-stats .exp-header .stat-value {
+    color: #82e0aa; /* Lighter green */
+}
+
+.money-section .stat-label {
+    color: #f4d03f; /* Yellow */
+}
+.money-section .stat-value {
+    color: #f7dc6f; /* Light yellow */
+}
+
+.stat-value {
+    color: #fff;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.stat-max {
+    color: #95a5a6;
+    font-size: 11px;
+}
+
+.upgrade-section {
+    font-size: 11px;
+}
+
+.upgrade-bar {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-bottom: 5px;
+}
+
+.upgrade-bar button {
+    padding: 0 4px;
+    font-size: 10px;
+    height: 18px;
+}
+
+.milestones {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.milestones label {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 10px;
+    color: #95a5a6;
+}
+
+.milestones input[type="checkbox"] {
+    width: 12px;
+    height: 12px;
+}
+
+/* Resources Compact */
+.resources-compact {
+    background: #2c3e50;
+    padding: 6px;
+    border-radius: 5px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.resource-row {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+}
+
+.resource-label {
+    min-width: 50px;
+    color: #3498db;
+}
+
+/* Inventory Compact */
+.inventory-compact {
+    background: #2c3e50;
+    padding: 6px;
+    border-radius: 5px;
+    flex: 1;
+}
+
+.inventory-compact h4 {
+    margin: 0 0 5px 0;
+    font-size: 11px;
+    color: #3498db;
+}
+
+.inventory-compact .inventory-items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+}
+
+/* Weapon Section */
+.weapon-header {
+    text-align: center;
+}
+
+.weapon-header h3 {
+    margin: 0 0 8px 0;
+    color: #e74c3c;
+    font-size: 14px;
+}
+
+.dice-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    background: #2c3e50;
+    padding: 8px;
+    border-radius: 5px;
+}
+
+
+.dice-stat {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+}
+
+.dice-stat span:first-child {
+    min-width: 75px;
+    color: #95a5a6;
+}
+
+.dice-stat button {
+    padding: 0 4px;
+    font-size: 10px;
+    height: 18px;
+}
+
+.cost {
+    color: #7f8c8d;
+    font-size: 10px;
+}
+
+.weapon-ammo {
+    background: #2c3e50;
+    padding: 6px;
+    border-radius: 5px;
+    font-size: 11px;
+}
+
+.weapon-power-section h4 {
+    margin: 5px 0;
+    font-size: 11px;
+    color: #3498db;
+    text-align: center;
+}
+
+.power-levels {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 5px;
+}
+
+.power-level {
+    background: #2c3e50;
+    padding: 4px;
+    border-radius: 3px;
+    text-align: center;
+    font-size: 9px;
+}
+
+.power-level.active {
+    background: #27ae60;
+}
+
+.power-title {
+    font-weight: bold;
+    color: #fff;
+    margin-bottom: 2px;
+}
+
+.power-desc {
+    color: #95a5a6;
+    line-height: 1.2;
+}
+
+/* Player Info Compact */
+.player-info-compact h3 {
+    margin: 0 0 5px 0;
+    font-size: 13px;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.score-display {
+    background: #2c3e50;
+    padding: 6px;
+    border-radius: 5px;
+    text-align: center;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+/* Popularity Section */
+.popularity-section {
+    flex: 1;
+}
+
+.popularity-section h4 {
+    margin: 5px 0;
+    font-size: 11px;
+    color: #3498db;
+}
+
+.popularity-track-compact {
+    background: #2c3e50;
+    padding: 6px;
+    border-radius: 5px;
+    font-size: 10px;
+}
+
+/* Pet Section Compact */
+.pet-section-compact h4 {
+    margin: 5px 0;
+    font-size: 11px;
+    color: #3498db;
+}
+
+.pet-display {
+    background: #2c3e50;
+    padding: 6px;
+    border-radius: 5px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.pet-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
 }
 
 #player-1-board h2 {
@@ -174,12 +501,8 @@ h1 {
 .score-display {
     font-size: 18px;
     float: right;
-    color: #f39c12;
-}
-
-#p1-score, #p2-score {
-    font-weight: bold;
     color: #ecf0f1;
+    font-weight: bold;
 }
 
 .resources {
@@ -801,14 +1124,6 @@ h1 {
     font-weight: bold;
 }
 
-.rifle-bullets {
-    background-color: rgba(230, 126, 34, 0.2) !important;
-    border: 1px solid #e67e22;
-}
-
-.rifle-bullets span:first-child {
-    color: #e67e22 !important;
-}
 
 #battle-bullets-info {
     color: #e67e22;
@@ -2230,6 +2545,7 @@ button {
 /* Adjust main game container to make room for log */
 .game-container {
     margin-left: 340px;
+    margin-right: auto;
 }
 
 /* Data Collection Mode */

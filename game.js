@@ -1029,7 +1029,7 @@ class Game {
             { name: 'Bat', reqExpAttack: 4, reqExpDefense: 3, capacity: 6, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 1, 1, 1], priority: 3, 
               lv1Power: '徒弟在資源區域撞其他獵人+1區域資源', lv2Power: '回合開始+1ep或+1hp', lv3Power: '命中的骰子再骰1次，傷害為所有傷害加總', preferLocation: 'plaza' },
             { name: 'Katana', reqExpAttack: 5, reqExpDefense: 3, capacity: 4, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 1, 1, 1, 1], priority: 8,
-              lv1Power: '無', lv2Power: '單獨存在區域+1經驗', lv3Power: '攻擊骰總點數大於27則一擊必殺', preferLocation: 'dojo' },
+              lv1Power: '無', lv2Power: '單獨存在區域+2經驗', lv3Power: '攻擊骰總點數大於27則一擊必殺', preferLocation: 'dojo' },
             { name: 'Rifle', reqExpAttack: 6, reqExpDefense: 3, capacity: 8, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 1, 2, 2], priority: 10,
               lv1Power: '可購買子彈:2$，每次戰鬥花費1子彈', lv2Power: '回合開始+2$', lv3Power: '商店價格-1$', preferLocation: 'work site' },
             { name: 'Plasma', reqExpAttack: 7, reqExpDefense: 3, capacity: 8, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 2, 2, 2], priority: 11,
@@ -1043,7 +1043,7 @@ class Game {
             { name: 'Bow', reqExpAttack: 5, reqExpDefense: 3, capacity: 6, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 0, 0, 4], priority: 1,
               lv1Power: '閃避率+16%', lv2Power: '回合開始+1經驗', lv3Power: '傷害x2', preferLocation: 'plaza' },
             { name: 'Sword', reqExpAttack: 5, reqExpDefense: 3, capacity: 4, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 1, 1, 2], priority: 9,
-              lv1Power: '無', lv2Power: '單獨存在區域+1經驗', lv3Power: '每骰到至少1個1即+1分', preferLocation: 'dojo' },
+              lv1Power: '無', lv2Power: '單獨存在區域+2經驗', lv3Power: '每骰到至少1個1即+1分', preferLocation: 'dojo' },
             { name: 'Knife', reqExpAttack: 3, reqExpDefense: 3, capacity: 10, initialMoney: 8, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 0, 1, 1], priority: 2,
               lv1Power: '可將一次的攻擊力x2', lv2Power: '單獨存在區域+1分', lv3Power: '打贏的資源獎勵x2', preferLocation: 'plaza' },
             { name: 'Gloves', reqExpAttack: 4, reqExpDefense: 3, capacity: 6, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 0, 1, 1], priority: 7,
@@ -2456,129 +2456,130 @@ class Game {
         const board = document.createElement('div');
         board.className = 'player-board';
         board.id = `player-${player.id}-board`;
-        
+
         // Add player color as a border
         if (player.color) {
             board.style.borderColor = player.color.border;
             board.style.borderWidth = '3px';
         }
-        
+
         // Check if buttons should be disabled
         const buttonsDisabled = this.shouldDisablePlayerButtons(player.id);
         const disabledAttr = buttonsDisabled ? ' disabled' : '';
         const disabledTitle = buttonsDisabled ? ' title="Cannot interact with this player board"' : '';
-        
+
         board.innerHTML = `
-            <h2 id="player-${player.id}-name">
-                ${player.color ? `<span class="player-color-indicator" style="background-color: ${player.color.background}; border-color: ${player.color.border};"></span>` : ''}
-                ${player.name} 
-                <span class="level-display">Lv. <span id="p${player.id}-level">0</span></span> 
-                <span class="score-display">Score: <span id="p${player.id}-score">${player.score}</span></span>
-            </h2>
-            <div class="resources">
-                <div class="resource">
-                    <span class="resource-icon money">$</span>
-                    <span class="resource-value" id="p${player.id}-money">${player.resources.money}</span>
-                    <span class="resource-max">/15</span>
-                </div>
-                <div class="resource">
-                    <span class="resource-icon exp">EXP</span>
-                    <span class="resource-value" id="p${player.id}-exp">${player.resources.exp}</span>
-                    <span class="resource-max">/15</span>
-                </div>
-                <div class="resource hp">
-                    <span class="resource-icon hp">HP</span>
-                    <span class="resource-value" id="p${player.id}-hp">${player.resources.hp}</span>
-                    <span class="resource-max">/${player.maxResources.hp}</span>
-                </div>
-                <div class="resource ep">
-                    <span class="resource-icon ep">EP</span>
-                    <span class="resource-value" id="p${player.id}-ep">${player.resources.ep}</span>
-                    <span class="resource-max">/${player.maxResources.ep}</span>
-                </div>
-            </div>
-            <div class="upgrade-progress">
-                <div class="upgrade-item">
-                    <div class="upgrade-header">
-                        <span>EP Upgrade:</span>
-                        <span class="progress" id="p${player.id}-ep-progress">${player.upgradeProgress.ep}/4</span>
-                        <button class="small-btn" id="p${player.id}-ep-upgrade-btn" onclick="game.addToUpgrade(${player.id}, 'ep')"${disabledAttr}${disabledTitle}>+🍺</button>
+            <!-- Left Column: HP and EP sections -->
+            <div class="board-left-section">
+                <!-- HP Section -->
+                <div class="hp-section">
+                    <div class="stat-header">
+                        <span class="stat-label">HP</span>
+                        <span class="stat-value" id="p${player.id}-hp">${player.resources.hp}</span>
+                        <span class="stat-max">/${player.maxResources.hp}</span>
                     </div>
-                    <div class="upgrade-milestones">
-                        <label class="milestone-checkbox">
-                            <input type="checkbox" id="p${player.id}-ep-milestone-8" disabled>
-                            <span>Max:8 2 points</span>
-                        </label>
-                        <label class="milestone-checkbox">
-                            <input type="checkbox" id="p${player.id}-ep-milestone-10" disabled>
-                            <span>Max:10 4 points</span>
-                        </label>
-                    </div>
-                </div>
-                <div class="upgrade-item">
-                    <div class="upgrade-header">
-                        <span>HP Upgrade:</span>
-                        <span class="progress" id="p${player.id}-hp-progress">${player.upgradeProgress.hp}/3</span>
-                        <button class="small-btn" id="p${player.id}-hp-upgrade-btn" onclick="game.addToUpgrade(${player.id}, 'hp')"${disabledAttr}${disabledTitle}>+🩸</button>
-                    </div>
-                    <div class="upgrade-milestones">
-                        <label class="milestone-checkbox">
-                            <input type="checkbox" id="p${player.id}-hp-milestone-6" disabled>
-                            <span>Max:6 2 points</span>
-                        </label>
-                        <label class="milestone-checkbox">
-                            <input type="checkbox" id="p${player.id}-hp-milestone-8" disabled>
-                            <span>Max:8 3 points</span>
-                        </label>
-                        <label class="milestone-checkbox">
-                            <input type="checkbox" id="p${player.id}-hp-milestone-10" disabled>
-                            <span>Max:10 4 points</span>
-                        </label>
-                    </div>
-                </div>
-            </div>
-            <div class="inventory-section">
-                <h4>Inventory</h4>
-                <div class="inventory-items" id="p${player.id}-inventory">
-                    <!-- Inventory items will be displayed here -->
-                </div>
-            </div>
-            <div class="weapon-info">
-                <h4 id="p${player.id}-weapon-name">${player.weapon.name}</h4>
-                <div class="weapon-stats">
-                    <div class="stat">
-                        <span>Attack Dice:</span>
-                        <span id="p${player.id}-attack-dice">${player.weapon.currentAttackDice}</span>
-                        <button class="small-btn" onclick="game.upgradeWeapon(${player.id}, 'attack')"${disabledAttr}${disabledTitle}>⚔️</button>
-                        <span class="upgrade-cost">(<span id="p${player.id}-req-exp-attack">${player.weapon.reqExpAttack}</span> EXP)</span>
-                    </div>
-                    <div class="stat">
-                        <span>Defense Dice:</span>
-                        <span id="p${player.id}-defense-dice">${player.weapon.currentDefenseDice}</span>
-                        <button class="small-btn" onclick="game.upgradeWeapon(${player.id}, 'defense')"${disabledAttr}${disabledTitle}>🛡️</button>
-                        <span class="upgrade-cost">(<span id="p${player.id}-req-exp-defense">3</span> EXP)</span>
-                    </div>
-                    <div class="stat">
-                        <span>Hit Rate:</span>
-                        <div class="damage-grid" id="p${player.id}-damage-grid">
-                            <!-- Damage grid will be populated by JavaScript -->
+                    <div class="upgrade-section">
+                        <div class="upgrade-bar">
+                            <span>Upgrade:</span>
+                            <span id="p${player.id}-hp-progress">${player.upgradeProgress.hp}/3</span>
+                            <button class="small-btn" onclick="game.addToUpgrade(${player.id}, 'hp')"${disabledAttr}${disabledTitle}>+🩸</button>
+                        </div>
+                        <div class="milestones">
+                            <label><input type="checkbox" id="p${player.id}-hp-milestone-6" disabled> 6(+2pts)</label>
+                            <label><input type="checkbox" id="p${player.id}-hp-milestone-8" disabled> 8(+3pts)</label>
+                            <label><input type="checkbox" id="p${player.id}-hp-milestone-10" disabled> 10(+4pts)</label>
                         </div>
                     </div>
-                    <div class="stat">
-                        <span>Capacity:</span>
+                </div>
+
+                <!-- EP Section -->
+                <div class="ep-section">
+                    <div class="stat-header">
+                        <span class="stat-label">EP</span>
+                        <span class="stat-value" id="p${player.id}-ep">${player.resources.ep}</span>
+                        <span class="stat-max">/${player.maxResources.ep}</span>
+                    </div>
+                    <div class="upgrade-section">
+                        <div class="upgrade-bar">
+                            <span>Upgrade:</span>
+                            <span id="p${player.id}-ep-progress">${player.upgradeProgress.ep}/4</span>
+                            <button class="small-btn" onclick="game.addToUpgrade(${player.id}, 'ep')"${disabledAttr}${disabledTitle}>+🍺</button>
+                        </div>
+                        <div class="milestones">
+                            <label><input type="checkbox" id="p${player.id}-ep-milestone-8" disabled> 8(+2pts)</label>
+                            <label><input type="checkbox" id="p${player.id}-ep-milestone-10" disabled> 10(+4pts)</label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Money Section -->
+                <div class="money-section">
+                    <div class="stat-header">
+                        <span class="stat-label">$</span>
+                        <span class="stat-value" id="p${player.id}-money">${player.resources.money}</span>
+                        <span class="stat-max">/15</span>
+                    </div>
+                </div>
+
+                <!-- Capacity Section -->
+                <div class="resources-compact">
+                    <div class="resource-row">
+                        <span class="resource-label">Capacity</span>
                         <span id="p${player.id}-capacity">${player.weapon.capacity}</span>
                     </div>
-                    <div class="stat rifle-bullets" id="p${player.id}-bullets-stat" style="display: ${player.weapon.name === 'Rifle' ? 'flex' : 'none'};">
+                </div>
+
+                <!-- Inventory Section -->
+                <div class="inventory-compact">
+                    <h4>Inventory</h4>
+                    <div class="inventory-items" id="p${player.id}-inventory">
+                        <!-- Inventory items will be displayed here -->
+                    </div>
+                </div>
+            </div>
+            <!-- Center Column: Weapon Section -->
+            <div class="board-center-section">
+                <div class="weapon-header">
+                    <h3 id="p${player.id}-weapon-name">${player.weapon.name}</h3>
+                    <div class="damage-grid" id="p${player.id}-damage-grid">
+                        <!-- Damage grid will be populated by JavaScript -->
+                    </div>
+                </div>
+
+                <div class="dice-stats">
+                    <!-- EXP Counter directly in dice-stats -->
+                    <div class="stat-header exp-header">
+                        <span class="stat-label">EXP</span>
+                        <span class="stat-value" id="p${player.id}-exp">${player.resources.exp}</span>
+                        <span class="stat-max">/15</span>
+                    </div>
+                    <div class="dice-stat">
+                        <span>Attack Dice</span>
+                        <span id="p${player.id}-attack-dice">${player.weapon.currentAttackDice}</span>
+                        <button class="small-btn" onclick="game.upgradeWeapon(${player.id}, 'attack')"${disabledAttr}${disabledTitle}>⚔️</button>
+                        <span class="cost">(<span id="p${player.id}-req-exp-attack">${player.weapon.reqExpAttack}</span>EXP)</span>
+                    </div>
+                    <div class="dice-stat">
+                        <span>Defense Dice</span>
+                        <span id="p${player.id}-defense-dice">${player.weapon.currentDefenseDice}</span>
+                        <button class="small-btn" onclick="game.upgradeWeapon(${player.id}, 'defense')"${disabledAttr}${disabledTitle}>🛡️</button>
+                        <span class="cost">(<span id="p${player.id}-req-exp-defense">3</span>EXP)</span>
+                    </div>
+                </div>
+
+                <div class="weapon-ammo" style="display: ${player.weapon.name === 'Rifle' || player.weapon.name === 'Plasma' ? 'block' : 'none'};">
+                    <div class="stat rifle-bullets" id="p${player.id}-bullets-stat" style="display: ${player.weapon.name === 'Rifle' ? 'block' : 'none'};">
                         <span>Bullets:</span>
                         <span id="p${player.id}-bullet-count">0/6</span>
                     </div>
-                    <div class="stat plasma-batteries" id="p${player.id}-batteries-stat" style="display: ${player.weapon.name === 'Plasma' ? 'flex' : 'none'};">
+                    <div class="stat plasma-batteries" id="p${player.id}-batteries-stat" style="display: ${player.weapon.name === 'Plasma' ? 'block' : 'none'};">
                         <span>Batteries:</span>
                         <span id="p${player.id}-battery-count">0/6</span>
                     </div>
                 </div>
-                <div class="weapon-power-area">
-                    <h5>Weapon Power</h5>
+
+                <div class="weapon-power-section">
+                    <h4>Weapon Power Track</h4>
                     <div class="weapon-power-track">
                         <div class="track-space" data-position="1"></div>
                         <div class="track-space" data-position="2"></div>
@@ -2589,32 +2590,59 @@ class Game {
                         <div class="track-space upgrade-space" data-position="7">⬆️</div>
                         <div class="track-token" id="p${player.id}-power-token"></div>
                     </div>
-                    <div class="weapon-powers">
+                    <div class="power-levels">
                         <div class="power-level active" id="p${player.id}-power-lv1">
-                            <div class="power-title">Lv.1</div>
+                            <div class="power-title">Lv1</div>
                             <div class="power-desc" id="p${player.id}-power-desc-1">${player.weapon.lv1Power}</div>
                         </div>
                         <div class="power-level" id="p${player.id}-power-lv2">
-                            <div class="power-title">Lv.2</div>
+                            <div class="power-title">Lv2</div>
                             <div class="power-desc" id="p${player.id}-power-desc-2">${player.weapon.lv2Power}</div>
                         </div>
                         <div class="power-level" id="p${player.id}-power-lv3">
-                            <div class="power-title">Lv.3</div>
+                            <div class="power-title">Lv3</div>
                             <div class="power-desc" id="p${player.id}-power-desc-3">${player.weapon.lv3Power}</div>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="popularity-track-section">
-                <h4>Popularity Track</h4>
-                <div class="popularity-track" id="p${player.id}-popularity-track">
-                    <!-- Popularity track will be displayed here -->
+
+            <!-- Right Column: Player info, Popularity, Pet -->
+            <div class="board-right-section">
+                <div class="player-info-compact">
+                    <h3 id="player-${player.id}-name">
+                        ${player.color ? `<span class="player-color-indicator" style="background-color: ${player.color.background}; border-color: ${player.color.border};"></span>` : ''}
+                        ${player.name}
+                    </h3>
+                    <div class="score-display">
+                        <span>Score:</span>
+                        <span id="p${player.id}-score">${player.score}</span>
+                    </div>
                 </div>
-            </div>
-            <div class="pet-section">
-                <h4>Pets</h4>
-                <div class="pet-items" id="p${player.id}-pets">
-                    <!-- Pet tokens will be displayed here -->
+
+                <div class="popularity-section">
+                    <h4>Popularity Track</h4>
+                    <div class="popularity-track-compact" id="p${player.id}-popularity-track">
+                        <!-- Popularity track will be displayed here -->
+                    </div>
+                </div>
+
+                <div class="pet-section-compact">
+                    <h4>Pet</h4>
+                    <div class="pet-display">
+                        <div class="pet-row">
+                            <span>Lv1:</span>
+                            <span id="p${player.id}-pet-lv1">0</span>
+                        </div>
+                        <div class="pet-row">
+                            <span>Lv2:</span>
+                            <span id="p${player.id}-pet-lv2">0</span>
+                        </div>
+                        <div class="pet-row">
+                            <span>Lv3:</span>
+                            <span id="p${player.id}-pet-lv3">0</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         `;
@@ -3343,15 +3371,25 @@ class Game {
         
         this.players.forEach(player => {
             const prefix = `p${player.id}`;
-            document.getElementById(`${prefix}-money`).textContent = player.resources.money;
-            document.getElementById(`${prefix}-exp`).textContent = player.resources.exp;
-            document.getElementById(`${prefix}-hp`).textContent = player.resources.hp;
-            document.getElementById(`${prefix}-ep`).textContent = player.resources.ep;
-            document.getElementById(`${prefix}-score`).textContent = player.score;
+            const moneyEl = document.getElementById(`${prefix}-money`);
+            const expEl = document.getElementById(`${prefix}-exp`);
+            const hpEl = document.getElementById(`${prefix}-hp`);
+            const epEl = document.getElementById(`${prefix}-ep`);
+            const scoreEl = document.getElementById(`${prefix}-score`);
+
+            if (moneyEl) moneyEl.textContent = player.resources.money;
+            if (expEl) expEl.textContent = player.resources.exp;
+            if (hpEl) hpEl.textContent = player.resources.hp;
+            if (epEl) epEl.textContent = player.resources.ep;
+            if (scoreEl) scoreEl.textContent = player.score;
             
             // Update max values for HP and EP since they can change
-            document.querySelector(`#player-${player.id}-board .hp .resource-max`).textContent = `/${player.maxResources.hp}`;
-            document.querySelector(`#player-${player.id}-board .ep .resource-max`).textContent = `/${player.maxResources.ep}`;
+            if (player.maxResources) {
+                const hpMaxElement = document.querySelector(`#player-${player.id}-board .hp-section .stat-max`);
+                const epMaxElement = document.querySelector(`#player-${player.id}-board .ep-section .stat-max`);
+                if (hpMaxElement) hpMaxElement.textContent = `/${player.maxResources.hp}`;
+                if (epMaxElement) epMaxElement.textContent = `/${player.maxResources.ep}`;
+            }
             
             // Update inventory display
             this.updateInventoryDisplay(player.id);
@@ -3482,12 +3520,12 @@ class Game {
         
         // Get all possible items and their current counts
         const allItems = [
-            { name: 'Beer', icon: '🍺' },
-            { name: 'Blood Bag', icon: '🩸' },
-            { name: 'Grenade', icon: '💣' },
-            { name: 'Bomb', icon: '💥' },
-            { name: 'Dynamite', icon: '🧨' },
-            { name: 'Fake Blood', icon: '🩹' }
+            { name: 'Beer', icon: '🍺', description: 'Restores 1 EP / Upgrade EP max' },
+            { name: 'Blood Bag', icon: '🩸', description: 'Restores 1 HP / Upgrade HP max' },
+            { name: 'Grenade', icon: '💣', description: '+1 damage to monster' },
+            { name: 'Bomb', icon: '💥', description: '+2 damage to monster' },
+            { name: 'Dynamite', icon: '🧨', description: '+3 damage to monster' },
+            { name: 'Fake Blood', icon: '🩹', description: '+2 points when defeating monster' }
         ];
         
         // Count current items in inventory
@@ -3527,7 +3565,7 @@ class Game {
                     }
                 }
                 
-                return `<div class="inventory-item-counter">
+                return `<div class="inventory-item-counter" title="${item.description}">
                     <span class="item-icon">${item.icon}</span>
                     <span class="item-count" id="p${playerId}-${item.name.replace(' ', '')}-count">${count}</span>
                     ${useButton}
@@ -4888,12 +4926,12 @@ class Game {
                     }
                 }
 
-                // Knife Level 2 Power: +2 points when hunter is alone
+                // Knife Level 2 Power: +1 point when hunter is alone
                 if (player.weapon.name === 'Knife' && player.weapon.powerTrackPosition >= 3) {
-                    this.addScore(player.id, 2, 'other');
+                    this.addScore(player.id, 1, 'other');
                     if (!this.isAutomatedMode) {
-                        console.log(`Knife Lv2 Power: ${player.name} receives +2 points for being alone at location`);
-                        this.addLogEntry(`🔪 ${player.name} receives +2 points from Knife Lv2 Power`, 'power');
+                        console.log(`Knife Lv2 Power: ${player.name} receives +1 point for being alone at location`);
+                        this.addLogEntry(`🔪 ${player.name} receives +1 point from Knife Lv2 Power`, 'power');
                     }
                 }
                 
@@ -9428,40 +9466,16 @@ class Game {
     
     updatePetDisplay() {
         if (this.isAutomatedMode) return;
-        
+
         this.players.forEach(player => {
-            const petContainer = document.getElementById(`p${player.id}-pets`);
-            if (!petContainer) {
-                console.error(`Pet container not found for player ${player.id}`);
-                return;
-            }
-            
-            petContainer.innerHTML = '';
-            
-            // Pet info for tooltips
-            const petInfo = {
-                1: { cost: 2, attack: 1, icon: '🐾' },
-                2: { cost: 3, attack: 2, icon: '🦊' },
-                3: { cost: 4, attack: 4, icon: '🐺' }
-            };
-            
-            // Display each type of pet
-            [1, 2, 3].forEach(level => {
-                const count = player.pets[`level${level}`];
-                if (count > 0) {
-                    for (let i = 0; i < count; i++) {
-                        const petDiv = document.createElement('div');
-                        petDiv.className = 'pet-token';
-                        petDiv.innerHTML = `<span>${petInfo[level].icon}</span><span class="pet-level">Lv${level}</span>`;
-                        petDiv.title = `Level ${level} Pet: Cost ${petInfo[level].cost} EP to join fight / Provides ${petInfo[level].attack} attack`;
-                        petContainer.appendChild(petDiv);
-                    }
-                }
-            });
-            
-            if (petContainer.innerHTML === '') {
-                petContainer.innerHTML = '<span class="no-pets">No pets yet</span>';
-            }
+            // Update individual pet level counts in the new structure
+            const lv1Element = document.getElementById(`p${player.id}-pet-lv1`);
+            const lv2Element = document.getElementById(`p${player.id}-pet-lv2`);
+            const lv3Element = document.getElementById(`p${player.id}-pet-lv3`);
+
+            if (lv1Element) lv1Element.textContent = player.pets.level1 || 0;
+            if (lv2Element) lv2Element.textContent = player.pets.level2 || 0;
+            if (lv3Element) lv3Element.textContent = player.pets.level3 || 0;
         });
     }
     
