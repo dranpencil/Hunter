@@ -2397,6 +2397,22 @@ button {
     letter-spacing: 1px;
 }
 
+/* Color select wrapper with visual indicator */
+.color-select-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    position: relative;
+}
+
+.color-indicator {
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    display: inline-block;
+    flex-shrink: 0;
+}
+
 .slot-color-select,
 .slot-weapon-select {
     background-color: #34495e;
@@ -2407,6 +2423,7 @@ button {
     font-size: 14px;
     cursor: pointer;
     transition: all 0.3s ease;
+    flex: 1;
 }
 
 .slot-color-select:hover,

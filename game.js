@@ -2180,6 +2180,8 @@ class Game {
         if (this.soloModeSlots[slotIndex]) {
             this.soloModeSlots[slotIndex].color = color;
             console.log(`Slot ${slotIndex + 1} color changed to: ${color}`);
+            // Update the UI to reflect the color change
+            this.updateSoloModeUI();
         }
     }
     
@@ -2187,25 +2189,36 @@ class Game {
         if (this.soloModeSlots[slotIndex]) {
             this.soloModeSlots[slotIndex].weapon = weapon;
             console.log(`Slot ${slotIndex + 1} weapon changed to: ${weapon}`);
+            // Update the UI to reflect the weapon change
+            this.updateSoloModeUI();
         }
     }
     
     updateSoloModeUI() {
         const slots = document.querySelectorAll('.player-slot');
-        
-        // Define color and weapon options
-        const colorOptions = [
-            { value: 'random', label: 'Random' },
-            { value: 'orange', label: 'Orange' },
-            { value: 'green', label: 'Green' },
-            { value: 'blue', label: 'Blue' },
-            { value: 'purple', label: 'Purple' },
-            { value: 'red', label: 'Red' },
-            { value: 'yellow', label: 'Yellow' },
-            { value: 'black', label: 'Black' }
+
+        // Define color and weapon options with actual color values
+        const allColorOptions = [
+            { value: 'random', label: 'Random', bg: 'linear-gradient(90deg, #e67e22, #27ae60, #3498db, #9b59b6)', border: '#666' },
+            { value: 'orange', label: 'Orange', bg: '#e67e22', border: '#d35400' },
+            { value: 'green', label: 'Green', bg: '#27ae60', border: '#229954' },
+            { value: 'blue', label: 'Blue', bg: '#3498db', border: '#2980b9' },
+            { value: 'purple', label: 'Purple', bg: '#9b59b6', border: '#8e44ad' },
+            { value: 'red', label: 'Red', bg: '#e74c3c', border: '#c0392b' },
+            { value: 'yellow', label: 'Yellow', bg: '#f5f50a', border: '#828205' },
+            { value: 'black', label: 'Black', bg: '#000000', border: '#333333' }
         ];
-        
-        const weaponOptions = [
+
+        // Get all currently selected colors and weapons (excluding 'random')
+        const selectedColors = this.soloModeSlots
+            .filter(slot => slot.active && slot.color !== 'random')
+            .map(slot => slot.color);
+
+        const selectedWeapons = this.soloModeSlots
+            .filter(slot => slot.active && slot.weapon !== 'random')
+            .map(slot => slot.weapon);
+
+        const allWeaponOptions = [
             { value: 'random', label: 'Random' },
             { value: 'Bat', label: 'Bat' },
             { value: 'Katana', label: 'Katana' },
@@ -2222,29 +2235,58 @@ class Game {
         
         slots.forEach((slotElement, index) => {
             const slot = this.soloModeSlots[index];
-            
+
             // Reset classes
             slotElement.classList.remove('active', 'closed', 'bot');
-            
+
             if (slot.active) {
                 slotElement.classList.add('active');
                 if (slot.type === 'bot') {
                     slotElement.classList.add('bot');
                 }
-                
-                // Build color dropdown
+
+                // Filter color options to exclude colors selected by other slots
+                const availableColorOptions = allColorOptions.filter(opt => {
+                    // Always include 'random' option
+                    if (opt.value === 'random') return true;
+                    // Include the current slot's selected color
+                    if (opt.value === slot.color) return true;
+                    // Exclude colors selected by other slots
+                    return !selectedColors.includes(opt.value) ||
+                           this.soloModeSlots.findIndex(s => s.color === opt.value) === index;
+                });
+
+                // Build color dropdown with visual indicator
+                const selectedColor = allColorOptions.find(opt => opt.value === slot.color);
                 const colorDropdown = `
-                    <select class="slot-color-select" onchange="game.changeSlotColor(${index}, this.value)">
-                        ${colorOptions.map(opt => 
-                            `<option value="${opt.value}" ${slot.color === opt.value ? 'selected' : ''}>${opt.label}</option>`
-                        ).join('')}
-                    </select>
+                    <div class="color-select-wrapper">
+                        <span class="color-indicator" style="background: ${selectedColor.bg}; border: 2px solid ${selectedColor.border};"></span>
+                        <select class="slot-color-select" onchange="game.changeSlotColor(${index}, this.value)">
+                            ${availableColorOptions.map(opt =>
+                                `<option value="${opt.value}"
+                                         ${slot.color === opt.value ? 'selected' : ''}>
+                                    ${opt.label}
+                                </option>`
+                            ).join('')}
+                        </select>
+                    </div>
                 `;
                 
+                // Filter weapon options to exclude weapons selected by other slots
+                const availableWeaponOptions = allWeaponOptions.filter(opt => {
+                    // Always include 'random' option
+                    if (opt.value === 'random') return true;
+                    // Include the current slot's selected weapon
+                    if (opt.value === slot.weapon) return true;
+                    // Exclude weapons selected by other slots
+                    return !selectedWeapons.includes(opt.value) ||
+                           this.soloModeSlots.findIndex(s => s.weapon === opt.value) === index;
+                });
+
                 // Build weapon dropdown
                 const weaponDropdown = `
                     <select class="slot-weapon-select" onchange="game.changeSlotWeapon(${index}, this.value)">
-                        ${weaponOptions.map(opt => 
+                        ${availableWeaponOptions.map(opt =>
                             `<option value="${opt.value}" ${slot.weapon === opt.value ? 'selected' : ''}>${opt.label}</option>`
                         ).join('')}
                     </select>
@@ -2468,6 +2510,17 @@ class Game {
         const disabledAttr = buttonsDisabled ? ' disabled' : '';
         const disabledTitle = buttonsDisabled ? ' title="Cannot interact with this player board"' : '';
 
+        // Check if upgrade buttons should be disabled due to max reached
+        const hpUpgradeDisabled = buttonsDisabled || player.maxResources.hp >= 10;
+        const hpUpgradeAttr = hpUpgradeDisabled ? ' disabled' : '';
+        const hpUpgradeTitle = hpUpgradeDisabled ?
+            (player.maxResources.hp >= 10 ? ' title="HP is at maximum (10)"' : ' title="Cannot interact with this player board"') : '';
+
+        const epUpgradeDisabled = buttonsDisabled || player.maxResources.ep >= 10;
+        const epUpgradeAttr = epUpgradeDisabled ? ' disabled' : '';
+        const epUpgradeTitle = epUpgradeDisabled ?
+            (player.maxResources.ep >= 10 ? ' title="EP is at maximum (10)"' : ' title="Cannot interact with this player board"') : '';
+
         board.innerHTML = `
             <!-- Left Column: HP and EP sections -->
             <div class="board-left-section">
@@ -2482,7 +2535,7 @@ class Game {
                         <div class="upgrade-bar">
                             <span>Upgrade:</span>
                             <span id="p${player.id}-hp-progress">${player.upgradeProgress.hp}/3</span>
-                            <button class="small-btn" onclick="game.addToUpgrade(${player.id}, 'hp')"${disabledAttr}${disabledTitle}>+🩸</button>
+                            <button class="small-btn" onclick="game.addToUpgrade(${player.id}, 'hp')"${hpUpgradeAttr}${hpUpgradeTitle}>+🩸</button>
                         </div>
                         <div class="milestones">
                             <label><input type="checkbox" id="p${player.id}-hp-milestone-6" disabled> 6(+2pts)</label>
@@ -2503,7 +2556,7 @@ class Game {
                         <div class="upgrade-bar">
                             <span>Upgrade:</span>
                             <span id="p${player.id}-ep-progress">${player.upgradeProgress.ep}/4</span>
-                            <button class="small-btn" onclick="game.addToUpgrade(${player.id}, 'ep')"${disabledAttr}${disabledTitle}>+🍺</button>
+                            <button class="small-btn" onclick="game.addToUpgrade(${player.id}, 'ep')"${epUpgradeAttr}${epUpgradeTitle}>+🍺</button>
                         </div>
                         <div class="milestones">
                             <label><input type="checkbox" id="p${player.id}-ep-milestone-8" disabled> 8(+2pts)</label>
@@ -3662,11 +3715,18 @@ class Game {
     levelUpMaxResource(playerId, resourceType, amount) {
         const player = this.players.find(p => p.id === playerId);
         if (!player) return;
-        
+
         // Only HP and EP can be leveled up
         if (resourceType !== 'hp' && resourceType !== 'ep') return;
-        
-        player.maxResources[resourceType] += amount;
+
+        // Prevent upgrading beyond 10
+        if (player.maxResources[resourceType] >= 10) {
+            console.log(`Cannot upgrade ${resourceType} - already at maximum (10)`);
+            return;
+        }
+
+        // Apply the upgrade but cap at 10
+        player.maxResources[resourceType] = Math.min(10, player.maxResources[resourceType] + amount);
         // Also increase current value by the same amount
         player.resources[resourceType] += amount;
         
@@ -5107,10 +5167,16 @@ class Game {
     addToUpgrade(playerId, upgradeType) {
         const player = this.players.find(p => p.id === playerId);
         if (!player) return;
-        
+
+        // Check if already at maximum
+        if (player.maxResources[upgradeType] >= 10) {
+            alert(`Cannot upgrade ${upgradeType.toUpperCase()} - already at maximum (10)`);
+            return;
+        }
+
         const itemName = upgradeType === 'ep' ? 'Beer' : 'Blood Bag';
         const requiredAmount = upgradeType === 'ep' ? 4 : 3; // EP needs 4 beers, HP needs 3 blood bags
-        
+
         // Check if player has the item in inventory and upgrade isn't full
         const itemIndex = player.inventory.findIndex(item => item.name === itemName);
         if (itemIndex !== -1 && player.upgradeProgress[upgradeType] < requiredAmount) {
@@ -8917,16 +8983,6 @@ class Game {
         statsButton.className = 'control-button';
         statsButton.onclick = () => this.showGameStats();
         controls.appendChild(statsButton);
-
-        // Add New Game button
-        const restartButton = document.createElement('button');
-        restartButton.textContent = 'Start New Game';
-        restartButton.className = 'control-button';
-        restartButton.onclick = () => {
-            this.resetMilestoneCheckboxes();
-            location.reload();
-        };
-        controls.appendChild(restartButton);
 
         // Add Exit to Menu button
         const exitButton = document.createElement('button');
