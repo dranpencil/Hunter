@@ -815,7 +815,8 @@ class BotPlayer {
             const actionsList = logActions.join(', ');
             game.addLogEntry(
                 `🔧 <strong>${player.name}</strong> (Bot) resolved capacity overflow: ${actionsList}`,
-                'system'
+                'system',
+                player
             );
         }
         
@@ -1677,7 +1678,8 @@ class Game {
         };
         this.pendingSelectionLogs.push({
             message: `📍 <strong>${player.name}</strong> selected: Hunter → ${locationNames[hunterLocation]}, Apprentice → ${locationNames[apprenticeLocation]}`,
-            type: 'selection'
+            type: 'selection',
+            player: player
         });
         
         // Update UI to show bot selections
@@ -3180,7 +3182,8 @@ class Game {
             const apprenticeLocationName = this.getLocationName(this.currentPlayer.selectedCards.apprentice);
             this.pendingSelectionLogs.push({
                 message: `📍 <strong>${this.currentPlayer.name}</strong> selected: Hunter → ${hunterLocationName}, Apprentice → ${apprenticeLocationName}`,
-                type: 'selection'
+                type: 'selection',
+                player: this.currentPlayer
             });
         }
 
@@ -3201,7 +3204,7 @@ class Game {
             
             // Add all pending selection logs to the game log
             for (const logEntry of this.pendingSelectionLogs) {
-                this.addLogEntry(logEntry.message, logEntry.type);
+                this.addLogEntry(logEntry.message, logEntry.type, logEntry.player);
             }
             
             // Clear pending logs for next round
@@ -3647,7 +3650,7 @@ class Game {
             const lostAmount = newValue - maxValue;
             console.log(`${player.name} lost ${lostAmount} ${resourceType} due to max cap of ${maxValue}`);
             if (resourceType === 'money' || resourceType === 'exp') {
-                this.addLogEntry(`⚠️ ${player.name} reached max ${resourceType} (${maxValue}). Lost ${lostAmount} ${resourceType}!`, 'system');
+                this.addLogEntry(`⚠️ ${player.name} reached max ${resourceType} (${maxValue}). Lost ${lostAmount} ${resourceType}!`, 'system', player);
                 // Show alert for human players only
                 if (!player.isBot && !this.isAutomatedMode) {
                     alert(`⚠️ Resource Cap Reached!\n\n${player.name} has reached the maximum ${resourceType} limit of ${maxValue}.\n\n${lostAmount} ${resourceType} was lost!`);
@@ -4026,7 +4029,8 @@ class Game {
         const petText = petInfo.length > 0 ? ` with ${petInfo.join(', ')}` : '';
         this.addLogEntry(
             `⚔️ <strong>${player.name}</strong> (Bot) chose Level ${selectedLevel} Monster${petText} (${totalEPCost} EP)`,
-            'battle'
+            'battle',
+            player
         );
         
         // Deduct EP
@@ -4074,7 +4078,8 @@ class Game {
         // Log battle start
         this.addLogEntry(
             `⚔️ <strong>${player.name}</strong> (Bot) enters battle vs Level ${battle.monster.level} Monster (${battle.monster.hp} HP, ${battle.monster.att} ATT)`,
-            'battle'
+            'battle',
+            player
         );
         
         console.log('About to start executeBotBattle with 1000ms delay');
@@ -4179,7 +4184,7 @@ class Game {
             // Log all battle actions
             battleActions.forEach(action => {
                 if (!action.includes('---')) {
-                    this.addLogEntry(`⚔️ ${action}`, 'battle');
+                    this.addLogEntry(`⚔️ ${action}`, 'battle', player);
                 }
             });
             
@@ -4423,7 +4428,7 @@ class Game {
         // Log all battle actions
         battleActions.forEach(action => {
             if (!action.includes('---')) {
-                this.addLogEntry(`⚔️ ${action}`, 'battle');
+                this.addLogEntry(`⚔️ ${action}`, 'battle', player);
             }
         });
         
@@ -4747,7 +4752,8 @@ class Game {
             selectedResource = preferredResource;
             this.addLogEntry(
                 `💰 <strong>${player.name}</strong> (Bot) chose ${preferredResource} at Station (weapon preference)`,
-                'resource-gain'
+                'resource-gain',
+                player
             );
         } else {
             // Choose randomly from available options
@@ -4756,7 +4762,8 @@ class Game {
             selectedResource = availableResources[randomIndex];
             this.addLogEntry(
                 `💰 <strong>${player.name}</strong> (Bot) chose ${selectedResource} at Station (random)`,
-                'resource-gain'
+                'resource-gain',
+                player
             );
         }
         
@@ -4807,7 +4814,8 @@ class Game {
                 const resourceName = resourceType === 'money' ? 'money' : 'EXP';
                 this.addLogEntry(
                     `💰 <strong>${player.name}</strong>${playerType} received ${rewardAmount} ${resourceName} from Station`,
-                    'resource-gain'
+                    'resource-gain',
+                    player
                 );
             } else if (resourceType === 'beer' || resourceType === 'bloodBag') {
                 player.resources[resourceType] += rewardAmount;
@@ -4816,7 +4824,8 @@ class Game {
                 this.addItemToInventory(parseInt(playerId), itemName, rewardAmount);
                 this.addLogEntry(
                     `💰 <strong>${player.name}</strong>${playerType} received ${rewardAmount} ${itemName} from Station`,
-                    'resource-gain'
+                    'resource-gain',
+                    player
                 );
             }
         });
@@ -4993,7 +5002,7 @@ class Game {
                     this.addScore(player.id, 1, 'other');
                     if (!this.isAutomatedMode) {
                         console.log(`Knife Lv2 Power: ${player.name} receives +1 point for being alone at location`);
-                        this.addLogEntry(`🔪 ${player.name} receives +1 point from Knife Lv2 Power`, 'power');
+                        this.addLogEntry(`🔪 ${player.name} receives +1 point from Knife Lv2 Power`, 'power', player);
                     }
                 }
                 
@@ -5053,7 +5062,8 @@ class Game {
                     const playerType = player.isBot ? ' (Bot)' : '';
                     this.addLogEntry(
                         `📈 <strong>${player.name}</strong>${playerType} reached Popularity Level ${newRewardLevel} (+${points} points)`,
-                        'level-up'
+                        'level-up',
+                        player
                     );
                 }
             }
@@ -5557,7 +5567,7 @@ class Game {
                 this.players.forEach(p => {
                     if (!this.forestPlayersThisRound.has(p.id)) {
                         p.score = Math.max(0, p.score - 2);
-                        this.addLogEntry(`📉 ${p.name} loses 2 points (not in forest)`, 'effect');
+                        this.addLogEntry(`📉 ${p.name} loses 2 points (not in forest)`, 'effect', p);
                     }
                 });
                 break;
@@ -5646,7 +5656,7 @@ class Game {
                     const epLoss = Math.min(player.resources.ep, 1);
                     if (epLoss > 0) {
                         this.modifyResource(player.id, 'ep', -epLoss);
-                        this.logBattleAction(`${player.name} loses 1 EP from monster effect`);
+                        this.logBattleAction(`${player.name} loses 1 EP from monster effect`, player);
                     }
                 }
                 break;
@@ -5655,7 +5665,7 @@ class Game {
                 if (context === 'monsterDamaged' && monster.hp > 0) {
                     monster.hp += 1;
                     monster.maxHp = Math.max(monster.maxHp, monster.hp);
-                    this.logBattleAction(`Monster gains +1 HP from its effect (${monster.hp} HP)`);
+                    this.logBattleAction(`Monster gains +1 HP from its effect (${monster.hp} HP)`, player);
                 }
                 break;
                 
@@ -5835,7 +5845,8 @@ class Game {
             
             this.addLogEntry(
                 `${player.name} spent 1 EP to change monster`,
-                'system'
+                'system',
+                player
             );
         }
     }
@@ -6052,13 +6063,13 @@ class Game {
                 // Consume one bullet as entrance fee for Forest
                 player.inventory.splice(bulletIndex, 1);
                 this.currentBattle.ammunitionConsumed = true;
-                this.addLogEntry(`${player.name} pays 1 bullet as Forest entrance fee (unlimited attacks)!`, 'battle');
+                this.addLogEntry(`${player.name} pays 1 bullet as Forest entrance fee (unlimited attacks)!`, 'battle', player);
                 
                 // Update bullet displays
                 this.updateBulletDisplay(player.id);
             } else {
                 // No bullets available - battle will fail
-                this.addLogEntry(`${player.name} has no bullets for battle!`, 'battle');
+                this.addLogEntry(`${player.name} has no bullets for battle!`, 'battle', player);
             }
         }
         
@@ -6069,13 +6080,13 @@ class Game {
                 // Consume one battery as entrance fee for Forest
                 player.inventory.splice(batteryIndex, 1);
                 this.currentBattle.ammunitionConsumed = true;
-                this.addLogEntry(`${player.name} pays 1 battery as Forest entrance fee (unlimited attacks)!`, 'battle');
+                this.addLogEntry(`${player.name} pays 1 battery as Forest entrance fee (unlimited attacks)!`, 'battle', player);
                 
                 // Update battery displays
                 this.updateBatteryDisplay(player.id);
             } else {
                 // No batteries available - battle will fail
-                this.addLogEntry(`${player.name} has no batteries for battle!`, 'battle');
+                this.addLogEntry(`${player.name} has no batteries for battle!`, 'battle', player);
             }
         }
         
@@ -6160,8 +6171,7 @@ class Game {
         }
         
         document.getElementById('battle-monster-level').textContent = battle.monster.level;
-        document.getElementById('battle-monster-hp').textContent = `${battle.monster.hp}/${battle.monster.maxHp}`;
-        document.getElementById('battle-monster-att').textContent = battle.monster.att;
+        this.updateMonsterDisplay();
         
         // Display monster effect if present
         const effectElement = document.getElementById('battle-monster-effect');
@@ -6423,7 +6433,7 @@ class Game {
                 defenseBtn.style.display = 'none';
                 // Automatically end turn after a short delay
                 setTimeout(() => {
-                    this.logBattleAction(`${player.name} cannot attack without ammo!`);
+                    this.logBattleAction(`${player.name} cannot attack without ammo!`, player);
                     battle.turn = 'player';
                     this.updateBattlePhase();
                 }, this.getDelay(1500));
@@ -6499,7 +6509,7 @@ class Game {
             }
             
             monster.hp = Math.max(0, monster.hp);
-            this.logBattleAction(`${player.name} uses items: ${itemsUsed.join(', ')} - Monster HP now: ${monster.hp}`);
+            this.logBattleAction(`${player.name} uses items: ${itemsUsed.join(', ')} - Monster HP now: ${monster.hp}`, player);
             
             // Update displays
             this.updateResourceDisplay();
@@ -6508,7 +6518,7 @@ class Game {
             
             // Check if monster is defeated
             if (monster.hp <= 0) {
-                this.logBattleAction(`Monster defeated by items!`);
+                this.logBattleAction(`Monster defeated by items!`, player);
                 this.monsterDefeated();
                 return;
             }
@@ -6527,7 +6537,7 @@ class Game {
                 }
             }
             if (fakeBloodCount > 0) {
-                this.logBattleAction(`${player.name} uses ${fakeBloodCount} Fake Blood for +${fakeBloodCount * monster.level} bonus points`);
+                this.logBattleAction(`${player.name} uses ${fakeBloodCount} Fake Blood for +${fakeBloodCount * monster.level} bonus points`, player);
                 this.updateResourceDisplay();
                 this.updateInventoryDisplayOld();
                 this.updateInventoryDisplay(player.id);
@@ -6581,7 +6591,7 @@ class Game {
         }
         
         if (itemsUsed.length > 0) {
-            this.logBattleAction(`${player.name} uses recovery items: ${itemsUsed.join(', ')}`);
+            this.logBattleAction(`${player.name} uses recovery items: ${itemsUsed.join(', ')}`, player);
             this.updateResourceDisplay();
             this.updateInventoryDisplayOld();
             this.updateInventoryDisplay(player.id);
@@ -6658,7 +6668,7 @@ class Game {
                 // Consume ammunition on first attack if not consumed at battle start
                 player.inventory.splice(bulletIndex, 1);
                 battle.ammunitionConsumed = true;
-                this.addLogEntry(`${player.name} uses 1 bullet as entrance fee for this battle!`, 'battle');
+                this.addLogEntry(`${player.name} uses 1 bullet as entrance fee for this battle!`, 'battle', player);
             }
             // Update bullet display (in case it changed from items)
             if (this.currentBattle && this.currentBattle.playerId === player.id) {
@@ -6682,7 +6692,7 @@ class Game {
                 // Consume ammunition on first attack if not consumed at battle start
                 player.inventory.splice(batteryIndex, 1);
                 battle.ammunitionConsumed = true;
-                this.addLogEntry(`${player.name} uses 1 battery as entrance fee for this battle!`, 'battle');
+                this.addLogEntry(`${player.name} uses 1 battery as entrance fee for this battle!`, 'battle', player);
             }
             // Update battery display (in case it changed from items)
             if (this.currentBattle && this.currentBattle.playerId === player.id) {
@@ -6723,9 +6733,9 @@ class Game {
                 playerDamage += bonusDamage;
                 totalDicePips += bonusRolls.reduce((sum, roll) => sum + roll, 0);
                 
-                this.logBattleAction(`Bat Lv3 Power: ${hitCount} dice hit - rolled ${hitCount} bonus dice (${bonusDamage} bonus damage)`);
+                this.logBattleAction(`Bat Lv3 Power: ${hitCount} dice hit - rolled ${hitCount} bonus dice (${bonusDamage} bonus damage)`, player);
             } else {
-                this.logBattleAction(`Bat Lv3 Power: No hits - no bonus dice`);
+                this.logBattleAction(`Bat Lv3 Power: No hits - no bonus dice`, player);
             }
         } else {
             // Normal attack
@@ -6740,7 +6750,7 @@ class Game {
         // Bow Level 3 Power: Double player damage
         if (player.weapon.name === 'Bow' && player.weapon.powerTrackPosition >= 7 && playerDamage > 0) {
             playerDamage *= 2;
-            this.logBattleAction(`Bow Lv3 Power: Damage doubled!`);
+            this.logBattleAction(`Bow Lv3 Power: Damage doubled!`, player);
         }
         
         // Sword Level 3 Power: +1 point if at least one attack die shows 1
@@ -6748,13 +6758,13 @@ class Game {
             const hasOnes = allAttackRolls.includes(1);
             if (hasOnes) {
                 this.addScore(player.id, 1);
-                this.logBattleAction(`Sword Lv3 Power: +1 point for rolling at least one 1!`);
+                this.logBattleAction(`Sword Lv3 Power: +1 point for rolling at least one 1!`, player);
             }
         }
         
         // Check for Katana Level 3 instant kill (27+ dice pips)
         if (player.weapon.name === 'Katana' && player.weapon.powerTrackPosition >= 7 && totalDicePips >= 27) {
-            this.logBattleAction(`Katana Lv3 Power: Instant kill! (${totalDicePips} total dice pips >= 27)`);
+            this.logBattleAction(`Katana Lv3 Power: Instant kill! (${totalDicePips} total dice pips >= 27)`, player);
             battle.monster.hp = 0; // Instant kill
             this.monsterDefeated();
             return;
@@ -6768,7 +6778,7 @@ class Game {
         // Chain Level 3 Power: Double pet damage
         if (player.weapon.name === 'Chain' && player.weapon.powerTrackPosition >= 7 && petDamage > 0) {
             petDamage *= 2;
-            this.logBattleAction(`Chain Lv3 Power: Pet damage doubled!`);
+            this.logBattleAction(`Chain Lv3 Power: Pet damage doubled!`, player);
         }
         
         const totalDamage = playerDamage + petDamage;
@@ -6779,7 +6789,7 @@ class Game {
         if (damageCap !== null) {
             finalDamage = Math.min(totalDamage, damageCap);
             if (totalDamage > damageCap) {
-                this.logBattleAction(`Monster effect: Damage capped at ${damageCap}! (Would have dealt ${totalDamage})`);
+                this.logBattleAction(`Monster effect: Damage capped at ${damageCap}! (Would have dealt ${totalDamage})`, player);
             }
         }
         
@@ -6791,7 +6801,7 @@ class Game {
         if (petDamage > 0) {
             attackMessage += ` + ${petDamage} pet damage = ${totalDamage} total damage`;
         }
-        this.logBattleAction(attackMessage);
+        this.logBattleAction(attackMessage, player);
         
         if (battle.monster.hp <= 0) {
             // Monster defeated!
@@ -6811,10 +6821,42 @@ class Game {
             this.updateBattleItemButtons();
         }
         
-        // Update monster HP display
-        document.getElementById('battle-monster-hp').textContent = `${Math.max(0, battle.monster.hp)}/${battle.monster.maxHp}`;
+        // Update monster display
+        this.updateMonsterDisplay();
     }
-    
+
+    getCurrentMonsterAttack() {
+        if (!this.currentBattle) return 0;
+        const battle = this.currentBattle;
+        let monsterAttack = battle.monster.att;
+
+        // Check for HP threshold effects (effects 2 and 24): +1 attack when HP is at half or less
+        if (battle.monster.effectId === 2 || battle.monster.effectId === 24) {
+            const currentHp = battle.monster.hp;
+            const maxHp = battle.monster.maxHp;
+            if (currentHp <= Math.floor(maxHp / 2)) {
+                monsterAttack += 1;
+            }
+        }
+
+        return monsterAttack;
+    }
+
+    updateMonsterDisplay() {
+        if (!this.currentBattle) return;
+        const battle = this.currentBattle;
+
+        const hpElement = document.getElementById('battle-monster-hp');
+        const attElement = document.getElementById('battle-monster-att');
+
+        if (hpElement) {
+            hpElement.textContent = `${Math.max(0, battle.monster.hp)}/${battle.monster.maxHp}`;
+        }
+        if (attElement) {
+            attElement.textContent = this.getCurrentMonsterAttack();
+        }
+    }
+
     useBattleItem(itemName) {
         if (!this.currentBattle || (this.currentBattle.turn !== 'player_items' && this.currentBattle.turn !== 'player_items_after_monster')) return;
         
@@ -6832,11 +6874,11 @@ class Game {
             // Recover 1 HP
             if (player.resources.hp < player.maxResources.hp) {
                 player.resources.hp = Math.min(player.resources.hp + 1, player.maxResources.hp);
-                this.logBattleAction(`${player.name} uses Blood Bag! HP restored to ${player.resources.hp}`);
+                this.logBattleAction(`${player.name} uses Blood Bag! HP restored to ${player.resources.hp}`, player);
                 // Update player HP display
                 document.getElementById('battle-player-hp').textContent = `${player.resources.hp}/${player.maxResources.hp}`;
             } else {
-                this.logBattleAction(`${player.name} uses Blood Bag but HP is already at maximum!`);
+                this.logBattleAction(`${player.name} uses Blood Bag but HP is already at maximum!`, player);
             }
         } else if (itemName === 'Grenade') {
             // Monster -1 HP
@@ -6846,7 +6888,7 @@ class Game {
                 grenadeDamage = Math.min(grenadeDamage, damageCap);
             }
             battle.monster.hp -= grenadeDamage;
-            this.logBattleAction(`${player.name} uses Grenade! Monster takes ${grenadeDamage} damage`);
+            this.logBattleAction(`${player.name} uses Grenade! Monster takes ${grenadeDamage} damage`, player);
         } else if (itemName === 'Bomb') {
             // Monster -2 HP
             let bombDamage = 2;
@@ -6855,12 +6897,12 @@ class Game {
                 const originalDamage = bombDamage;
                 bombDamage = Math.min(bombDamage, damageCap);
                 if (originalDamage > damageCap) {
-                    this.logBattleAction(`${player.name} uses Bomb! Monster takes ${bombDamage} damage (capped from ${originalDamage})`);
+                    this.logBattleAction(`${player.name} uses Bomb! Monster takes ${bombDamage} damage (capped from ${originalDamage})`, player);
                 } else {
-                    this.logBattleAction(`${player.name} uses Bomb! Monster takes ${bombDamage} damage`);
+                    this.logBattleAction(`${player.name} uses Bomb! Monster takes ${bombDamage} damage`, player);
                 }
             } else {
-                this.logBattleAction(`${player.name} uses Bomb! Monster takes ${bombDamage} damage`);
+                this.logBattleAction(`${player.name} uses Bomb! Monster takes ${bombDamage} damage`, player);
             }
             battle.monster.hp -= bombDamage;
         } else if (itemName === 'Dynamite') {
@@ -6871,19 +6913,19 @@ class Game {
                 const originalDamage = dynamiteDamage;
                 dynamiteDamage = Math.min(dynamiteDamage, damageCap);
                 if (originalDamage > damageCap) {
-                    this.logBattleAction(`${player.name} uses Dynamite! Monster takes ${dynamiteDamage} damage (capped from ${originalDamage})`);
+                    this.logBattleAction(`${player.name} uses Dynamite! Monster takes ${dynamiteDamage} damage (capped from ${originalDamage})`, player);
                 } else {
-                    this.logBattleAction(`${player.name} uses Dynamite! Monster takes ${dynamiteDamage} damage`);
+                    this.logBattleAction(`${player.name} uses Dynamite! Monster takes ${dynamiteDamage} damage`, player);
                 }
             } else {
-                this.logBattleAction(`${player.name} uses Dynamite! Monster takes ${dynamiteDamage} damage`);
+                this.logBattleAction(`${player.name} uses Dynamite! Monster takes ${dynamiteDamage} damage`, player);
             }
             battle.monster.hp -= dynamiteDamage;
         } else if (itemName === 'Fake Blood') {
             // Increase PTS by 2 (store in battle for later use)
             if (!battle.bonusPts) battle.bonusPts = 0;
             battle.bonusPts += 2;
-            this.logBattleAction(`${player.name} uses Fake Blood! Will gain +2 bonus points when monster is defeated`);
+            this.logBattleAction(`${player.name} uses Fake Blood! Will gain +2 bonus points when monster is defeated`, player);
         }
         
         // Check if monster is defeated by item
@@ -6891,7 +6933,7 @@ class Game {
             this.monsterDefeated();
         } else {
             // Update displays
-            document.getElementById('battle-monster-hp').textContent = `${Math.max(0, battle.monster.hp)}/${battle.monster.maxHp}`;
+            this.updateMonsterDisplay();
             this.updateBattleItemButtons();
             this.updateResourceDisplay();
             this.updateBattlePhase(); // Update to show tame button if applicable
@@ -6951,7 +6993,7 @@ class Game {
         const finalDamage = Math.max(0, monsterAttack - totalDefense);
         
         // Log attack
-        this.logBattleAction(`Monster attacks for ${monsterAttack} damage! ${player.name} defends: [${defenseRolls.join(', ')}] = ${totalDefense} defense. Final damage: ${finalDamage}`);
+        this.logBattleAction(`Monster attacks for ${monsterAttack} damage! ${player.name} defends: [${defenseRolls.join(', ')}] = ${totalDefense} defense. Final damage: ${finalDamage}`, player);
         
         // Sword Level 3 Power nerfed: only works on attack dice, not defense
         
@@ -6963,20 +7005,20 @@ class Game {
             
             // Player gains EXP equal to damage received
             this.modifyResource(battle.playerId, 'exp', finalDamage);
-            this.logBattleAction(`${player.name} gains ${finalDamage} EXP from taking damage!`);
+            this.logBattleAction(`${player.name} gains ${finalDamage} EXP from taking damage!`, player);
             
             // Gloves Power: Level 3 only - increase attack for each time damaged
             if (player.weapon.name === 'Gloves' && player.weapon.powerTrackPosition >= 7 && finalDamage > 0) {
                 // Level 3: +1 attack for each time damaged (cumulative)
                 battle.glovesPowerLevel += 1;
-                this.logBattleAction(`Gloves Lv3 Power: Attack increased! (+${battle.glovesPowerLevel} total attack bonus)`);
+                this.logBattleAction(`Gloves Lv3 Power: Attack increased! (+${battle.glovesPowerLevel} total attack bonus)`, player);
             }
         }
         
         // Check if player survives
         if (player.resources.hp <= 0) {
             // Player defeated!
-            this.logBattleAction(`${player.name} has been defeated!`);
+            this.logBattleAction(`${player.name} has been defeated!`, player);
             this.playerDefeated(battle.playerId);
         } else {
             // Player survived - check for Axe retaliation
@@ -6985,11 +7027,11 @@ class Game {
                 if (player.weapon.powerTrackPosition >= 7) {
                     // Level 3: Deal same damage to monster (overrides Level 1)
                     axeDamageToMonster = finalDamage;
-                    this.logBattleAction(`Axe Lv3 Power: ${player.name} fights back for ${axeDamageToMonster} damage!`);
+                    this.logBattleAction(`Axe Lv3 Power: ${player.name} fights back for ${axeDamageToMonster} damage!`, player);
                 } else {
                     // Level 1: Deal 1 damage to monster when HP decreases
                     axeDamageToMonster = 1;
-                    this.logBattleAction(`Axe Lv1 Power: ${player.name} fights back for ${axeDamageToMonster} damage!`);
+                    this.logBattleAction(`Axe Lv1 Power: ${player.name} fights back for ${axeDamageToMonster} damage!`, player);
                 }
                 
                 // Apply damage cap to Axe counter damage
@@ -6997,18 +7039,18 @@ class Game {
                 if (damageCap !== null) {
                     axeDamageToMonster = Math.min(axeDamageToMonster, damageCap);
                     if (axeDamageToMonster < finalDamage && player.weapon.powerTrackPosition >= 7) {
-                        this.logBattleAction(`Axe counter damage capped at ${damageCap}!`);
+                        this.logBattleAction(`Axe counter damage capped at ${damageCap}!`, player);
                     }
                 }
                 
                 battle.monster.hp -= axeDamageToMonster;
                 
                 // Update monster HP display
-                document.getElementById('battle-monster-hp').textContent = `${battle.monster.hp}/${battle.monster.maxHp}`;
+                this.updateMonsterDisplay();
                 
                 // Check if monster is defeated by axe retaliation
                 if (battle.monster.hp <= 0) {
-                    this.logBattleAction(`Monster defeated by Axe retaliation!`);
+                    this.logBattleAction(`Monster defeated by Axe retaliation!`, player);
                     this.monsterDefeated();
                     return;
                 }
@@ -7056,7 +7098,7 @@ class Game {
         battle.tripleDamageUsed = true;
         battle.canUseTripleDamage = false;
         
-        this.logBattleAction(`${player.name} activates Knife Lv1 Power: 2x damage! ${extraDamage} extra damage dealt!`);
+        this.logBattleAction(`${player.name} activates Knife Lv1 Power: 2x damage! ${extraDamage} extra damage dealt!`, player);
         
         // Update monster HP display
         document.getElementById('battle-monster-hp').textContent = `${Math.max(0, battle.monster.hp)}/${battle.monster.maxHp}`;
@@ -7121,7 +7163,7 @@ class Game {
             player.pets.level3++;
         }
         
-        this.logBattleAction(`${player.name} tames the Level ${monster.level} monster! Spent ${requiredEP} EP`);
+        this.logBattleAction(`${player.name} tames the Level ${monster.level} monster! Spent ${requiredEP} EP`, player);
         
         // Update pet display
         this.updatePetDisplay();
@@ -7135,7 +7177,7 @@ class Game {
         const player = this.players.find(p => p.id === battle.playerId);
         const monster = battle.monster;
 
-        this.logBattleAction(`${player.name} defeats the Level ${monster.level} monster!`);
+        this.logBattleAction(`${player.name} defeats the Level ${monster.level} monster!`, player);
 
         // Track monsters defeated for statistics
         if (!player.monstersDefeated) {
@@ -7155,9 +7197,9 @@ class Game {
             const finalMoney = monster.money * rewardMultiplier;
             this.modifyResource(battle.playerId, 'money', finalMoney);
             if (knifeDoubleRewards) {
-                this.logBattleAction(`+${finalMoney} money (doubled by Knife Lv3 Power!)`);
+                this.logBattleAction(`+${finalMoney} money (doubled by Knife Lv3 Power!)`, player);
             } else {
-                this.logBattleAction(`+${finalMoney} money`);
+                this.logBattleAction(`+${finalMoney} money`, player);
             }
         }
         if (monster.energy > 0) {
@@ -7165,9 +7207,9 @@ class Game {
             player.resources.beer += finalEnergy;
             this.addItemToInventory(battle.playerId, 'Beer', finalEnergy);
             if (knifeDoubleRewards) {
-                this.logBattleAction(`+${finalEnergy} beer (doubled by Knife Lv3 Power!)`);
+                this.logBattleAction(`+${finalEnergy} beer (doubled by Knife Lv3 Power!)`, player);
             } else {
-                this.logBattleAction(`+${finalEnergy} beer`);
+                this.logBattleAction(`+${finalEnergy} beer`, player);
             }
         }
         if (monster.blood > 0) {
@@ -7175,9 +7217,9 @@ class Game {
             player.resources.bloodBag += finalBlood;
             this.addItemToInventory(battle.playerId, 'Blood Bag', finalBlood);
             if (knifeDoubleRewards) {
-                this.logBattleAction(`+${finalBlood} blood bags (doubled by Knife Lv3 Power!)`);
+                this.logBattleAction(`+${finalBlood} blood bags (doubled by Knife Lv3 Power!)`, player);
             } else {
-                this.logBattleAction(`+${finalBlood} blood bags`);
+                this.logBattleAction(`+${finalBlood} blood bags`, player);
             }
         }
         if (monster.pts > 0) {
@@ -7190,9 +7232,9 @@ class Game {
             
             // Knife Level 3 only doubles resources, not points
             if (battle.bonusPts) {
-                this.logBattleAction(`+${monster.pts} base score + ${battle.bonusPts} Fake Blood bonus = ${totalScore} total score`);
+                this.logBattleAction(`+${monster.pts} base score + ${battle.bonusPts} Fake Blood bonus = ${totalScore} total score`, player);
             } else {
-                this.logBattleAction(`+${monster.pts} score`);
+                this.logBattleAction(`+${monster.pts} score`, player);
             }
             
             // Score from monster battle (already split if fake blood was used)
@@ -7221,11 +7263,11 @@ class Game {
         if (!player) return;
         
         // No score penalty (removed)
-        this.logBattleAction(`${player.name} was defeated by the monster`);
+        this.logBattleAction(`${player.name} was defeated by the monster`, player);
         
         // Set HP to 1
         player.resources.hp = 1;
-        this.logBattleAction(`${player.name}'s HP set to 1`);
+        this.logBattleAction(`${player.name}'s HP set to 1`, player);
         
         // EP doesn't change (no log message needed)
         
@@ -7285,14 +7327,14 @@ class Game {
             if (battleActions) {
                 battleActions.push(message);
             } else {
-                this.logBattleAction(message);
+                this.logBattleAction(message, player);
             }
         } else {
             const message = `${player.name}'s weapon power is already at maximum position!`;
             if (battleActions) {
                 battleActions.push(message);
             } else {
-                this.logBattleAction(message);
+                this.logBattleAction(message, player);
             }
         }
     }
@@ -7346,7 +7388,7 @@ class Game {
         if (battleActions) {
             battleActions.push(unlockMessage);
         } else {
-            this.logBattleAction(unlockMessage);
+            this.logBattleAction(unlockMessage, player);
         }
         
         // Apply power effects based on weapon and level
@@ -7368,7 +7410,7 @@ class Game {
                 if (battleActions) {
                     battleActions.push(powerMessage);
                 } else {
-                    this.logBattleAction(powerMessage);
+                    this.logBattleAction(powerMessage, player);
                 }
                 break;
         }
@@ -7383,7 +7425,7 @@ class Game {
                 if (battleActions) {
                     battleActions.push(message1);
                 } else {
-                    this.logBattleAction(message1);
+                    this.logBattleAction(message1, player);
                 }
                 break;
             case 2:
@@ -7393,7 +7435,7 @@ class Game {
                 if (battleActions) {
                     battleActions.push(message2);
                 } else {
-                    this.logBattleAction(message2);
+                    this.logBattleAction(message2, player);
                 }
                 break;
             case 3:
@@ -7403,7 +7445,7 @@ class Game {
                 if (battleActions) {
                     battleActions.push(message3);
                 } else {
-                    this.logBattleAction(message3);
+                    this.logBattleAction(message3, player);
                 }
                 break;
         }
@@ -7418,7 +7460,7 @@ class Game {
                 if (battleActions) {
                     battleActions.push(message1);
                 } else {
-                    this.logBattleAction(message1);
+                    this.logBattleAction(message1, player);
                 }
                 break;
             case 2:
@@ -7428,7 +7470,7 @@ class Game {
                 if (battleActions) {
                     battleActions.push(message2);
                 } else {
-                    this.logBattleAction(message2);
+                    this.logBattleAction(message2, player);
                 }
                 break;
             case 3:
@@ -7438,7 +7480,7 @@ class Game {
                 if (battleActions) {
                     battleActions.push(message3);
                 } else {
-                    this.logBattleAction(message3);
+                    this.logBattleAction(message3, player);
                 }
                 break;
         }
@@ -7452,7 +7494,7 @@ class Game {
                 if (battleActions) {
                     battleActions.push(message1);
                 } else {
-                    this.logBattleAction(message1);
+                    this.logBattleAction(message1, player);
                 }
                 break;
             case 2:
@@ -7461,7 +7503,7 @@ class Game {
                 if (battleActions) {
                     battleActions.push(message2);
                 } else {
-                    this.logBattleAction(message2);
+                    this.logBattleAction(message2, player);
                 }
                 break;
             case 3:
@@ -7482,14 +7524,14 @@ class Game {
                         battleActions.push(message3);
                         battleActions.push(capacityMessage);
                     } else {
-                        this.logBattleAction(message3);
-                        this.logBattleAction(capacityMessage);
+                        this.logBattleAction(message3, player);
+                        this.logBattleAction(capacityMessage, player);
                     }
                 } else {
                     if (battleActions) {
                         battleActions.push(message3);
                     } else {
-                        this.logBattleAction(message3);
+                        this.logBattleAction(message3, player);
                     }
                 }
                 
@@ -7500,16 +7542,16 @@ class Game {
         }
     }
     
-    logBattleAction(message) {
+    logBattleAction(message, player = null) {
         const log = document.getElementById('battle-log');
         const logEntry = document.createElement('div');
         logEntry.className = 'battle-log-entry';
         logEntry.textContent = message;
         log.appendChild(logEntry);
         log.scrollTop = log.scrollHeight;
-        
+
         // Also add to main game log
-        this.addLogEntry(`⚔️ ${message}`, 'battle');
+        this.addLogEntry(`⚔️ ${message}`, 'battle', player);
     }
     
     loadStoreItems() {
@@ -7935,32 +7977,32 @@ class Game {
         setTimeout(() => {
             let statusMessages = [];
             let logMessages = [];
-            
+
             // Handle purchases
             if (purchasedItems.length > 0) {
                 const itemCounts = {};
                 purchasedItems.forEach(item => {
                     itemCounts[item] = (itemCounts[item] || 0) + 1;
                 });
-                
+
                 const itemList = Object.entries(itemCounts)
                     .map(([item, count]) => count > 1 ? `${item} x${count}` : item)
                     .join(', ');
-                
+
                 statusMessages.push(`bought: ${itemList}`);
-                logMessages.push(`🛒 <strong>${player.name}</strong> (Bot) bought: ${itemList}`);
+                logMessages.push({ msg: `🛒 <strong>${player.name}</strong> (Bot) bought: ${itemList}`, player: player });
             } else {
                 statusMessages.push(`didn't buy anything`);
-                logMessages.push(`🛒 <strong>${player.name}</strong> (Bot) bought nothing`);
+                logMessages.push({ msg: `🛒 <strong>${player.name}</strong> (Bot) bought nothing`, player: player });
             }
-            
+
             // Handle resource management actions
             if (managementActions.length > 0) {
                 const managementList = managementActions.join(', ');
                 statusMessages.push(`managed: ${managementList}`);
-                logMessages.push(`💰 <strong>${player.name}</strong> (Bot) auto-managed: ${managementList}`);
+                logMessages.push({ msg: `💰 <strong>${player.name}</strong> (Bot) auto-managed: ${managementList}`, player: player });
             }
-            
+
             // Update status element (skip in automated mode)
             if (!this.isAutomatedMode) {
                 const statusElement = document.getElementById('status-message');
@@ -7968,10 +8010,10 @@ class Game {
                     statusElement.innerHTML = `<strong>${player.name}</strong> ${statusMessages.join('; ')}`;
                 }
             }
-            
+
             // Add to game log
-            logMessages.forEach(msg => {
-                this.addLogEntry(msg, 'store-purchase');
+            logMessages.forEach(logEntry => {
+                this.addLogEntry(logEntry.msg, 'store-purchase', logEntry.player);
             });
             
             // Auto-proceed to next player after a short delay
@@ -7996,22 +8038,29 @@ class Game {
     }
     
     // Game Log Management
-    addLogEntry(message, category = 'system') {
+    addLogEntry(message, category = 'system', player = null) {
         // Skip logging in automated mode for performance
         if (this.isAutomatedMode) return;
-        
+
         const logContainer = document.getElementById('game-log');
         if (!logContainer) return;
-        
+
         const logEntry = document.createElement('div');
         logEntry.className = `log-entry ${category}`;
         logEntry.innerHTML = message;
-        
+
+        // Apply player border color if player is provided, otherwise use white
+        if (player && player.color && player.color.background) {
+            logEntry.style.setProperty('border-left-color', player.color.background, 'important');
+        } else {
+            logEntry.style.setProperty('border-left-color', 'white', 'important');
+        }
+
         logContainer.appendChild(logEntry);
-        
+
         // Auto-scroll to bottom
         logContainer.scrollTop = logContainer.scrollHeight;
-        
+
         // Limit log entries to prevent memory issues (keep last 100 entries)
         const logEntries = logContainer.querySelectorAll('.log-entry');
         if (logEntries.length > 100) {
@@ -8201,7 +8250,8 @@ class Game {
         // Log the purchase
         this.addLogEntry(
             `🛒 <strong>${player.name}</strong> bought ${itemName} for $${price}`,
-            'store-purchase'
+            'store-purchase',
+            player
         );
 
         // Refresh the store display to update capacity warnings and money
@@ -8376,7 +8426,8 @@ class Game {
                         resourceName = location.resource === 'money' ? 'money' : 'EXP';
                         this.addLogEntry(
                             `💰 <strong>${player.name}</strong>${playerType} received ${rewardAmount} ${resourceName} from ${location.name}`,
-                            'resource-gain'
+                            'resource-gain',
+                            player
                         );
                     } else if (location.resource === 'beer' || location.resource === 'bloodBag') {
                         player.resources[location.resource] += rewardAmount;
@@ -8385,7 +8436,8 @@ class Game {
                         this.addItemToInventory(player.id, itemName, rewardAmount);
                         this.addLogEntry(
                             `💰 <strong>${player.name}</strong>${playerType} received ${rewardAmount} ${itemName} from ${location.name}`,
-                            'resource-gain'
+                            'resource-gain',
+                            player
                         );
                     } else if (location.resource === 'score') {
                         // Plaza scoring: 3 points if alone, 0 if crowded
@@ -8393,7 +8445,8 @@ class Game {
                         if (rewardAmount > 0) {
                             this.addLogEntry(
                                 `💰 <strong>${player.name}</strong>${playerType} received ${rewardAmount} points from ${location.name}`,
-                                'resource-gain'
+                                'resource-gain',
+                                player
                             );
                         }
                     }
@@ -8423,7 +8476,8 @@ class Game {
                             console.log(`Bat Lv1 Power: ${player.name}'s apprentice gets +1 ${location.resource} at ${location.name}`);
                             this.addLogEntry(
                                 `🦇 <strong>${player.name}</strong>${playerType}'s apprentice received +1 ${resourceName} (Bat Lv1 Power)`,
-                                'resource-gain'
+                                'resource-gain',
+                                player
                             );
                         } else if (location.resource === 'beer' || location.resource === 'bloodBag') {
                             player.resources[location.resource] += 1;
@@ -8432,7 +8486,8 @@ class Game {
                             console.log(`Bat Lv1 Power: ${player.name}'s apprentice gets +1 ${itemName} at ${location.name}`);
                             this.addLogEntry(
                                 `🦇 <strong>${player.name}</strong>${playerType}'s apprentice received +1 ${itemName} (Bat Lv1 Power)`,
-                                'resource-gain'
+                                'resource-gain',
+                                player
                             );
                         }
                     }
@@ -9085,7 +9140,7 @@ class Game {
                 if (hpFull && epFull) {
                     // Both resources are full, no bonus
                     console.log(`Bat Lv2 Power: ${player.name} has full HP and EP, no bonus received`);
-                    this.addLogEntry(`🦇 ${player.name}'s Bat Lv2 Power: Both HP and EP are full, no bonus`, 'power');
+                    this.addLogEntry(`🦇 ${player.name}'s Bat Lv2 Power: Both HP and EP are full, no bonus`, 'power', player);
                 } else if (player.isBot) {
                     // Bot logic: choose based on what's available and HP/EP ratio
                     let choice;
@@ -9110,11 +9165,11 @@ class Game {
                     if (choice === 'hp') {
                         this.modifyResource(player.id, 'hp', 1);
                         console.log(`Bat Lv2 Power: Bot ${player.name} chooses +1 HP at round start (HP: ${player.resources.hp}/${maxHp}, EP: ${player.resources.ep}/${maxEp})`);
-                        this.addLogEntry(`🦇 ${player.name} chooses +1 HP from Bat Lv2 Power`, 'power');
+                        this.addLogEntry(`🦇 ${player.name} chooses +1 HP from Bat Lv2 Power`, 'power', player);
                     } else {
                         this.modifyResource(player.id, 'ep', 1);
                         console.log(`Bat Lv2 Power: Bot ${player.name} chooses +1 EP at round start (HP: ${player.resources.hp}/${maxHp}, EP: ${player.resources.ep}/${maxEp})`);
-                        this.addLogEntry(`🦇 ${player.name} chooses +1 EP from Bat Lv2 Power`, 'power');
+                        this.addLogEntry(`🦇 ${player.name} chooses +1 EP from Bat Lv2 Power`, 'power', player);
                     }
                 } else {
                     // Human player: show choice dialog
@@ -9498,7 +9553,7 @@ class Game {
                         damage = Math.min(damage, damageCap);
                     }
                     this.currentBattle.monster.hp -= damage;
-                    this.logBattleAction(`${player.name} uses Grenade! Monster takes ${damage} damage.`);
+                    this.logBattleAction(`${player.name} uses Grenade! Monster takes ${damage} damage.`, player);
                     this.showMonsterBattleUI();
                 }
                 break;
@@ -9511,7 +9566,7 @@ class Game {
                         damage = Math.min(damage, damageCap);
                     }
                     this.currentBattle.monster.hp -= damage;
-                    this.logBattleAction(`${player.name} uses Bomb! Monster takes ${damage} damage.`);
+                    this.logBattleAction(`${player.name} uses Bomb! Monster takes ${damage} damage.`, player);
                     this.showMonsterBattleUI();
                 }
                 break;
@@ -9524,7 +9579,7 @@ class Game {
                         damage = Math.min(damage, damageCap);
                     }
                     this.currentBattle.monster.hp -= damage;
-                    this.logBattleAction(`${player.name} uses Dynamite! Monster takes ${damage} damage.`);
+                    this.logBattleAction(`${player.name} uses Dynamite! Monster takes ${damage} damage.`, player);
                     this.showMonsterBattleUI();
                 }
                 break;
@@ -9677,7 +9732,7 @@ class Game {
         // If both are full, no choice needed
         if (hpFull && epFull) {
             console.log(`Bat Lv2 Power: ${player.name} has full HP and EP, no bonus received`);
-            this.addLogEntry(`🦇 ${player.name}'s Bat Lv2 Power: Both HP and EP are full, no bonus`, 'power');
+            this.addLogEntry(`🦇 ${player.name}'s Bat Lv2 Power: Both HP and EP are full, no bonus`, 'power', player);
             return;
         }
         
@@ -9743,7 +9798,7 @@ class Game {
                 hpBtn.onclick = () => {
                     this.modifyResource(playerId, 'hp', 1);
                     console.log(`Bat Lv2 Power: ${player.name} chooses +1 HP at round start`);
-                    this.addLogEntry(`🦇 ${player.name} chooses +1 HP from Bat Lv2 Power`, 'power');
+                    this.addLogEntry(`🦇 ${player.name} chooses +1 HP from Bat Lv2 Power`, 'power', player);
                     document.body.removeChild(modal);
                     this.updateResourceDisplay();
                     this.updateInventoryDisplay(playerId);
@@ -9757,7 +9812,7 @@ class Game {
                 epBtn.onclick = () => {
                     this.modifyResource(playerId, 'ep', 1);
                     console.log(`Bat Lv2 Power: ${player.name} chooses +1 EP at round start`);
-                    this.addLogEntry(`🦇 ${player.name} chooses +1 EP from Bat Lv2 Power`, 'power');
+                    this.addLogEntry(`🦇 ${player.name} chooses +1 EP from Bat Lv2 Power`, 'power', player);
                     document.body.removeChild(modal);
                     this.updateResourceDisplay();
                     this.updateInventoryDisplay(playerId);
