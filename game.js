@@ -1147,7 +1147,21 @@ class Game {
         console.log('Online play coming soon!');
         // Could show a message or do nothing for now
     }
-    
+
+    showRulebook() {
+        const modal = document.getElementById('rules-modal');
+        if (modal) {
+            modal.style.display = 'flex';
+        }
+    }
+
+    hideRulebook() {
+        const modal = document.getElementById('rules-modal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    }
+
     backToModeSelection() {
         // Go back to main menu
         this.showMainMenu();

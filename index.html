@@ -29,6 +29,9 @@
         <div id="main-menu" class="main-menu" style="display: none;">
             <div class="menu-content">
                 <h1 class="game-title">Hunter & Apprentice</h1>
+                <button class="menu-button rulebook-btn" onclick="game.showRulebook()">
+                    <span class="button-icon">📖</span>
+                </button>
                 <div class="menu-buttons">
                     <button class="menu-button local-play-btn" onclick="game.showLocalPlay()">
                         <span class="button-icon">🎮</span>
@@ -390,6 +393,19 @@
             <div class="stats-footer">
                 <button class="stats-button" onclick="game.toggleGameStats()">Close Stats</button>
                 <button class="stats-button exit-button" onclick="game.exitToMainMenu()">Exit to Main Menu</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rules Modal -->
+    <div id="rules-modal" class="modal rules-modal" style="display: none;">
+        <div class="rules-modal-content">
+            <div class="rules-header">
+                <h2>Game Rules</h2>
+                <button class="rules-close-btn" onclick="game.hideRulebook()">✕</button>
+            </div>
+            <div id="rules-content" class="rules-content">
+                <iframe src="Rules_EN.htm" frameborder="0"></iframe>
             </div>
         </div>
     </div>
