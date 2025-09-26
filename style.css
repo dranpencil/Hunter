@@ -1601,6 +1601,18 @@ h1 {
     margin-bottom: 6px;
     color: #f39c12;
     font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.location-icon {
+    width: 24px;
+    height: 24px;
+    vertical-align: middle;
+    margin-right: 8px;
+    display: inline-block;
+    object-fit: contain;
 }
 
 .reward-info {
@@ -2185,10 +2197,11 @@ button {
 }
 
 .reward-info {
-    font-size: 9px;
+    font-size: 16px;
     color: #bdc3c7;
     text-align: center;
     line-height: 1.2;
+    font-weight: bold;
 }
 
 /* Card Selection Area */
