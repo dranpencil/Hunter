@@ -5283,17 +5283,19 @@ class Game {
             // roll is 1-6, array index is 0-5
             let baseDamage = player.weapon.damage[roll - 1];
             
-            // Gloves Powers: Enhance all damage based on conditions
+            // Gloves Powers: Enhance damage on dice that already deal damage (5,6)
             if (player.weapon.name === 'Gloves' && player.weapon.powerTrackPosition >= 1 && this.currentBattle) {
-                // Level 1: +1 attack when HP is below half of max HP
+                // Level 1: +1 attack when HP is below half of max HP (only on dice that deal damage)
                 if (player.weapon.powerTrackPosition >= 1 && player.weapon.powerTrackPosition < 7) {
-                    if (player.resources.hp < player.maxResources.hp / 2) {
+                    if (baseDamage > 0 && player.resources.hp < player.maxResources.hp / 2) {
                         baseDamage += 1;
                     }
                 }
-                // Level 3: +1 attack for each time damaged (cumulative)
+                // Level 3: +1 attack for each time damaged (only on dice that deal damage)
                 else if (player.weapon.powerTrackPosition >= 7) {
-                    baseDamage += this.currentBattle.glovesPowerLevel;
+                    if (baseDamage > 0) {
+                        baseDamage += this.currentBattle.glovesPowerLevel;
+                    }
                 }
             }
             
