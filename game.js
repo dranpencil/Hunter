@@ -91,14 +91,14 @@ class BotPlayer {
     
     
     getRequiredEP() {
-        // Minimum EP requirement for forest (level 1 monster costs 2 EP)
-        let baseRequirement = 2;
-        
-        // Chain/Whip weapons need extra EP for pet summoning
+        // Minimum EP requirement for forest (now only 1 EP to tame any monster)
+        let baseRequirement = 1;
+
+        // Chain/Whip weapons might want extra EP for pet summoning
         if (this.weapon.name === 'Chain' || this.weapon.name === 'Whip') {
             baseRequirement += 1; // Extra EP for bringing a pet
         }
-        
+
         return baseRequirement;
     }
     
@@ -4801,10 +4801,12 @@ class Game {
             console.log(`  - Location rewards array: [${locationRewards}]`);
             console.log(`  - Calculated reward amount: ${rewardAmount}`);
             
+            const playerType = player.isBot ? ' (Bot)' : '';
             if (resourceType === 'money' || resourceType === 'exp') {
                 this.modifyResource(parseInt(playerId), resourceType, rewardAmount);
+                const resourceName = resourceType === 'money' ? 'money' : 'EXP';
                 this.addLogEntry(
-                    `💰 <strong>${player.name}</strong> chose ${rewardAmount} ${resourceType} at Station`,
+                    `💰 <strong>${player.name}</strong>${playerType} received ${rewardAmount} ${resourceName} from Station`,
                     'resource-gain'
                 );
             } else if (resourceType === 'beer' || resourceType === 'bloodBag') {
@@ -4813,7 +4815,7 @@ class Game {
                 const itemName = resourceType === 'beer' ? 'Beer' : 'Blood Bag';
                 this.addItemToInventory(parseInt(playerId), itemName, rewardAmount);
                 this.addLogEntry(
-                    `💰 <strong>${player.name}</strong> chose ${rewardAmount} ${resourceType} at Station`,
+                    `💰 <strong>${player.name}</strong>${playerType} received ${rewardAmount} ${itemName} from Station`,
                     'resource-gain'
                 );
             }
@@ -5046,6 +5048,13 @@ class Game {
                     player.popularityTrack.levelReached[newRewardLevel] = true;
                     const points = this.getPopularityLevelPoints(newRewardLevel);
                     this.addScore(player.id, points, 'popularity'); // Add correct point value for level
+
+                    // Add log entry for level up
+                    const playerType = player.isBot ? ' (Bot)' : '';
+                    this.addLogEntry(
+                        `📈 <strong>${player.name}</strong>${playerType} reached Popularity Level ${newRewardLevel} (+${points} points)`,
+                        'level-up'
+                    );
                 }
             }
         });
@@ -6258,16 +6267,16 @@ class Game {
         
         // Check if taming is possible
         let canTame = false;
-        let requiredEP = battle.monster.level;
-        
+        let requiredEP = 1;  // Now always 1 EP regardless of monster level
+
         // Calculate required EP with Whip weapon reduction
         if (player.weapon.name === 'Whip' && player.weapon.powerTrackPosition >= 1) {
             if (player.weapon.powerTrackPosition >= 7) {
                 // Level 3: Taming costs 0 EP
                 requiredEP = 0;
             } else {
-                // Level 1: Taming costs 1 less EP (minimum 0)
-                requiredEP = Math.max(0, battle.monster.level - 1);
+                // Level 1: Taming costs 1 less EP (1 - 1 = 0)
+                requiredEP = 0;
             }
         }
         
@@ -6330,7 +6339,7 @@ class Game {
                 turnText.textContent = 'Monster weakened! Attack or Tame?';
                 attackBtn.style.display = 'block';
                 tameBtn.style.display = 'block';
-                tameBtn.textContent = `Tame! (${battle.monster.level} EP)`;
+                tameBtn.textContent = `Tame! (${requiredEP} EP)`;
             } else {
                 turnText.textContent = 'Your turn to attack!';
                 attackBtn.style.display = 'block';
@@ -6370,7 +6379,7 @@ class Game {
                     turnText.textContent = 'Use items, attack, or tame the monster!';
                     attackBtn.style.display = 'block';
                     tameBtn.style.display = 'block';
-                    tameBtn.textContent = `Tame! (${battle.monster.level} EP)`;
+                    tameBtn.textContent = `Tame! (${requiredEP} EP)`;
                     defenseBtn.style.display = 'none';
                 } else {
                     turnText.textContent = 'Use items or attack the monster!';
@@ -6422,7 +6431,7 @@ class Game {
                 turnText.textContent = 'Use items, attack, or tame the monster!';
                 attackBtn.style.display = 'block';
                 tameBtn.style.display = 'block';
-                tameBtn.textContent = `Tame! (${battle.monster.level} EP)`;
+                tameBtn.textContent = `Tame! (${requiredEP} EP)`;
                 defenseBtn.style.display = 'none';
             } else {
                 turnText.textContent = 'Use items or attack the monster!';
@@ -7068,13 +7077,13 @@ class Game {
         const player = this.players.find(p => p.id === battle.playerId);
         const monster = battle.monster;
         
-        // Calculate required EP with Whip weapon reduction
-        let requiredEP = monster.level;
+        // Calculate required EP - now always 1 EP regardless of monster level
+        let requiredEP = 1;
         if (player.weapon.name === 'Whip' && player.weapon.powerTrackPosition >= 1) {
             if (player.weapon.powerTrackPosition >= 7) {
-                requiredEP = 0;
+                requiredEP = 0;  // Level 3: Taming costs 0 EP
             } else {
-                requiredEP = Math.max(0, monster.level - 1);
+                requiredEP = 0;  // Level 1: Taming costs 1 less EP (1 - 1 = 0)
             }
         }
         
@@ -7112,16 +7121,16 @@ class Game {
             player.pets.level3++;
         }
         
-        this.logBattleAction(`${player.name} tames the Level ${monster.level} monster! Spent ${monster.level} EP`);
+        this.logBattleAction(`${player.name} tames the Level ${monster.level} monster! Spent ${requiredEP} EP`);
         
         // Update pet display
         this.updatePetDisplay();
         
         // Player still gets all rewards as if they defeated the monster
-        this.monsterDefeated();
+        this.monsterDefeated(true);
     }
     
-    monsterDefeated() {
+    monsterDefeated(wasTamed = false) {
         const battle = this.currentBattle;
         const player = this.players.find(p => p.id === battle.playerId);
         const monster = battle.monster;
@@ -7198,9 +7207,9 @@ class Game {
         
         // Advance weapon power track based on monster level
         this.advanceWeaponPowerTrack(battle.playerId, monster.level);
-        
-        // Apply death effects if the monster has one
-        if (monster.effectId) {
+
+        // Apply death effects only if the monster was killed, not tamed
+        if (!wasTamed && monster.effectId) {
             this.applyDeathEffect(monster.effectId, battle.playerId);
         }
         
@@ -8359,16 +8368,34 @@ class Game {
             // Distribute resources to hunters only
             this.players.forEach(player => {
                 if (player.tokens.hunter === location.id) {
+                    const playerType = player.isBot ? ' (Bot)' : '';
+                    let resourceName = '';
+
                     if (location.resource === 'money' || location.resource === 'exp') {
                         this.modifyResource(player.id, location.resource, rewardAmount);
+                        resourceName = location.resource === 'money' ? 'money' : 'EXP';
+                        this.addLogEntry(
+                            `💰 <strong>${player.name}</strong>${playerType} received ${rewardAmount} ${resourceName} from ${location.name}`,
+                            'resource-gain'
+                        );
                     } else if (location.resource === 'beer' || location.resource === 'bloodBag') {
                         player.resources[location.resource] += rewardAmount;
                         // Also add items to inventory
                         const itemName = location.resource === 'beer' ? 'Beer' : 'Blood Bag';
                         this.addItemToInventory(player.id, itemName, rewardAmount);
+                        this.addLogEntry(
+                            `💰 <strong>${player.name}</strong>${playerType} received ${rewardAmount} ${itemName} from ${location.name}`,
+                            'resource-gain'
+                        );
                     } else if (location.resource === 'score') {
                         // Plaza scoring: 3 points if alone, 0 if crowded
                         this.addScore(player.id, rewardAmount, 'plaza');
+                        if (rewardAmount > 0) {
+                            this.addLogEntry(
+                                `💰 <strong>${player.name}</strong>${playerType} received ${rewardAmount} points from ${location.name}`,
+                                'resource-gain'
+                            );
+                        }
                     }
                 }
             });
@@ -8388,15 +8415,25 @@ class Game {
                     });
                     
                     if (hasOtherHunter) {
+                        const playerType = player.isBot ? ' (Bot)' : '';
                         // Give +1 resource of this location type
                         if (location.resource === 'money' || location.resource === 'exp') {
                             this.modifyResource(player.id, location.resource, 1);
+                            const resourceName = location.resource === 'money' ? 'money' : 'EXP';
                             console.log(`Bat Lv1 Power: ${player.name}'s apprentice gets +1 ${location.resource} at ${location.name}`);
+                            this.addLogEntry(
+                                `🦇 <strong>${player.name}</strong>${playerType}'s apprentice received +1 ${resourceName} (Bat Lv1 Power)`,
+                                'resource-gain'
+                            );
                         } else if (location.resource === 'beer' || location.resource === 'bloodBag') {
                             player.resources[location.resource] += 1;
                             const itemName = location.resource === 'beer' ? 'Beer' : 'Blood Bag';
                             this.addItemToInventory(player.id, itemName, 1);
                             console.log(`Bat Lv1 Power: ${player.name}'s apprentice gets +1 ${itemName} at ${location.name}`);
+                            this.addLogEntry(
+                                `🦇 <strong>${player.name}</strong>${playerType}'s apprentice received +1 ${itemName} (Bat Lv1 Power)`,
+                                'resource-gain'
+                            );
                         }
                     }
                 }
@@ -8840,7 +8877,7 @@ class Game {
                             </div>
                             <div class="stat-row">
                                 <span class="stat-label">Weapon Power:</span>
-                                <span class="stat-value">Level ${Math.floor((player.weapon.powerTrackPosition - 1) / 2) + 1}</span>
+                                <span class="stat-value">Level ${player.weapon.powerTrackPosition >= 7 ? 3 : player.weapon.powerTrackPosition >= 3 ? 2 : 1}</span>
                             </div>
                         </div>
 
