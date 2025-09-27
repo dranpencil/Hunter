@@ -1152,6 +1152,11 @@ class Game {
         const modal = document.getElementById('rules-modal');
         if (modal) {
             modal.style.display = 'flex';
+            // Reload iframe to reset scroll position
+            const iframe = modal.querySelector('iframe');
+            if (iframe) {
+                iframe.src = iframe.src;
+            }
         }
     }
 
