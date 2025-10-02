@@ -5980,10 +5980,10 @@ class Game {
         // Deduct EP for battle
         this.modifyResource(playerId, 'ep', -totalEPCost);
         this.monsterSelectionEPSpent = 0; // Reset EP spending tracker
-        
-        // Track forest players for round effects
-        this.forestPlayersThisRound.add(playerId);
-        
+
+        // Forest players already tracked at start of resource distribution
+        // this.forestPlayersThisRound.add(playerId); // REMOVED - now done at start of round
+
         // Select random available monster from the level
         const selectedMonster = this.selectRandomAvailableMonster(monsterLevel);
         if (!selectedMonster) {
@@ -8330,17 +8330,25 @@ class Game {
     
     startResourceDistribution() {
         this.roundPhase = 'distribution';
-        
+
         if (this.isAutomatedMode) {
             console.log(`[${new Date().toISOString()}] Starting resource distribution - Round ${this.currentRound}`);
         }
-        
+
+        // Clear and populate forest players for this round (must be done BEFORE any battles)
+        this.forestPlayersThisRound.clear();
+        this.players.forEach(player => {
+            if (player.tokens.hunter === 7) { // Forest is location 7
+                this.forestPlayersThisRound.add(player.id);
+            }
+        });
+
         // Clear the board (but not dummy tokens)
         if (!this.isAutomatedMode) {
             document.querySelectorAll('.token:not(.dummy-token)').forEach(token => token.remove());
         }
-        
-        
+
+
         // Place all tokens based on selections
         this.players.forEach(player => {
             // Place hunter
