@@ -4064,7 +4064,15 @@ class Game {
         
         // Store original HP and apply apprentice bonus if applicable
         selectedMonster.maxHp = selectedMonster.hp;
-        
+
+        // Apply other monsters HP bonus if active (effects 8, 16, 33)
+        const hpBonus = this.activeMonsterEffects.find(effect => effect.type === 'otherMonstersHPBonus');
+        if (hpBonus) {
+            selectedMonster.hp += hpBonus.value;
+            selectedMonster.maxHp += hpBonus.value;
+            console.log(`Other monster HP bonus applied: +${hpBonus.value} HP (${selectedMonster.maxHp - hpBonus.value} -> ${selectedMonster.maxHp})`);
+        }
+
         // Check if player's apprentice is also in Forest for -1 HP bonus
         if (player.tokens.apprentice === 7) { // Forest location
             selectedMonster.hp = Math.max(1, selectedMonster.hp - 1);
@@ -5851,7 +5859,15 @@ class Game {
         if (newMonster) {
             // Apply the same bonuses as the original monster selection
             newMonster.maxHp = newMonster.hp;
-            
+
+            // Apply other monsters HP bonus if active (effects 8, 16, 33)
+            const hpBonus = this.activeMonsterEffects.find(effect => effect.type === 'otherMonstersHPBonus');
+            if (hpBonus) {
+                newMonster.hp += hpBonus.value;
+                newMonster.maxHp += hpBonus.value;
+                console.log(`Other monster HP bonus applied: +${hpBonus.value} HP (${newMonster.maxHp - hpBonus.value} -> ${newMonster.maxHp})`);
+            }
+
             // Check if player's apprentice is also in Forest for -1 HP bonus
             if (player.tokens.apprentice === 7) { // Forest location
                 newMonster.hp = Math.max(1, newMonster.hp - 1);
@@ -5995,7 +6011,15 @@ class Game {
 
         // Store original HP
         selectedMonster.maxHp = selectedMonster.hp;
-        
+
+        // Apply other monsters HP bonus if active (effects 8, 16, 33)
+        const hpBonus = this.activeMonsterEffects.find(effect => effect.type === 'otherMonstersHPBonus');
+        if (hpBonus) {
+            selectedMonster.hp += hpBonus.value;
+            selectedMonster.maxHp += hpBonus.value;
+            console.log(`Other monster HP bonus applied: +${hpBonus.value} HP (${selectedMonster.maxHp - hpBonus.value} -> ${selectedMonster.maxHp})`);
+        }
+
         // Check if player's apprentice is also in Forest for -1 HP bonus
         if (player.tokens.apprentice === 7) { // Forest location
             selectedMonster.hp = Math.max(1, selectedMonster.hp - 1);
