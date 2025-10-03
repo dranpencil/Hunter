@@ -4248,7 +4248,17 @@ class Game {
         let currentMonsterHP = monster.hp;
         console.log('Initial state - Player HP:', currentPlayerHP, 'Monster HP:', currentMonsterHP);
         let battleRound = 1;
-        
+
+        // Check if monster attacks first based on defense
+        let monsterAttacksFirst = false;
+        if (monster.effectId) {
+            const defenseCount = player.weapon?.currentDefenseDice || 0;
+            monsterAttacksFirst = this.checkBattleOrder(monster.effectId, defenseCount);
+            if (monsterAttacksFirst) {
+                battleActions.push(`⚠️ Monster attacks first! (${player.name}'s defense: ${defenseCount})`);
+            }
+        }
+
         // Check ammunition - if entrance fee paid (ammunitionConsumed = true), bot can attack
         let canAttack = true;
         if (player.weapon.name === 'Rifle' && player.weapon.powerTrackPosition >= 1) {
@@ -4289,8 +4299,61 @@ class Game {
         
         while (currentPlayerHP > 0 && currentMonsterHP > 0 && canAttack) {
             battleActions.push(`--- Round ${battleRound} ---`);
-            
-            // Bot's turn - attack first
+
+            // MONSTER ATTACKS FIRST (if effect active)
+            if (monsterAttacksFirst) {
+                const monsterDamage = monster.att;
+
+                // Bot defense
+                const defenseDice = player.weapon.currentDefenseDice;
+                const defenseRolls = [];
+                for (let i = 0; i < defenseDice; i++) {
+                    defenseRolls.push(Math.floor(Math.random() * 6) + 1);
+                }
+
+                let defense = 0;
+                defenseRolls.forEach(roll => {
+                    if (roll >= 4) defense++; // 4, 5, 6 = 1 defense each
+                });
+
+                const finalDamage = Math.max(0, monsterDamage - defense);
+                currentPlayerHP -= finalDamage;
+
+                // Bot gains EXP equal to damage taken
+                if (finalDamage > 0) {
+                    player.resources.exp = Math.min(player.maxResources.exp, player.resources.exp + finalDamage);
+                }
+
+                battleActions.push(`Monster attacks first for ${monsterDamage} damage. ${player.name} defends: [${defenseRolls.join(', ')}] = ${defense} defense. Final damage: ${finalDamage}${finalDamage > 0 ? ` (+${finalDamage} EXP)` : ''}`);
+
+                // Axe retaliation (if player survives)
+                if (player.weapon.name === 'Axe' && finalDamage > 0 && currentPlayerHP > 0) {
+                    let retaliationDamage;
+                    if (player.weapon.powerTrackPosition >= 7) {
+                        retaliationDamage = finalDamage;
+                        battleActions.push(`${player.name}'s Axe Lv3 Power: retaliates for ${retaliationDamage} damage!`);
+                    } else {
+                        retaliationDamage = 1;
+                        battleActions.push(`${player.name}'s Axe Lv1 Power: retaliates for ${retaliationDamage} damage!`);
+                    }
+                    const axeDamageCap = this.applyBattleEffect(monster, 'damageCap');
+                    if (axeDamageCap !== null) {
+                        retaliationDamage = Math.min(retaliationDamage, axeDamageCap);
+                    }
+                    currentMonsterHP -= retaliationDamage;
+                    if (currentMonsterHP <= 0) {
+                        battleActions.push(`Monster defeated by Axe retaliation!`);
+                        break;
+                    }
+                }
+
+                if (currentPlayerHP <= 0) {
+                    battleActions.push(`${player.name} defeated by monster!`);
+                    break;
+                }
+            }
+
+            // Bot's turn - attack (either first or after monster)
             const attackDice = player.weapon.currentAttackDice;
             const attackRolls = [];
             for (let i = 0; i < attackDice; i++) {
@@ -4374,9 +4437,10 @@ class Game {
                 battleActions.push(`Monster defeated!`);
                 break;
             }
-            
-            // Monster's turn
-            const monsterDamage = monster.att;
+
+            // MONSTER'S TURN (only if it didn't attack first)
+            if (!monsterAttacksFirst) {
+                const monsterDamage = monster.att;
             
             // Bot defense
             const defenseDice = player.weapon.currentDefenseDice;
@@ -4430,7 +4494,8 @@ class Game {
                     break;
                 }
             }
-            
+            } // End of monster turn (if !monsterAttacksFirst)
+
             battleRound++;
             
             // Safety break to prevent infinite battles
