@@ -1579,7 +1579,7 @@ class Game {
                 weapon: {
                     ...weapon,
                     currentAttackDice: weapon.attackDice,
-                    currentDefenseDice: weapon.name === 'Sword' ? 1 : weapon.defenseDice, // Sword Level 1: Start with 1 defense die
+                    currentDefenseDice: weapon.defenseDice, // All weapons start with their base defense dice
                     attackLevel: 1,
                     defenseLevel: 1,
                     powerTrackPosition: 1 // Start at position 1
