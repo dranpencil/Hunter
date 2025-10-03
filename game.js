@@ -4319,12 +4319,24 @@ class Game {
                 const finalDamage = Math.max(0, monsterDamage - defense);
                 currentPlayerHP -= finalDamage;
 
-                // Bot gains EXP equal to damage taken
+                // Bot gains EXP equal to damage taken (unless monster effect prevents it)
+                let expGained = 0;
                 if (finalDamage > 0) {
-                    player.resources.exp = Math.min(player.maxResources.exp, player.resources.exp + finalDamage);
+                    const damageEffect = this.applyBattleEffect(monster, 'playerDamaged', player);
+                    if (damageEffect && damageEffect.noEXP) {
+                        battleActions.push(`Monster attacks first for ${monsterDamage} damage. ${player.name} defends: [${defenseRolls.join(', ')}] = ${defense} defense. Final damage: ${finalDamage} (no EXP from monster effect)`);
+                    } else if (damageEffect && damageEffect.maxEXP) {
+                        expGained = Math.min(finalDamage, damageEffect.maxEXP);
+                        player.resources.exp = Math.min(player.maxResources.exp, player.resources.exp + expGained);
+                        battleActions.push(`Monster attacks first for ${monsterDamage} damage. ${player.name} defends: [${defenseRolls.join(', ')}] = ${defense} defense. Final damage: ${finalDamage} (+${expGained} EXP, capped by monster effect)`);
+                    } else {
+                        expGained = finalDamage;
+                        player.resources.exp = Math.min(player.maxResources.exp, player.resources.exp + expGained);
+                        battleActions.push(`Monster attacks first for ${monsterDamage} damage. ${player.name} defends: [${defenseRolls.join(', ')}] = ${defense} defense. Final damage: ${finalDamage} (+${expGained} EXP)`);
+                    }
+                } else {
+                    battleActions.push(`Monster attacks first for ${monsterDamage} damage. ${player.name} defends: [${defenseRolls.join(', ')}] = ${defense} defense. Final damage: ${finalDamage}`);
                 }
-
-                battleActions.push(`Monster attacks first for ${monsterDamage} damage. ${player.name} defends: [${defenseRolls.join(', ')}] = ${defense} defense. Final damage: ${finalDamage}${finalDamage > 0 ? ` (+${finalDamage} EXP)` : ''}`);
 
                 // Axe retaliation (if player survives)
                 if (player.weapon.name === 'Axe' && finalDamage > 0 && currentPlayerHP > 0) {
@@ -4386,7 +4398,17 @@ class Game {
             }
             
             currentMonsterHP -= totalDamage;
-            
+
+            // Apply player attack effects (EP loss for effects 10, 19, 29)
+            this.applyBattleEffect(monster, 'playerAttack', player);
+
+            // Apply monster damaged effects (HP gain for effect 11) - only if monster survives
+            if (totalDamage > 0 && currentMonsterHP > 0) {
+                this.applyBattleEffect(monster, 'monsterDamaged', player);
+                // Update currentMonsterHP if monster gained HP
+                currentMonsterHP = monster.hp;
+            }
+
             battleActions.push(`${player.name} attacks: [${attackRolls.join(', ')}] = ${playerDamage} damage${petDamage > 0 ? ` + ${petDamage} pet damage` : ''} = ${totalDamage} total`);
             
             // Sword Level 3 Power: +1 point if at least one attack die shows 1
@@ -4456,13 +4478,25 @@ class Game {
             
             const finalDamage = Math.max(0, monsterDamage - defense);
             currentPlayerHP -= finalDamage;
-            
-            // Bot gains EXP equal to damage taken
+
+            // Bot gains EXP equal to damage taken (unless monster effect prevents it)
+            let expGained = 0;
             if (finalDamage > 0) {
-                player.resources.exp = Math.min(player.maxResources.exp, player.resources.exp + finalDamage);
+                const damageEffect = this.applyBattleEffect(monster, 'playerDamaged', player);
+                if (damageEffect && damageEffect.noEXP) {
+                    battleActions.push(`Monster attacks for ${monsterDamage} damage. ${player.name} defends: [${defenseRolls.join(', ')}] = ${defense} defense. Final damage: ${finalDamage} (no EXP from monster effect)`);
+                } else if (damageEffect && damageEffect.maxEXP) {
+                    expGained = Math.min(finalDamage, damageEffect.maxEXP);
+                    player.resources.exp = Math.min(player.maxResources.exp, player.resources.exp + expGained);
+                    battleActions.push(`Monster attacks for ${monsterDamage} damage. ${player.name} defends: [${defenseRolls.join(', ')}] = ${defense} defense. Final damage: ${finalDamage} (+${expGained} EXP, capped by monster effect)`);
+                } else {
+                    expGained = finalDamage;
+                    player.resources.exp = Math.min(player.maxResources.exp, player.resources.exp + expGained);
+                    battleActions.push(`Monster attacks for ${monsterDamage} damage. ${player.name} defends: [${defenseRolls.join(', ')}] = ${defense} defense. Final damage: ${finalDamage} (+${expGained} EXP)`);
+                }
+            } else {
+                battleActions.push(`Monster attacks for ${monsterDamage} damage. ${player.name} defends: [${defenseRolls.join(', ')}] = ${defense} defense. Final damage: ${finalDamage}`);
             }
-            
-            battleActions.push(`Monster attacks for ${monsterDamage} damage. ${player.name} defends: [${defenseRolls.join(', ')}] = ${defense} defense. Final damage: ${finalDamage}${finalDamage > 0 ? ` (+${finalDamage} EXP)` : ''}`);
             
             // Sword Level 3 Power nerfed: only works on attack dice, not defense
             
@@ -6905,7 +6939,15 @@ class Game {
         
         battle.monster.hp -= finalDamage;
         battle.hasAttacked = true; // Mark that an attack has occurred
-        
+
+        // Apply player attack effects (EP loss for effects 10, 19, 29)
+        this.applyBattleEffect(battle.monster, 'playerAttack', player);
+
+        // Apply monster damaged effects (HP gain for effect 11) - only if monster survives
+        if (finalDamage > 0 && battle.monster.hp > 0) {
+            this.applyBattleEffect(battle.monster, 'monsterDamaged', player);
+        }
+
         // Log attack
         let attackMessage = `${player.name} attacks! Rolls: ${allRolls.join(' → ')} = ${playerDamage} damage`;
         if (petDamage > 0) {
@@ -7109,13 +7151,22 @@ class Game {
         
         if (finalDamage > 0) {
             this.modifyResource(battle.playerId, 'hp', -finalDamage);
-            
+
             // Update player HP display
             document.getElementById('battle-player-hp').textContent = `${player.resources.hp}/${player.maxResources.hp}`;
-            
-            // Player gains EXP equal to damage received
-            this.modifyResource(battle.playerId, 'exp', finalDamage);
-            this.logBattleAction(`${player.name} gains ${finalDamage} EXP from taking damage!`, player);
+
+            // Player gains EXP equal to damage received (unless monster effect prevents it)
+            const damageEffect = this.applyBattleEffect(battle.monster, 'playerDamaged', player);
+            if (damageEffect && damageEffect.noEXP) {
+                this.logBattleAction(`${player.name} gains no EXP (monster effect)!`, player);
+            } else if (damageEffect && damageEffect.maxEXP) {
+                const cappedEXP = Math.min(finalDamage, damageEffect.maxEXP);
+                this.modifyResource(battle.playerId, 'exp', cappedEXP);
+                this.logBattleAction(`${player.name} gains ${cappedEXP} EXP from taking damage (capped by monster effect)!`, player);
+            } else {
+                this.modifyResource(battle.playerId, 'exp', finalDamage);
+                this.logBattleAction(`${player.name} gains ${finalDamage} EXP from taking damage!`, player);
+            }
             
             // Gloves Power: Level 3 only - increase attack for each time damaged
             if (player.weapon.name === 'Gloves' && player.weapon.powerTrackPosition >= 7 && finalDamage > 0) {
