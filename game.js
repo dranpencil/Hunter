@@ -1068,6 +1068,8 @@ class Game {
         this.currentPlayerIndex = 0;
         this.currentRound = 1;
         this.roundPhase = 'setup'; // 'setup', 'selection', 'distribution', 'station', 'store', 'battle', 'nextround'
+        this.gameMode = null; // 'simultaneous' or 'turnbased' - determined after players are created
+        this.playerCompletionStatus = {}; // Track which players have completed current phase
         this.stationChoices = {}; // Store station choices for each player
         this.pendingStationPlayer = null; // Track which player needs to choose
         this.stationTotalCount = 0; // Track total count at station
@@ -1705,19 +1707,38 @@ class Game {
         this.updateLocationCardStates();
         this.updateSelectionDisplay();
         this.checkSelectionComplete();
-        
-        // Auto-confirm selection for bot players
-        if (this.isAutomatedMode) {
-            console.log(`[${new Date().toISOString()}] Auto-confirming bot selection for player ${playerId}`);
-            setTimeout(() => {
-                this.confirmSelection();
-            }, this.getDelay(100));
+
+        // Handle completion based on game mode
+        if (this.gameMode === 'simultaneous') {
+            // In simultaneous mode, mark bot as complete
+            this.updatePlayerStatus(playerId, true);
+
+            // Check if all players are complete
+            if (this.checkAllPlayersComplete()) {
+                console.log('All players completed selections (simultaneous mode)');
+                // Add all pending logs
+                this.pendingSelectionLogs.forEach(log => {
+                    this.addLogEntry(log.message, log.type, log.player);
+                });
+                this.pendingSelectionLogs = [];
+
+                this.hidePlayerStatusIndicators();
+                this.startResourceDistribution();
+            }
         } else {
-            // In regular games, also auto-confirm for bot players after a short delay
-            console.log(`Auto-confirming bot ${playerId + 1} selection`);
-            setTimeout(() => {
-                this.confirmSelection();
-            }, 1500); // Give human player time to see bot selection
+            // Turn-based mode: auto-confirm for bot
+            if (this.isAutomatedMode) {
+                console.log(`[${new Date().toISOString()}] Auto-confirming bot selection for player ${playerId}`);
+                setTimeout(() => {
+                    this.confirmSelection();
+                }, this.getDelay(100));
+            } else {
+                // In regular games, also auto-confirm for bot players after a short delay
+                console.log(`Auto-confirming bot ${playerId + 1} selection`);
+                setTimeout(() => {
+                    this.confirmSelection();
+                }, 1500); // Give human player time to see bot selection
+            }
         }
     }
     
@@ -1786,22 +1807,35 @@ class Game {
     // Initialize game UI after player creation
     init() {
         try {
+            // Determine game mode based on number of human players
+            const humanCount = this.players.filter(p => !p.isBot).length;
+            this.gameMode = humanCount === 1 ? 'simultaneous' : 'turnbased';
+            console.log(`Game mode set to: ${this.gameMode} (${humanCount} human player${humanCount !== 1 ? 's' : ''})`);
+
+            // Initialize player completion status (all start as not complete)
+            this.players.forEach(player => {
+                this.playerCompletionStatus[player.id] = false;
+            });
+
             // IMMEDIATELY handle bot detection before any other UI operations
             const currentPlayer = this.players[this.currentPlayerIndex];
-        
+
         if (currentPlayer && currentPlayer.isBot) {
             console.log('First round: Immediately hiding cards for bot player');
             const cardSelection = document.querySelector('.card-selection');
             const confirmButton = document.getElementById('confirm-selection');
             if (cardSelection) cardSelection.style.display = 'none';
             if (confirmButton) confirmButton.style.display = 'none';
-            
+
             // Bot selection will be handled by updateCurrentPlayer()
             if (this.isAutomatedMode) {
                 console.log(`[${new Date().toISOString()}] First round bot selection will be handled by updateCurrentPlayer`);
             }
         }
-        
+
+        // Initialize player status indicators
+        this.initializePlayerStatusIndicators();
+
         // Initialize location cards
         this.initializeLocationCards();
         
@@ -1834,7 +1868,89 @@ class Game {
             console.error('Error stack:', error.stack);
         }
     }
-    
+
+    // Player Status Indicator Functions
+    initializePlayerStatusIndicators() {
+        if (this.isAutomatedMode) return; // Skip in automated mode
+
+        const panel = document.getElementById('player-status-panel');
+        if (!panel) return;
+
+        // Clear existing content
+        panel.innerHTML = '';
+
+        // Create status indicator for each player
+        this.players.forEach(player => {
+            const playerColors = this.getPlayerColors(player.id);
+
+            const statusDiv = document.createElement('div');
+            statusDiv.className = 'player-status pending';
+            statusDiv.dataset.playerId = player.id;
+
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'player-name';
+            nameSpan.textContent = player.name;
+            nameSpan.style.color = playerColors.background; // Set player color for name
+
+            const iconSpan = document.createElement('span');
+            iconSpan.className = 'status-icon';
+            iconSpan.textContent = '🔴'; // Red light (pending)
+
+            statusDiv.appendChild(nameSpan);
+            statusDiv.appendChild(iconSpan);
+            panel.appendChild(statusDiv);
+        });
+    }
+
+    showPlayerStatusIndicators() {
+        if (this.isAutomatedMode) return;
+        const panel = document.getElementById('player-status-panel');
+        if (panel) {
+            panel.style.display = 'flex';
+        }
+    }
+
+    hidePlayerStatusIndicators() {
+        if (this.isAutomatedMode) return;
+        const panel = document.getElementById('player-status-panel');
+        if (panel) {
+            panel.style.display = 'none';
+        }
+    }
+
+    updatePlayerStatus(playerId, isComplete) {
+        if (this.isAutomatedMode) return;
+
+        this.playerCompletionStatus[playerId] = isComplete;
+
+        const statusDiv = document.querySelector(`.player-status[data-player-id="${playerId}"]`);
+        if (!statusDiv) return;
+
+        const iconSpan = statusDiv.querySelector('.status-icon');
+        if (isComplete) {
+            statusDiv.classList.remove('pending');
+            statusDiv.classList.add('completed');
+            if (iconSpan) iconSpan.textContent = '🟢'; // Green light
+        } else {
+            statusDiv.classList.remove('completed');
+            statusDiv.classList.add('pending');
+            if (iconSpan) iconSpan.textContent = '🔴'; // Red light
+        }
+    }
+
+    checkAllPlayersComplete() {
+        return this.players.every(player => this.playerCompletionStatus[player.id] === true);
+    }
+
+    resetPlayerCompletionStatus() {
+        this.players.forEach(player => {
+            this.playerCompletionStatus[player.id] = false;
+            if (!this.isAutomatedMode) {
+                this.updatePlayerStatus(player.id, false);
+            }
+        });
+    }
+
     disableBotPlayerButtons() {
         // Disable buttons for bot players after initialization
         this.players.forEach(player => {
@@ -1992,8 +2108,55 @@ class Game {
     }
     
     updateCurrentPlayer() {
+        // Branch based on game mode
+        if (this.gameMode === 'simultaneous') {
+            this.updateCurrentPlayerSimultaneous();
+        } else {
+            this.updateCurrentPlayerTurnBased();
+        }
+    }
+
+    updateCurrentPlayerSimultaneous() {
+        // In simultaneous mode, all players act at once
+        if (this.roundPhase !== 'selection') return;
+
+        // Show status indicators
+        this.showPlayerStatusIndicators();
+
+        // Reset completion status
+        this.resetPlayerCompletionStatus();
+
+        // Find human player and show their cards
+        const humanPlayer = this.players.find(p => !p.isBot);
+        if (humanPlayer && !this.isAutomatedMode) {
+            this.showLocationCardsForHuman();
+            const playerNameElement = document.getElementById('current-player-name');
+            if (playerNameElement) {
+                playerNameElement.textContent = humanPlayer.name;
+            }
+        }
+
+        // Trigger ALL bots immediately (no delays in simultaneous mode)
+        this.players.forEach((player, index) => {
+            if (player.isBot) {
+                // Execute bot selection immediately
+                setTimeout(() => {
+                    this.handleBotLocationSelection(index);
+                }, this.getDelay(50 * (index + 1))); // Small stagger for visual effect only
+            }
+        });
+    }
+
+    updateCurrentPlayerTurnBased() {
+        // Turn-based mode: existing sequential logic
         const currentPlayer = this.players[this.currentPlayerIndex];
-        
+
+        // Show status indicators (for first player only)
+        if (this.currentPlayerIndex === 0 && this.roundPhase === 'selection') {
+            this.showPlayerStatusIndicators();
+            this.resetPlayerCompletionStatus();
+        }
+
         // Skip UI updates in automated mode
         if (!this.isAutomatedMode) {
             const playerNameElement = document.getElementById('current-player-name');
@@ -2001,7 +2164,7 @@ class Game {
                 playerNameElement.textContent = currentPlayer.name;
             }
         }
-        
+
         // Check if current player is a bot
         if (currentPlayer.isBot) {
             if (!this.isAutomatedMode) {
@@ -2009,7 +2172,7 @@ class Game {
                 // Hide location cards for bot turns
                 this.hideLocationCardsForBot();
             }
-            
+
             // Bot selection will handle its own confirmation
             setTimeout(() => {
                 this.handleBotLocationSelection(this.currentPlayerIndex);
@@ -3134,33 +3297,139 @@ class Game {
     }
     
     confirmSelection() {
+        // Branch based on game mode
+        if (this.gameMode === 'simultaneous') {
+            this.confirmSelectionSimultaneous();
+        } else {
+            this.confirmSelectionTurnBased();
+        }
+    }
+
+    confirmSelectionSimultaneous() {
+        // In simultaneous mode, find the human player (there's only one)
+        const humanPlayer = this.players.find(p => !p.isBot);
+        if (!humanPlayer) return;
+
+        if (this.isAutomatedMode) {
+            console.log(`[${new Date().toISOString()}] Confirming selection for human player - Round ${this.currentRound}`);
+        }
+
+        if (humanPlayer.selectedCards.hunter === null || humanPlayer.selectedCards.apprentice === null) {
+            console.log(`[DEBUG] Human player selections incomplete`);
+            return;
+        }
+
+        // Check Forest requirements warning
+        if (humanPlayer.selectedCards.hunter === 7) {
+            let warningMessages = [];
+            let canGetInStore = false;
+            
+            // Check EP requirement
+            if (humanPlayer.resources.ep < 2) {
+                warningMessages.push('• You need at least 2 EP to enter the Forest (you have ' + humanPlayer.resources.ep + ' EP)');
+                canGetInStore = true;
+            }
+
+            // Check ammunition requirement for Rifle/Plasma
+            if (!this.hasRequiredAmmunition(humanPlayer)) {
+                if (humanPlayer.weapon.name === 'Rifle') {
+                    const bulletCount = humanPlayer.inventory.filter(item => item.name === 'Bullet').length;
+                    warningMessages.push('• Rifle needs bullets for combat (you have ' + bulletCount + ' bullets)');
+                    canGetInStore = true;
+                } else if (humanPlayer.weapon.name === 'Plasma') {
+                    const batteryCount = humanPlayer.inventory.filter(item => item.name === 'Battery').length;
+                    warningMessages.push('• Plasma needs batteries for combat (you have ' + batteryCount + ' batteries)');
+                    canGetInStore = true;
+                }
+            }
+
+            // Show warning if any requirements are missing
+            if (warningMessages.length > 0) {
+                let fullMessage = '⚠️ Forest Entry Warning\n\n';
+                fullMessage += 'Your Hunter is entering the Forest but lacks the following:\n\n';
+                fullMessage += warningMessages.join('\n');
+                fullMessage += '\n\n';
+
+                if (canGetInStore) {
+                    fullMessage += 'You can still obtain these resources in the Store phase.\n';
+                    fullMessage += 'Combat items (Grenades, Bombs, Dynamite) can also be used to fight monsters.\n\n';
+                }
+
+                fullMessage += 'Do you want to proceed with this selection?';
+
+                if (!confirm(fullMessage)) {
+                    console.log('Player canceled Forest entry during confirmation');
+                    return; // Player canceled, don't confirm selection
+                }
+            }
+        }
+
+        // Store the selection message for batch logging later
+        const hunterLocationName = this.getLocationName(humanPlayer.selectedCards.hunter);
+        const apprenticeLocationName = this.getLocationName(humanPlayer.selectedCards.apprentice);
+        this.pendingSelectionLogs.push({
+            message: `📍 <strong>${humanPlayer.name}</strong> selected: Hunter → ${hunterLocationName}, Apprentice → ${apprenticeLocationName}`,
+            type: 'selection',
+            player: humanPlayer
+        });
+
+        // Track location selections for statistics
+        const hunterLocation = humanPlayer.selectedCards.hunter;
+        const apprenticeLocation = humanPlayer.selectedCards.apprentice;
+        humanPlayer.locationSelections[hunterLocation].hunter++;
+        humanPlayer.locationSelections[apprenticeLocation].apprentice++;
+
+        // Mark human player as complete
+        this.updatePlayerStatus(humanPlayer.id, true);
+
+        // Check if all players are complete
+        if (this.checkAllPlayersComplete()) {
+            // All players (human + bots) have completed
+            console.log('All players completed selections (simultaneous mode)');
+
+            // Add all pending selection logs to the game log
+            for (const logEntry of this.pendingSelectionLogs) {
+                this.addLogEntry(logEntry.message, logEntry.type, logEntry.player);
+            }
+
+            // Clear pending logs for next round
+            this.pendingSelectionLogs = [];
+
+            // Hide status indicators and proceed to next phase
+            this.hidePlayerStatusIndicators();
+            this.startResourceDistribution();
+        }
+    }
+
+    confirmSelectionTurnBased() {
+        // Turn-based mode: existing sequential logic
         // Check if we have a valid current player
         if (!this.currentPlayer || this.currentPlayerIndex >= this.players.length) {
             console.log(`[DEBUG] confirmSelection called with invalid currentPlayer: ${this.currentPlayerIndex}/${this.players.length}`);
             return;
         }
-        
+
         if (this.isAutomatedMode) {
             console.log(`[${new Date().toISOString()}] Confirming selection for player ${this.currentPlayerIndex} - Round ${this.currentRound}`);
         }
         console.log(`[DEBUG] confirmSelection called for player ${this.currentPlayerIndex}`);
-        
+
         if (this.currentPlayer.selectedCards.hunter === null || this.currentPlayer.selectedCards.apprentice === null) {
             console.log(`[DEBUG] Player ${this.currentPlayerIndex} selections incomplete: H=${this.currentPlayer.selectedCards.hunter}, A=${this.currentPlayer.selectedCards.apprentice}`);
             return;
         }
-        
+
         // Check Forest requirements warning for human players
         if (!this.currentPlayer.isBot && this.currentPlayer.selectedCards.hunter === 7) {
             let warningMessages = [];
             let canGetInStore = false;
-            
+
             // Check EP requirement
             if (this.currentPlayer.resources.ep < 2) {
                 warningMessages.push('• You need at least 2 EP to enter the Forest (you have ' + this.currentPlayer.resources.ep + ' EP)');
                 canGetInStore = true;
             }
-            
+
             // Check ammunition requirement for Rifle/Plasma
             if (!this.hasRequiredAmmunition(this.currentPlayer)) {
                 if (this.currentPlayer.weapon.name === 'Rifle') {
@@ -3173,28 +3442,28 @@ class Game {
                     canGetInStore = true;
                 }
             }
-            
+
             // Show warning if any requirements are missing
             if (warningMessages.length > 0) {
                 let fullMessage = '⚠️ Forest Entry Warning\n\n';
                 fullMessage += 'Your Hunter is entering the Forest but lacks the following:\n\n';
                 fullMessage += warningMessages.join('\n');
                 fullMessage += '\n\n';
-                
+
                 if (canGetInStore) {
                     fullMessage += 'You can still obtain these resources in the Store phase.\n';
                     fullMessage += 'Combat items (Grenades, Bombs, Dynamite) can also be used to fight monsters.\n\n';
                 }
-                
+
                 fullMessage += 'Do you want to proceed with this selection?';
-                
+
                 if (!confirm(fullMessage)) {
                     console.log('Player canceled Forest entry during confirmation');
                     return; // Player canceled, don't confirm selection
                 }
             }
         }
-        
+
         // Store the selection message for batch logging later (only for human players, bots already added theirs)
         if (!this.currentPlayer.isBot) {
             const hunterLocationName = this.getLocationName(this.currentPlayer.selectedCards.hunter);
@@ -3212,23 +3481,29 @@ class Game {
         this.currentPlayer.locationSelections[hunterLocation].hunter++;
         this.currentPlayer.locationSelections[apprenticeLocation].apprentice++;
 
+        // Update status indicator for this player
+        this.updatePlayerStatus(this.currentPlayer.id, true);
+
         // Move to next player
         this.currentPlayerIndex++;
-        
+
         if (this.currentPlayerIndex >= this.players.length) {
             // All players have made selections, log all selections together
             if (this.isAutomatedMode) {
                 console.log(`[${new Date().toISOString()}] All players completed selections, moving to resource distribution`);
             }
-            
+
             // Add all pending selection logs to the game log
             for (const logEntry of this.pendingSelectionLogs) {
                 this.addLogEntry(logEntry.message, logEntry.type, logEntry.player);
             }
-            
+
             // Clear pending logs for next round
             this.pendingSelectionLogs = [];
-            
+
+            // Hide status indicators
+            this.hidePlayerStatusIndicators();
+
             this.startResourceDistribution();
         } else {
             // Next player's turn
@@ -3299,12 +3574,13 @@ class Game {
     nextRound() {
         // Move dummy tokens to next locations
         this.moveDummyTokens();
-        
+
         // Reset for next round
         this.roundPhase = 'selection';
         this.currentPlayerIndex = 0;
         this.pendingSelectionLogs = []; // Clear any pending logs
-        
+        this.resetPlayerCompletionStatus(); // Reset player completion status for new round
+
         // Clear selections
         this.players.forEach(player => {
             player.selectedCards.hunter = null;
@@ -7730,11 +8006,46 @@ class Game {
     enterStorePhase() {
         this.roundPhase = 'store';
         this.currentStorePlayer = 0;
-        
+
         if (this.isAutomatedMode) {
             console.log(`[${new Date().toISOString()}] Starting store phase - Round ${this.currentRound}`);
         }
-        
+
+        // Branch based on game mode
+        if (this.gameMode === 'simultaneous') {
+            this.enterStorePhaseSimultaneous();
+        } else {
+            this.enterStorePhaseTurnBased();
+        }
+    }
+
+    enterStorePhaseSimultaneous() {
+        // Show status indicators and reset completion status
+        this.showPlayerStatusIndicators();
+        this.resetPlayerCompletionStatus();
+
+        // Trigger all bots to shop immediately
+        this.players.forEach((player, index) => {
+            if (player.isBot) {
+                setTimeout(() => {
+                    this.handleBotShopping(player);
+                }, this.getDelay(50 * (index + 1)));
+            }
+        });
+
+        // Show store for the human player
+        const humanPlayer = this.players.find(p => !p.isBot);
+        if (humanPlayer && !this.isAutomatedMode) {
+            this.showStoreForPlayer(humanPlayer);
+        }
+    }
+
+    enterStorePhaseTurnBased() {
+        // Show status indicators
+        this.showPlayerStatusIndicators();
+        this.resetPlayerCompletionStatus();
+
+        // Show store for first player (turn-based)
         this.showStore();
     }
     
@@ -7854,7 +8165,118 @@ class Game {
         // Update player's resources display
         this.updateResourceDisplay();
     }
-    
+
+    showStoreForPlayer(player) {
+        // This function shows the store for a specific player (used in simultaneous mode)
+
+        // Hide card selection and show store area for human players
+        document.querySelector('.card-selection').style.display = 'none';
+        document.getElementById('store-area').style.display = 'block';
+
+        // Hide current player text and confirm button during store phase
+        document.querySelector('.current-player').style.display = 'none';
+        document.getElementById('confirm-selection').style.display = 'none';
+
+        // Update store header info
+        document.getElementById('store-current-player').textContent = player.name;
+        document.getElementById('store-player-money').textContent = player.resources.money;
+        document.getElementById('store-current-capacity').textContent = this.getInventorySize(player);
+        document.getElementById('store-max-capacity').textContent = player.maxInventoryCapacity;
+
+        // Create store items
+        const storeContainer = document.getElementById('store-items-grid');
+        storeContainer.innerHTML = '';
+
+        // Create items array with dynamic bullets for Rifle players
+        let availableItems = [...this.storeItems];
+
+        // Add bullets for Rifle players (Level 1 power)
+        if (player.weapon.name === 'Rifle' && player.weapon.powerTrackPosition >= 1) {
+            const bulletItem = {
+                name: 'Bullet',
+                size: 0,
+                price: 2,
+                effect: 'rifle_ammo',
+                icon: '🔫',
+                description: 'Ammunition required for Rifle weapon',
+                isSpecial: true,
+                maxCount: 6
+            };
+            availableItems.unshift(bulletItem); // Add bullets at the beginning
+        }
+
+        // Add batteries for Plasma players (Level 1-2 power, not Level 3 infinite battery)
+        if (player.weapon.name === 'Plasma' && player.weapon.powerTrackPosition >= 1 && player.weapon.powerTrackPosition < 7) {
+            const batteryItem = {
+                name: 'Battery',
+                size: 1,
+                price: 2, // Level 1 power: batteries cost $2 instead of $3
+                effect: 'plasma_power',
+                icon: '🔋',
+                description: 'Ammunition required for Plasma weapon',
+                isSpecial: true,
+                maxCount: 6
+            };
+            availableItems.unshift(batteryItem); // Add batteries at the beginning
+        }
+
+        availableItems.forEach((item, index) => {
+            const itemElement = document.createElement('div');
+            itemElement.className = 'store-item-card';
+            if (item.isSpecial) itemElement.classList.add('special-item');
+            // Add tooltip with item description
+            if (item.description) {
+                itemElement.title = item.description;
+            }
+
+            const currentSize = this.getInventorySize(player);
+            let actualPrice = item.price;
+
+            // Rifle Level 3 power: -1 cost for all items
+            if (player.weapon.name === 'Rifle' && player.weapon.powerTrackPosition >= 7) {
+                actualPrice = Math.max(1, item.price - 1); // Minimum cost of 1
+            }
+
+            const canAfford = player.resources.money >= actualPrice;
+            const exceedsCapacity = (currentSize + item.size) > player.maxInventoryCapacity;
+
+            // Check if player already has max special items
+            let hasMaxSpecialItems = false;
+            let maxWarning = '';
+            if (item.name === 'Bullet') {
+                const bulletCount = player.inventory.filter(inv => inv.name === 'Bullet').length;
+                hasMaxSpecialItems = bulletCount >= 6;
+                maxWarning = 'Max bullets!';
+            } else if (item.name === 'Battery') {
+                const batteryCount = player.inventory.filter(inv => inv.name === 'Battery').length;
+                hasMaxSpecialItems = batteryCount >= 6;
+                maxWarning = 'Max batteries!';
+            }
+
+            const isDisabled = !canAfford || hasMaxSpecialItems;
+            const priceDisplay = actualPrice !== item.price ?
+                `<span class="original-price">$${item.price}</span> $${actualPrice}` :
+                `$${actualPrice}`;
+
+            itemElement.innerHTML = `
+                <div class="item-icon-large">${item.icon || '❓'}</div>
+                <h4 class="item-name">${item.name}</h4>
+                <div class="item-price">${priceDisplay}</div>
+                <div class="item-size">Size: ${item.size}</div>
+                ${(item.name === 'Bullet' || item.name === 'Battery') ? `<div class="bullet-count">Max: 6</div>` : ''}
+                ${exceedsCapacity ? '<div class="capacity-warning">⚠️ Over capacity!</div>' : ''}
+                ${hasMaxSpecialItems ? `<div class="capacity-warning">⚠️ ${maxWarning}</div>` : ''}
+                <button class="buy-btn" onclick="game.buyStoreItem('${item.name}', ${actualPrice}, ${item.size})" ${isDisabled ? 'disabled' : ''}>
+                    Buy
+                </button>
+            `;
+            storeContainer.appendChild(itemElement);
+        });
+
+        // Update player's resources display
+        this.updateResourceDisplay();
+    }
+
     handleBotShopping(player) {
         // Skip UI updates in automated mode
         if (!this.isAutomatedMode) {
@@ -8176,10 +8598,24 @@ class Game {
             logMessages.forEach(logEntry => {
                 this.addLogEntry(logEntry.msg, 'store-purchase', logEntry.player);
             });
-            
-            // Auto-proceed to next player after a short delay
+
+            // Handle completion based on game mode
             setTimeout(() => {
-                this.finishShopping();
+                if (this.gameMode === 'simultaneous') {
+                    // In simultaneous mode, mark bot as complete
+                    this.updatePlayerStatus(player.id, true);
+
+                    // Check if all players are complete
+                    if (this.checkAllPlayersComplete()) {
+                        console.log('All players completed shopping (simultaneous mode)');
+                        this.hidePlayerStatusIndicators();
+                        // Check for capacity overflow
+                        this.checkCapacityOverflow();
+                    }
+                } else {
+                    // Turn-based mode: proceed to next player
+                    this.finishShopping();
+                }
             }, this.getDelay(1500));
         }, this.getDelay(1000));
     }
@@ -8321,7 +8757,11 @@ class Game {
     }
     
     buyStoreItem(itemName, price, size) {
-        const player = this.players[this.currentStorePlayer];
+        // In simultaneous mode, the human player is the one buying
+        // In turn-based mode, use currentStorePlayer
+        const player = this.gameMode === 'simultaneous'
+            ? this.players.find(p => !p.isBot)
+            : this.players[this.currentStorePlayer];
         
         if (player.resources.money < price) {
             alert(`${player.name} doesn't have enough money!`);
@@ -8385,29 +8825,33 @@ class Game {
         player.inventory.push(item);
         
         // Update display
-        this.showStore();
+        if (this.gameMode === 'simultaneous') {
+            this.showStoreForPlayer(player);
+        } else {
+            this.showStore();
+        }
         this.updateResourceDisplay();
         this.updateInventoryDisplayOld();
         this.players.forEach(player => {
             this.updateInventoryDisplay(player.id);
         });
-        
+
         // Update bullet displays for all players
         this.players.forEach(player => {
             this.updateBulletDisplay(player.id);
         });
-        
+
         // Update Forest button if buying ammunition for current player
-        if (this.currentStorePlayer === this.currentPlayer?.id && 
+        if (this.currentStorePlayer === this.currentPlayer?.id &&
             (itemName === 'Bullet' || itemName === 'Battery')) {
             this.updateForestButtonStatus();
         }
-        
+
         // Update battery displays for all players
         this.players.forEach(player => {
             this.updateBatteryDisplay(player.id);
         });
-        
+
         // Log the purchase
         this.addLogEntry(
             `🛒 <strong>${player.name}</strong> bought ${itemName} for $${price}`,
@@ -8416,14 +8860,52 @@ class Game {
         );
 
         // Refresh the store display to update capacity warnings and money
-        this.showStore();
+        if (this.gameMode === 'simultaneous') {
+            this.showStoreForPlayer(player);
+        } else {
+            this.showStore();
+        }
 
         // alert(`${player.name} bought ${itemName}!`); // Removed popup as requested
     }
     
     finishShopping() {
+        if (this.gameMode === 'simultaneous') {
+            this.finishShoppingSimultaneous();
+        } else {
+            this.finishShoppingTurnBased();
+        }
+    }
+
+    finishShoppingSimultaneous() {
+        // Mark the human player as complete
+        const humanPlayer = this.players.find(p => !p.isBot);
+        if (humanPlayer) {
+            this.updatePlayerStatus(humanPlayer.id, true);
+        }
+
+        // Check if all players are complete
+        if (this.checkAllPlayersComplete()) {
+            console.log('All players completed shopping (simultaneous mode)');
+
+            // Hide store area
+            if (!this.isAutomatedMode) {
+                document.getElementById('store-area').style.display = 'none';
+            }
+
+            this.hidePlayerStatusIndicators();
+
+            // Check for capacity overflow
+            this.checkCapacityOverflow();
+        }
+    }
+
+    finishShoppingTurnBased() {
+        // Mark current player as complete
+        this.updatePlayerStatus(this.players[this.currentStorePlayer].id, true);
+
         this.currentStorePlayer++;
-        
+
         if (this.currentStorePlayer >= this.players.length) {
             // All players finished shopping, hide store area
             if (this.isAutomatedMode) {
@@ -8431,6 +8913,9 @@ class Game {
             } else {
                 document.getElementById('store-area').style.display = 'none';
             }
+
+            this.hidePlayerStatusIndicators();
+
             // Check for capacity overflow
             this.checkCapacityOverflow();
         } else {

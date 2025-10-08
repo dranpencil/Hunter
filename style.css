@@ -1688,6 +1688,37 @@ h1 {
     color: #f39c12;
 }
 
+/* Player Status Indicators */
+.player-status-panel {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    padding: 15px;
+    background-color: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+}
+
+.player-status {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    padding: 5px;
+}
+
+.player-status .player-name {
+    font-weight: bold;
+    font-size: 16px;
+    text-align: center;
+}
+
+.player-status .status-icon {
+    font-size: 24px;
+    line-height: 1;
+}
+
 /* Card Selection */
 .card-selection {
     display: grid;
