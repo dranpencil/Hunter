@@ -2687,6 +2687,7 @@ class Game {
         if (player.color) {
             board.style.borderColor = player.color.border;
             board.style.borderWidth = '3px';
+            board.style.borderStyle = 'solid';
         }
 
         // Check if buttons should be disabled
@@ -3033,9 +3034,39 @@ class Game {
         apprenticeCardsContainer.style.display = 'flex';
         
         console.log('Cards created and forced visible - Hunter:', hunterCardsContainer.children.length, 'Apprentice:', apprenticeCardsContainer.children.length);
-        
+
         // Update Forest button status based on EP and ammunition
         this.updateForestButtonStatus();
+
+        // Sync apprentice forest card state with current hunter selection
+        if (this.currentPlayer && this.currentPlayer.selectedCards) {
+            const hunterSelection = this.currentPlayer.selectedCards.hunter;
+            const apprenticeForestCard = document.querySelector(`#apprentice-cards .location-card[data-location-id="7"]`);
+
+            if (apprenticeForestCard) {
+                if (hunterSelection === 7) {
+                    // Hunter has Forest selected -> enable apprentice Forest
+                    apprenticeForestCard.classList.remove('disabled');
+                    apprenticeForestCard.title = 'Hunter is going to Forest';
+                    apprenticeForestCard.style.cursor = 'pointer';
+                    // Reset visual styling to show it's enabled (remove inline styles)
+                    apprenticeForestCard.style.backgroundColor = '';
+                    apprenticeForestCard.style.borderColor = '';
+                    apprenticeForestCard.style.opacity = '';
+                    apprenticeForestCard.style.pointerEvents = '';
+                } else {
+                    // Hunter hasn't selected Forest (or selected something else) -> keep apprentice Forest disabled (match dummy-blocked styling)
+                    apprenticeForestCard.classList.add('disabled');
+                    apprenticeForestCard.title = 'Forest only available if Hunter selects Forest';
+                    apprenticeForestCard.style.cursor = 'not-allowed';
+                    apprenticeForestCard.style.pointerEvents = 'none';
+                    // Apply same styling as dummy-blocked cards
+                    apprenticeForestCard.style.backgroundColor = '#7f8c8d';
+                    apprenticeForestCard.style.borderColor = '#95a5a6';
+                    apprenticeForestCard.style.opacity = '0.5';
+                }
+            }
+        }
     }
     
     createCard(location, tokenType) {
@@ -3085,6 +3116,12 @@ class Game {
                 isDisabled = true;
             }
             // Note: Ammunition requirement removed - players can enter without ammo but will get warning popup
+        }
+        // Check Forest for apprentice cards - disabled by default, only enabled when hunter selects it
+        else if (tokenType === 'apprentice' && location.id === 7) {
+            card.classList.add('disabled');
+            card.title = 'Forest only available if Hunter selects Forest';
+            isDisabled = true;
         }
         
         // Only set default colors if not disabled
@@ -3250,10 +3287,13 @@ class Game {
         const cards = document.querySelectorAll(`#${tokenType}-cards .location-card`);
         cards.forEach(card => {
             card.classList.remove('selected');
-            // Reset to default colors
-            card.style.backgroundColor = '#ecf0f1';
-            card.style.color = '#2c3e50';
-            card.style.border = '3px solid #95a5a6';
+            // Skip resetting colors for disabled cards (they have their own styling)
+            if (!card.classList.contains('disabled')) {
+                // Reset to default colors
+                card.style.backgroundColor = '#ecf0f1';
+                card.style.color = '#2c3e50';
+                card.style.border = '3px solid #95a5a6';
+            }
         });
         
         // If there was a previous selection, re-enable it in the other token type's cards (except Forest)
@@ -3284,7 +3324,47 @@ class Game {
         
         // Update player's selection
         this.currentPlayer.selectedCards[tokenType] = locationId;
-        
+
+        // Special handling for Forest: Enable/disable apprentice Forest based on hunter selection
+        if (tokenType === 'hunter') {
+            const apprenticeForestCard = document.querySelector(`#apprentice-cards .location-card[data-location-id="7"]`);
+            if (apprenticeForestCard) {
+                if (locationId === 7) {
+                    // Hunter selected Forest -> enable apprentice Forest
+                    apprenticeForestCard.classList.remove('disabled');
+                    apprenticeForestCard.title = 'Hunter is going to Forest';
+                    apprenticeForestCard.style.cursor = 'pointer';
+                    // Reset visual styling to show it's enabled (remove inline styles)
+                    apprenticeForestCard.style.backgroundColor = '';
+                    apprenticeForestCard.style.borderColor = '';
+                    apprenticeForestCard.style.opacity = '';
+                    apprenticeForestCard.style.pointerEvents = '';
+                } else {
+                    // Hunter selected non-Forest -> disable apprentice Forest (match dummy-blocked styling)
+                    apprenticeForestCard.classList.add('disabled');
+                    apprenticeForestCard.title = 'Forest only available if Hunter selects Forest';
+                    apprenticeForestCard.style.cursor = 'not-allowed';
+                    apprenticeForestCard.style.pointerEvents = 'none';
+                    // Apply same styling as dummy-blocked cards
+                    apprenticeForestCard.style.backgroundColor = '#7f8c8d';
+                    apprenticeForestCard.style.borderColor = '#95a5a6';
+                    apprenticeForestCard.style.opacity = '0.5';
+
+                    // If apprentice currently has Forest selected, deselect it
+                    if (this.currentPlayer.selectedCards.apprentice === 7) {
+                        this.currentPlayer.selectedCards.apprentice = null;
+                        const selectedApprenticeCard = document.querySelector(`#apprentice-cards .location-card[data-location-id="7"]`);
+                        if (selectedApprenticeCard) {
+                            selectedApprenticeCard.classList.remove('selected');
+                            selectedApprenticeCard.style.backgroundColor = '#ecf0f1';
+                            selectedApprenticeCard.style.color = '#2c3e50';
+                            selectedApprenticeCard.style.border = '3px solid #95a5a6';
+                        }
+                    }
+                }
+            }
+        }
+
         // Check if both selections are made
         this.checkSelectionComplete();
     }
@@ -8280,22 +8360,27 @@ class Game {
     handleBotShopping(player) {
         // Skip UI updates in automated mode
         if (!this.isAutomatedMode) {
-            // Hide store UI for bot turns
-            const cardSelection = document.querySelector('.card-selection');
-            const storeArea = document.getElementById('store-area');
-            const currentPlayer = document.querySelector('.current-player');
-            const confirmButton = document.getElementById('confirm-selection');
-            
-            if (cardSelection) cardSelection.style.display = 'none';
-            if (storeArea) storeArea.style.display = 'none';
-            if (currentPlayer) currentPlayer.style.display = 'none';
-            if (confirmButton) confirmButton.style.display = 'none';
-            
-            // Show status message that bot is shopping
-            const statusElement = document.getElementById('status-message');
-            if (statusElement) {
-                statusElement.innerHTML = `<strong>${player.name}</strong> is shopping...`;
+            // Only hide UI elements in turn-based mode
+            // In simultaneous mode, bots shop in background while human uses the store UI
+            if (this.gameMode !== 'simultaneous') {
+                // Hide store UI for bot turns
+                const cardSelection = document.querySelector('.card-selection');
+                const storeArea = document.getElementById('store-area');
+                const currentPlayer = document.querySelector('.current-player');
+                const confirmButton = document.getElementById('confirm-selection');
+
+                if (cardSelection) cardSelection.style.display = 'none';
+                if (storeArea) storeArea.style.display = 'none';
+                if (currentPlayer) currentPlayer.style.display = 'none';
+                if (confirmButton) confirmButton.style.display = 'none';
+
+                // Show status message that bot is shopping
+                const statusElement = document.getElementById('status-message');
+                if (statusElement) {
+                    statusElement.innerHTML = `<strong>${player.name}</strong> is shopping...`;
+                }
             }
+            // In simultaneous mode, no UI changes needed - bots shop silently
         } else {
             console.log(`[${new Date().toISOString()}] Bot ${player.name} shopping - Round ${this.currentRound}`);
         }

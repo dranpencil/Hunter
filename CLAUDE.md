@@ -11,18 +11,24 @@ Hunter & Apprentice is a strategic digital board game for 2-4 players where each
 
 ### Game State Management
 - Phase tracking via `roundPhase`: 'selection', 'distribution', 'station', 'store', 'battle', 'nextround'
+- Mode tracking via `gameMode`: 'simultaneous' (1 human) or 'turnbased' (2+ humans)
+- Player completion tracking via `playerCompletionStatus`: Object mapping player IDs to completion status
 - Dynamic player count configurations (2-4 players)
 - Dummy token system for game balance across different player counts
 
 ## Game Flow
 
 ### 1. Selection Phase
+- **Game Mode**: Simultaneous (1 human) or Turn-Based (2+ humans)
+- **Simultaneous Mode**: All bots select instantly, human selects at own pace
+- **Turn-Based Mode**: Players select sequentially with visual status indicators
 - Players secretly select locations for Hunter and Apprentice tokens
 - Forest requirements: 2+ EP and ammunition for Rifle/Plasma weapons
 - Human players can select Forest without requirements (warning shown at confirmation)
 - Bots use probabilistic entry system with weapon preferences
   - Forest entries: -100 penalty without ammunition (Rifle/Plasma)
   - Normal entries (4 base) with at least 1 ammunition
+- Status indicators show player completion: 🔴 (pending) / 🟢 (completed)
 
 ### 2. Resource Distribution Phase  
 - Players collect resources from all locations except Forest
@@ -37,9 +43,13 @@ Hunter & Apprentice is a strategic digital board game for 2-4 players where each
 - Reward amount determined by total Station token count
 
 ### 4. Store Phase
+- **Game Mode**: Simultaneous (1 human) or Turn-Based (2+ humans)
+- **Simultaneous Mode**: All bots shop instantly, human shops at own pace
+- **Turn-Based Mode**: Players shop sequentially with visual status indicators
 - Players purchase items with money
 - Capacity overflow management with use/upgrade/discard options
 - Items available: Beer, Blood Bag, Grenade, Bomb, Dynamite, Fake Blood, Bullets, Batteries
+- Status indicators show player completion: 🔴 (pending) / 🟢 (completed)
 
 ### 5. Battle Phase
 - Forest hunters fight monsters in score order (lowest score first)
@@ -209,6 +219,54 @@ Each weapon features:
 
 ## Recent Improvements
 
+### Game Mode System (Latest Session)
+- **Simultaneous Mode**: Activated when there is exactly 1 human player
+  - All bots select/shop instantly (complete immediately)
+  - Human player takes their time without waiting for turn order
+  - Phase progresses when all players complete their actions
+  - Used for both Selection Phase and Store Phase
+- **Turn-Based Mode**: Activated when there are 2+ human players
+  - Players select/shop sequentially in turn order
+  - Each player's turn is clearly indicated
+  - Phase progresses after all players complete in sequence
+  - Used for both Selection Phase and Store Phase
+
+### Player Status Indicators
+- **Visual Status Panel**: Shows all players with real-time completion status
+  - Player names displayed in their assigned player colors
+  - Status shown with emoji indicators: 🔴 (pending) / 🟢 (completed)
+  - Clean text-only design without background boxes
+  - Appears during Selection and Store phases
+  - Automatically hidden when phase completes
+- **Status Tracking**: Internal `playerCompletionStatus` object tracks each player
+- **Automatic Reset**: Status resets at the start of each new round
+
+### Selection Phase Updates
+- **Mode Detection**: Automatically determines mode based on human player count
+- **Simultaneous Mode Flow**:
+  - All bots triggered immediately upon phase start
+  - Human player sees location cards and selects at their own pace
+  - Bot status indicators turn green instantly
+  - Phase ends when human completes selection
+- **Turn-Based Mode Flow**:
+  - Players select sequentially in turn order
+  - Current player indicator shows whose turn it is
+  - Status indicators turn green as each player completes
+  - Phase ends after last player confirms
+
+### Store Phase Updates
+- **Mode Detection**: Uses same mode determination as Selection Phase
+- **Simultaneous Mode Flow**:
+  - All bots shop automatically using priority-based purchasing
+  - Human player sees store interface and shops at their own pace
+  - Bot status indicators turn green after shopping completes
+  - Phase ends when human clicks "Finish Shopping"
+- **Turn-Based Mode Flow**:
+  - Players shop sequentially in turn order
+  - Store interface updates for each player's turn
+  - Status indicators turn green as each player finishes
+  - Phase ends after last player completes shopping
+
 ### Game Balance Changes (Latest Session)
 - **Player Count**: Changed from 2-5 to 2-4 players maximum
 - **Dummy Tokens**: 2-player games now start at Bar and Dojo
@@ -250,6 +308,13 @@ Each weapon features:
 - `handleBotTacticalItemUsage()` (line 4854): Bot tactical decisions
 - `distributeStationResources()` (line 3825): Station reward distribution
 - `handleCapacityOverflow()` (line 6754): Overflow management
+- `initializePlayerStatusIndicators()` (line 1873): Creates status indicator UI elements
+- `updatePlayerStatus()` (line 1921): Updates individual player completion status
+- `checkAllPlayersComplete()` (line 1941): Checks if all players finished current phase
+- `updateCurrentPlayerSimultaneous()` (line 2126): Handles simultaneous selection start
+- `confirmSelectionSimultaneous()` (line 3346): Handles simultaneous selection completion
+- `enterStorePhaseSimultaneous()` (line 8022): Handles simultaneous store start
+- `finishShoppingSimultaneous()` (line 8868): Handles simultaneous shopping completion
 
 ### Testing Considerations
 - Bot decision consistency across stages
@@ -320,7 +385,7 @@ Each weapon features:
 
 ---
 *Last Updated: Current session*
-*Game Version: 1.1 - Data Collection System*
+*Game Version: 1.2 - Simultaneous/Turn-Based Mode System*
 *Technical Stack: Vanilla JavaScript ES6, HTML5, CSS3*
 *Data Export: CSV format with comprehensive game metrics*
 - add to memory.
