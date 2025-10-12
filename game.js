@@ -3049,10 +3049,11 @@ class Game {
                     apprenticeForestCard.classList.remove('disabled');
                     apprenticeForestCard.title = 'Hunter is going to Forest';
                     apprenticeForestCard.style.cursor = 'pointer';
-                    // Reset visual styling to show it's enabled (remove inline styles)
-                    apprenticeForestCard.style.backgroundColor = '';
-                    apprenticeForestCard.style.borderColor = '';
-                    apprenticeForestCard.style.opacity = '';
+                    // Set default enabled card styling
+                    apprenticeForestCard.style.backgroundColor = '#ecf0f1';
+                    apprenticeForestCard.style.color = '#2c3e50';
+                    apprenticeForestCard.style.border = '3px solid #95a5a6';
+                    apprenticeForestCard.style.opacity = '1';
                     apprenticeForestCard.style.pointerEvents = '';
                 } else {
                     // Hunter hasn't selected Forest (or selected something else) -> keep apprentice Forest disabled (match dummy-blocked styling)
@@ -3302,6 +3303,13 @@ class Game {
             const previousCardInOtherSet = document.querySelector(`#${otherTokenType}-cards .location-card[data-location-id="${previousSelection}"]`);
             if (previousCardInOtherSet) {
                 previousCardInOtherSet.classList.remove('disabled');
+                // Restore default enabled card styling
+                previousCardInOtherSet.style.backgroundColor = '#ecf0f1';
+                previousCardInOtherSet.style.color = '#2c3e50';
+                previousCardInOtherSet.style.border = '3px solid #95a5a6';
+                previousCardInOtherSet.style.opacity = '1';
+                previousCardInOtherSet.style.cursor = 'pointer';
+                previousCardInOtherSet.style.pointerEvents = '';
             }
         }
         
@@ -3319,6 +3327,12 @@ class Game {
             const sameCardInOtherSet = document.querySelector(`#${otherTokenType}-cards .location-card[data-location-id="${locationId}"]`);
             if (sameCardInOtherSet) {
                 sameCardInOtherSet.classList.add('disabled');
+                // Apply same styling as dummy-blocked cards
+                sameCardInOtherSet.style.backgroundColor = '#7f8c8d';
+                sameCardInOtherSet.style.borderColor = '#95a5a6';
+                sameCardInOtherSet.style.opacity = '0.5';
+                sameCardInOtherSet.style.cursor = 'not-allowed';
+                sameCardInOtherSet.style.pointerEvents = 'none';
             }
         }
         
@@ -3334,10 +3348,11 @@ class Game {
                     apprenticeForestCard.classList.remove('disabled');
                     apprenticeForestCard.title = 'Hunter is going to Forest';
                     apprenticeForestCard.style.cursor = 'pointer';
-                    // Reset visual styling to show it's enabled (remove inline styles)
-                    apprenticeForestCard.style.backgroundColor = '';
-                    apprenticeForestCard.style.borderColor = '';
-                    apprenticeForestCard.style.opacity = '';
+                    // Set default enabled card styling
+                    apprenticeForestCard.style.backgroundColor = '#ecf0f1';
+                    apprenticeForestCard.style.color = '#2c3e50';
+                    apprenticeForestCard.style.border = '3px solid #95a5a6';
+                    apprenticeForestCard.style.opacity = '1';
                     apprenticeForestCard.style.pointerEvents = '';
                 } else {
                     // Hunter selected non-Forest -> disable apprentice Forest (match dummy-blocked styling)
@@ -3719,7 +3734,6 @@ class Game {
     setupEventListeners() {
         document.getElementById('confirm-selection').addEventListener('click', () => this.confirmSelection());
         document.getElementById('next-player').addEventListener('click', () => this.nextRound());
-        document.getElementById('new-game-btn').addEventListener('click', () => this.resetGame());
     }
     
     resetMilestoneCheckboxes() {
@@ -5568,7 +5582,7 @@ class Game {
             { level: 3, points: 4, reward: '3🩸' },
             { level: 2, points: 2, reward: '2💰' },
             { level: 1, points: 1, reward: '1🍺' },
-            { level: 0, points: 0, reward: 'None' }
+            { level: 0, points: 0, reward: '' }
         ];
         
         // Create track HTML
@@ -5582,12 +5596,12 @@ class Game {
                 <div class="track-level">
                     <div class="level-number">Lv.${level.level}</div>
                     <div class="level-section">
-                        <div class="section-label">Points</div>
-                        <div class="section-value">${level.points}</div>
+                        ${level.level === 5 ? '<div class="section-label">Points</div>' : ''}
+                        <div class="section-value">${level.level === 0 ? '' : level.points}</div>
                         ${hasPointToken ? `<div class="track-token point-token" style="background-color: ${player.color?.background || '#f39c12'}; border-color: ${player.color?.border || '#f39c12'}; left: 35%;"></div>` : ''}
                     </div>
                     <div class="level-section">
-                        <div class="section-label">Reward</div>
+                        ${level.level === 5 ? '<div class="section-label">Reward</div>' : ''}
                         <div class="section-value">${level.reward}</div>
                         ${hasRewardToken ? `<div class="track-token reward-token" style="background-color: ${player.color?.background || '#27ae60'}; border-color: ${player.color?.border || '#27ae60'}; left: 65%;"></div>` : ''}
                     </div>

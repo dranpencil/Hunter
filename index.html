@@ -9,9 +9,6 @@
 <body>
     <div class="game-container">
         <div class="game-header">
-            <button id="new-game-btn" class="new-game-button">Start a New Game</button>
-            <button id="data-collection-btn" class="data-collection-button" onclick="game.showDataCollectionModal()">Data Collection Mode</button>
-            <h1>Hunter & Apprentice</h1>
             <div id="data-collection-progress" class="data-collection-progress" style="display: none;"></div>
         </div>
         
@@ -41,6 +38,9 @@
                         <span class="button-icon">🌐</span>
                         <span>Online Play</span>
                         <span class="coming-soon">Coming Soon</span>
+                    </button>
+                    <button class="menu-button" onclick="game.showDataCollectionModal()">
+                        <span>Data Collection Mode</span>
                     </button>
                 </div>
             </div>
