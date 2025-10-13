@@ -5869,7 +5869,7 @@ class Game {
                 alert(`${player.name}'s attack dice is already at maximum (7)!`);
                 return false;
             }
-            
+
             const requiredExp = player.weapon.reqExpAttack; // Flat cost per level
             if (player.resources.exp >= requiredExp) {
                 player.resources.exp -= requiredExp;
@@ -5880,7 +5880,6 @@ class Game {
                 this.players.forEach(player => {
                     this.updateInventoryDisplay(player.id);
                 }); // Update weapon display immediately
-                alert(`${player.name}'s attack dice upgraded to ${player.weapon.currentAttackDice}!`);
                 return true;
             } else {
                 alert(`${player.name} needs ${requiredExp} EXP to upgrade attack dice (current: ${player.resources.exp})`);
@@ -5891,7 +5890,7 @@ class Game {
                 alert(`${player.name}'s defense dice is already at maximum (6)!`);
                 return false;
             }
-            
+
             const requiredExp = player.weapon.reqExpDefense; // Defense cost from weapon data
             if (player.resources.exp >= requiredExp) {
                 player.resources.exp -= requiredExp;
@@ -5902,7 +5901,6 @@ class Game {
                 this.players.forEach(player => {
                     this.updateInventoryDisplay(player.id);
                 }); // Update weapon display immediately
-                alert(`${player.name}'s defense dice upgraded to ${player.weapon.currentDefenseDice}!`);
                 return true;
             } else {
                 alert(`${player.name} needs ${requiredExp} EXP to upgrade defense dice (current: ${player.resources.exp})`);
@@ -5995,18 +5993,20 @@ class Game {
     
     applyRoundEffect(effectId) {
         // Apply effects that affect all players for the round
-        if (this.roundEffectsApplied) return; // Only apply once per round
-        
+
         switch(effectId) {
             case 8: // Other monsters gain +1 HP this round
-            case 16: // Other monsters gain +1 HP this round  
+            case 16: // Other monsters gain +1 HP this round
             case 33: // Other monsters gain +1 HP this round
-                // This will be applied to other monsters when they are selected
-                this.activeMonsterEffects.push({ type: 'otherMonstersHPBonus', value: 1 });
-                this.showEffectNotification(
-                    `All other monsters gain +1 HP this round!`,
-                    `This monster's presence strengthens all other monsters in the forest.`
-                );
+                // Only add the bonus once (check if it already exists)
+                const hpBonusExists = this.activeMonsterEffects.some(effect => effect.type === 'otherMonstersHPBonus');
+                if (!hpBonusExists) {
+                    this.activeMonsterEffects.push({ type: 'otherMonstersHPBonus', value: 1 });
+                    this.showEffectNotification(
+                        `All other monsters gain +1 HP this round!`,
+                        `This monster's presence strengthens all other monsters in the forest.`
+                    );
+                }
                 break;
                 
             case 9: // Players not in forest lose 1 HP
@@ -6103,16 +6103,66 @@ class Game {
         if (typeof monsterOrEffectId === 'object' && battleOrContext === 'damageCap') {
             const monster = monsterOrEffectId;
             const effectId = monster.effectId;
-            
+
             switch(effectId) {
                 case 6: return 2;   // 2 damage cap
-                case 14: return 4;  // 4 damage cap  
+                case 14: return 4;  // 4 damage cap
                 case 30: return 6;  // 6 damage cap
                 default: return null;
             }
         }
-        
-        // Original implementation for complex battle effects
+
+        // Handle new call pattern: (monster, contextString, player)
+        if (typeof monsterOrEffectId === 'object' && typeof battleOrContext === 'string' && context) {
+            const monster = monsterOrEffectId;
+            const effectId = monster.effectId;
+            const contextStr = battleOrContext;
+            const player = context;
+
+            // Handle different contexts
+            switch(effectId) {
+                case 10: // Player loses 1 EP per attack
+                case 19: // Player loses 1 EP per attack
+                case 29: // Player loses 1 EP per attack
+                    if (contextStr === 'playerAttack') {
+                        const epLoss = Math.min(player.resources.ep, 1);
+                        if (epLoss > 0) {
+                            this.modifyResource(player.id, 'ep', -epLoss);
+                            this.logBattleAction(`${player.name} loses 1 EP from monster effect`, player);
+                        }
+                    }
+                    break;
+
+                case 11: // Monster gains +1 HP when attacked but not defeated
+                    if (contextStr === 'monsterDamaged' && monster.hp > 0) {
+                        monster.hp += 1;
+                        monster.maxHp = Math.max(monster.maxHp, monster.hp);
+                        this.logBattleAction(`Monster gains +1 HP from its effect (${monster.hp} HP)`, player);
+                    }
+                    break;
+
+                case 5: // Player gains no EXP from damage
+                    if (contextStr === 'playerDamaged') {
+                        return { noEXP: true };
+                    }
+                    break;
+
+                case 22: // Player gains max 2 EXP from damage
+                    if (contextStr === 'playerDamaged') {
+                        return { maxEXP: 2 };
+                    }
+                    break;
+
+                case 34: // Player gains max 4 EXP from damage
+                    if (contextStr === 'playerDamaged') {
+                        return { maxEXP: 4 };
+                    }
+                    break;
+            }
+            return;
+        }
+
+        // Original implementation for complex battle effects (old call pattern)
         const effectId = monsterOrEffectId;
         const battle = battleOrContext;
         const player = this.players.find(p => p.id === battle.playerId);
@@ -6405,13 +6455,10 @@ class Game {
             
             // Apply selection-time effects
             this.applySelectionEffect(monster.effectId, playerId);
-            
-            // Apply round-wide effects (only once per round, when first player enters forest)
-            if (!this.roundEffectsApplied && this.forestPlayersThisRound.size === 1) {
-                this.applyRoundEffect(monster.effectId);
-                this.roundEffectsApplied = true;
-            }
-            
+
+            // Apply round-wide effects
+            this.applyRoundEffect(monster.effectId);
+
             // Apply effects to other monsters already in play
             if ([8, 16, 33].includes(monster.effectId)) {
                 // This round other monsters get +1 HP
@@ -6525,13 +6572,10 @@ class Game {
                 
                 // Apply selection-time effects
                 this.applySelectionEffect(selectedMonster.effectId, playerId);
-                
-                // Apply round-wide effects (only once per round, when first player enters forest)
-                if (!this.roundEffectsApplied && this.forestPlayersThisRound.size === 1) {
-                    this.applyRoundEffect(selectedMonster.effectId);
-                    this.roundEffectsApplied = true;
-                }
-                
+
+                // Apply round-wide effects
+                this.applyRoundEffect(selectedMonster.effectId);
+
                 // Apply effects to other monsters already in play
                 if ([8, 16, 33].includes(selectedMonster.effectId)) {
                     console.log(`Monster effect ${selectedMonster.effectId}: Other monsters this round get +1 HP`);
@@ -8983,14 +9027,14 @@ class Game {
             this.updatePlayerStatus(humanPlayer.id, true);
         }
 
+        // Hide store area immediately when human finishes (regardless of bot completion)
+        if (!this.isAutomatedMode) {
+            document.getElementById('store-area').style.display = 'none';
+        }
+
         // Check if all players are complete
         if (this.checkAllPlayersComplete()) {
             console.log('All players completed shopping (simultaneous mode)');
-
-            // Hide store area
-            if (!this.isAutomatedMode) {
-                document.getElementById('store-area').style.display = 'none';
-            }
 
             this.hidePlayerStatusIndicators();
 
@@ -9059,19 +9103,10 @@ class Game {
             console.log(`[${new Date().toISOString()}] Starting resource distribution - Round ${this.currentRound}`);
         }
 
-        // Clear and populate forest players for this round (must be done BEFORE any battles)
-        this.forestPlayersThisRound.clear();
-        this.players.forEach(player => {
-            if (player.tokens.hunter === 7) { // Forest is location 7
-                this.forestPlayersThisRound.add(player.id);
-            }
-        });
-
         // Clear the board (but not dummy tokens)
         if (!this.isAutomatedMode) {
             document.querySelectorAll('.token:not(.dummy-token)').forEach(token => token.remove());
         }
-
 
         // Place all tokens based on selections
         this.players.forEach(player => {
@@ -9079,10 +9114,18 @@ class Game {
             if (player.selectedCards.hunter) {
                 this.placeToken(player.id, 'hunter', player.selectedCards.hunter);
             }
-            
+
             // Place apprentice
             if (player.selectedCards.apprentice) {
                 this.placeToken(player.id, 'apprentice', player.selectedCards.apprentice);
+            }
+        });
+
+        // Clear and populate forest players for this round (must be done AFTER placing tokens)
+        this.forestPlayersThisRound.clear();
+        this.players.forEach(player => {
+            if (player.tokens.hunter === 7) { // Forest is location 7
+                this.forestPlayersThisRound.add(player.id);
             }
         });
         
