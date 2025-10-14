@@ -4295,15 +4295,28 @@ class Game {
         return 1;
     }
     
-    findOptimalItemCombination(player, targetDamage) {
+    findOptimalItemCombination(player, targetDamage, monster = null) {
         // Find the minimal item combination to deal at least targetDamage
         const combatItems = [];
-        
-        // Count available items
+
+        // Check for item restrictions if monster is provided
+        let restrictedItems = [];
+        if (monster && monster.effectId) {
+            const restriction = this.applyBattleEffect(monster.effectId, { monster: monster, playerId: player.id }, 'checkItemRestriction');
+            if (restriction && restriction.restrictedItems) {
+                restrictedItems = restriction.restrictedItems;
+            }
+        }
+
+        // Count available items (excluding restricted ones)
         player.inventory.forEach(item => {
-            if (item.name === 'Dynamite') combatItems.push({ name: 'Dynamite', damage: 3 });
-            else if (item.name === 'Bomb') combatItems.push({ name: 'Bomb', damage: 2 });
-            else if (item.name === 'Grenade') combatItems.push({ name: 'Grenade', damage: 1 });
+            if (item.name === 'Dynamite' && !restrictedItems.includes('Dynamite')) {
+                combatItems.push({ name: 'Dynamite', damage: 3 });
+            } else if (item.name === 'Bomb' && !restrictedItems.includes('Bomb')) {
+                combatItems.push({ name: 'Bomb', damage: 2 });
+            } else if (item.name === 'Grenade' && !restrictedItems.includes('Grenade')) {
+                combatItems.push({ name: 'Grenade', damage: 1 });
+            }
         });
         
         if (combatItems.length === 0) return null;
@@ -4792,7 +4805,7 @@ class Game {
             
             // Tactical item usage: Check if bot can finish monster with items
             if (currentMonsterHP > 0) {
-                const itemCombination = this.findOptimalItemCombination(player, currentMonsterHP);
+                const itemCombination = this.findOptimalItemCombination(player, currentMonsterHP, monster);
                 if (itemCombination && itemCombination.length > 0) {
                     // Use items to finish the monster
                     let itemDamage = 0;
@@ -6248,12 +6261,12 @@ class Game {
     applyDeathEffect(effectId, defeaterPlayerId) {
         // Apply effects when a monster is defeated
         switch(effectId) {
-            case 4: // Forest players lose 1 HP (except those at 1 HP)
-            case 31: // Forest players lose 1 HP (except those at 1 HP)
+            case 4: // Forest players lose 1 HP
+            case 31: // Forest players lose 1 HP
                 const affectedPlayers = [];
                 this.forestPlayersThisRound.forEach(playerId => {
                     const player = this.players.find(p => p.id === playerId);
-                    if (player && player.resources.hp > 1) {
+                    if (player) {
                         this.modifyResource(playerId, 'hp', -1);
                         affectedPlayers.push(player.name);
                     }
@@ -7012,19 +7025,28 @@ class Game {
     
     handleBotTacticalItemUsage(player, battle) {
         console.log(`Bot ${player.name} evaluating tactical item usage...`);
-        
+
         const monster = battle.monster;
         let itemsUsed = [];
-        
+
         // Check if bot can finish the monster with combat items
         let damageNeeded = monster.hp;
-        
-        // Check for instant kill items and prioritize efficiency
+
+        // Check for item restrictions
+        let restrictedItems = [];
+        if (monster.effectId) {
+            const restriction = this.applyBattleEffect(monster.effectId, battle, 'checkItemRestriction');
+            if (restriction && restriction.restrictedItems) {
+                restrictedItems = restriction.restrictedItems;
+            }
+        }
+
+        // Check for instant kill items and prioritize efficiency (excluding restricted items)
         const combatItems = [
             { name: 'Dynamite', damage: 3, priority: 1 },
             { name: 'Bomb', damage: 2, priority: 2 },
             { name: 'Grenade', damage: 1, priority: 3 }
-        ];
+        ].filter(item => !restrictedItems.includes(item.name));
         
         // Find optimal item combination to finish monster
         let remainingDamage = damageNeeded;
@@ -7362,6 +7384,12 @@ class Game {
             this.applyBattleEffect(battle.monster, 'monsterDamaged', player);
         }
 
+        // Update battle UI to reflect changes (EP loss, monster HP/ATT changes)
+        if (!this.isAutomatedMode) {
+            this.updateMonsterDisplay();
+            document.getElementById('battle-player-ep').textContent = `${player.resources.ep}/${player.maxResources.ep}`;
+        }
+
         // Log attack
         let attackMessage = `${player.name} attacks! Rolls: ${allRolls.join(' → ')} = ${playerDamage} damage`;
         if (petDamage > 0) {
@@ -7447,46 +7475,64 @@ class Game {
                 this.logBattleAction(`${player.name} uses Blood Bag but HP is already at maximum!`, player);
             }
         } else if (itemName === 'Grenade') {
-            // Monster -1 HP
-            let grenadeDamage = 1;
-            const damageCap = this.applyBattleEffect(battle.monster, 'damageCap');
-            if (damageCap !== null) {
-                grenadeDamage = Math.min(grenadeDamage, damageCap);
+            // Check if monster is immune to grenades
+            const restriction = this.applyBattleEffect(battle.monster.effectId, battle, 'checkItemRestriction');
+            if (restriction && restriction.restrictedItems && restriction.restrictedItems.includes('Grenade')) {
+                this.logBattleAction(`${player.name} uses Grenade but it has no effect! Monster is immune to grenades`, player);
+            } else {
+                // Monster -1 HP
+                let grenadeDamage = 1;
+                const damageCap = this.applyBattleEffect(battle.monster, 'damageCap');
+                if (damageCap !== null) {
+                    grenadeDamage = Math.min(grenadeDamage, damageCap);
+                }
+                battle.monster.hp -= grenadeDamage;
+                this.logBattleAction(`${player.name} uses Grenade! Monster takes ${grenadeDamage} damage`, player);
             }
-            battle.monster.hp -= grenadeDamage;
-            this.logBattleAction(`${player.name} uses Grenade! Monster takes ${grenadeDamage} damage`, player);
         } else if (itemName === 'Bomb') {
-            // Monster -2 HP
-            let bombDamage = 2;
-            const damageCap = this.applyBattleEffect(battle.monster, 'damageCap');
-            if (damageCap !== null) {
-                const originalDamage = bombDamage;
-                bombDamage = Math.min(bombDamage, damageCap);
-                if (originalDamage > damageCap) {
-                    this.logBattleAction(`${player.name} uses Bomb! Monster takes ${bombDamage} damage (capped from ${originalDamage})`, player);
+            // Check if monster is immune to bombs
+            const restriction = this.applyBattleEffect(battle.monster.effectId, battle, 'checkItemRestriction');
+            if (restriction && restriction.restrictedItems && restriction.restrictedItems.includes('Bomb')) {
+                this.logBattleAction(`${player.name} uses Bomb but it has no effect! Monster is immune to bombs`, player);
+            } else {
+                // Monster -2 HP
+                let bombDamage = 2;
+                const damageCap = this.applyBattleEffect(battle.monster, 'damageCap');
+                if (damageCap !== null) {
+                    const originalDamage = bombDamage;
+                    bombDamage = Math.min(bombDamage, damageCap);
+                    if (originalDamage > damageCap) {
+                        this.logBattleAction(`${player.name} uses Bomb! Monster takes ${bombDamage} damage (capped from ${originalDamage})`, player);
+                    } else {
+                        this.logBattleAction(`${player.name} uses Bomb! Monster takes ${bombDamage} damage`, player);
+                    }
                 } else {
                     this.logBattleAction(`${player.name} uses Bomb! Monster takes ${bombDamage} damage`, player);
                 }
-            } else {
-                this.logBattleAction(`${player.name} uses Bomb! Monster takes ${bombDamage} damage`, player);
+                battle.monster.hp -= bombDamage;
             }
-            battle.monster.hp -= bombDamage;
         } else if (itemName === 'Dynamite') {
-            // Monster -3 HP
-            let dynamiteDamage = 3;
-            const damageCap = this.applyBattleEffect(battle.monster, 'damageCap');
-            if (damageCap !== null) {
-                const originalDamage = dynamiteDamage;
-                dynamiteDamage = Math.min(dynamiteDamage, damageCap);
-                if (originalDamage > damageCap) {
-                    this.logBattleAction(`${player.name} uses Dynamite! Monster takes ${dynamiteDamage} damage (capped from ${originalDamage})`, player);
+            // Check if monster is immune to dynamite
+            const restriction = this.applyBattleEffect(battle.monster.effectId, battle, 'checkItemRestriction');
+            if (restriction && restriction.restrictedItems && restriction.restrictedItems.includes('Dynamite')) {
+                this.logBattleAction(`${player.name} uses Dynamite but it has no effect! Monster is immune to dynamite`, player);
+            } else {
+                // Monster -3 HP
+                let dynamiteDamage = 3;
+                const damageCap = this.applyBattleEffect(battle.monster, 'damageCap');
+                if (damageCap !== null) {
+                    const originalDamage = dynamiteDamage;
+                    dynamiteDamage = Math.min(dynamiteDamage, damageCap);
+                    if (originalDamage > damageCap) {
+                        this.logBattleAction(`${player.name} uses Dynamite! Monster takes ${dynamiteDamage} damage (capped from ${originalDamage})`, player);
+                    } else {
+                        this.logBattleAction(`${player.name} uses Dynamite! Monster takes ${dynamiteDamage} damage`, player);
+                    }
                 } else {
                     this.logBattleAction(`${player.name} uses Dynamite! Monster takes ${dynamiteDamage} damage`, player);
                 }
-            } else {
-                this.logBattleAction(`${player.name} uses Dynamite! Monster takes ${dynamiteDamage} damage`, player);
+                battle.monster.hp -= dynamiteDamage;
             }
-            battle.monster.hp -= dynamiteDamage;
         } else if (itemName === 'Fake Blood') {
             // Increase PTS by 2 (store in battle for later use)
             if (!battle.bonusPts) battle.bonusPts = 0;
