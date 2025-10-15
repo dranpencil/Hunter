@@ -69,7 +69,7 @@ body {
 }
 
 .game-container {
-    max-width: 1600px;
+    max-width: 1200px;
     width: 100%;
     padding: 20px;
     margin: 0 auto;
@@ -434,6 +434,15 @@ h1 {
     display: flex;
     align-items: center;
     gap: 5px;
+}
+
+.player-info-compact h3 .player-color-indicator {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 2px solid;
+    flex-shrink: 0;
 }
 
 .score-display {
@@ -1574,10 +1583,10 @@ h1 {
 .game-board {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 20px;
+    gap: 12px;
     margin-bottom: 40px;
     background-color: #34495e;
-    padding: 30px;
+    padding: 20px;
     border-radius: 10px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
 }
@@ -1586,9 +1595,9 @@ h1 {
     background-color: #7f8c8d;
     border: 3px solid #95a5a6;
     border-radius: 8px;
-    padding: 20px;
+    padding: 12px;
     text-align: center;
-    min-height: 150px;
+    min-height: 110px;
     transition: all 0.3s ease;
 }
 
@@ -1627,7 +1636,7 @@ h1 {
     justify-content: center;
     gap: 6px;
     flex-wrap: wrap;
-    min-height: 45px;
+    min-height: 35px;
 }
 
 /* Tokens */
@@ -2110,6 +2119,326 @@ button {
 
 #battle-tame-btn:hover {
     background-color: #229954;
+}
+
+/* Player Boards Toggle Button */
+.player-boards-controls {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 15px;
+}
+
+.toggle-boards-btn {
+    background-color: #3498db;
+    color: white;
+    border: none;
+    padding: 10px 25px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+
+.toggle-boards-btn:hover {
+    background-color: #2980b9;
+    transform: translateY(-2px);
+}
+
+/* Collapsed Player Boards - Override player count grid layouts */
+.player-boards.collapsed {
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: center !important;
+    gap: 10px !important;
+    flex-wrap: wrap !important;
+    grid-template-columns: unset !important;
+    grid-template-rows: unset !important;
+    align-items: flex-start !important;
+}
+
+.player-board.collapsed {
+    width: 260px;
+    min-height: 180px;
+    padding: 8px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto 1fr;
+    gap: 5px;
+}
+
+/* Collapsed Header - All info in one row */
+.collapsed-header {
+    grid-column: 1 / -1;
+    padding-bottom: 5px;
+    border-bottom: 1px solid #2c3e50;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 5px;
+    flex-wrap: wrap;
+}
+
+.collapsed-player-name {
+    font-size: 13px;
+    margin: 0;
+    color: #ecf0f1;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex: 0 1 auto;
+}
+
+.collapsed-player-name .player-color-indicator {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 2px solid;
+    flex-shrink: 0;
+}
+
+.collapsed-score {
+    font-size: 13px;
+    color: #95a5a6;
+    flex: 0 1 auto;
+}
+
+.collapsed-score .score-label {
+    color: #f39c12;
+    font-weight: bold;
+}
+
+.collapsed-score .score-value {
+    color: #ecf0f1;
+    font-weight: bold;
+    margin-left: 4px;
+}
+
+.collapsed-weapon {
+    font-size: 13px;
+    color: #e74c3c;
+    font-weight: bold;
+    flex: 0 1 auto;
+}
+
+/* Collapsed Main Layout */
+.collapsed-left-col,
+.collapsed-right-col {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+}
+
+/* Collapsed Sections */
+.collapsed-hp-section,
+.collapsed-ep-section,
+.collapsed-exp-section,
+.collapsed-dice-section {
+    background: #2c3e50;
+    padding: 4px 6px;
+    border-radius: 4px;
+}
+
+.collapsed-stat-header {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    margin-bottom: 3px;
+    font-size: 11px;
+}
+
+.collapsed-stat-header .stat-label {
+    background: #1a1a1a;
+    padding: 1px 4px;
+    border-radius: 2px;
+    font-size: 10px;
+    color: #3498db;
+}
+
+/* Specific colors for collapsed stat labels to match expanded view */
+.collapsed-hp-section .stat-label {
+    color: #e74c3c; /* Red for HP */
+}
+
+.collapsed-ep-section .stat-label {
+    color: #5dade2; /* Light blue for EP */
+}
+
+.collapsed-exp-section .stat-label {
+    color: #58d68d; /* Light green for EXP */
+}
+
+.collapsed-stat-header .stat-value {
+    font-weight: bold;
+    font-size: 14px;
+    color: #fff;
+}
+
+/* Specific colors for collapsed stat values to match expanded view */
+.collapsed-hp-section .stat-value {
+    color: #ec7063; /* Light red for HP value */
+}
+
+.collapsed-ep-section .stat-value {
+    color: #85c1e2; /* Lighter blue for EP value */
+}
+
+.collapsed-exp-section .stat-value {
+    color: #82e0aa; /* Lighter green for EXP value */
+}
+
+.collapsed-stat-header .stat-max {
+    color: #95a5a6;
+    font-size: 14px;
+}
+
+/* Collapsed Buttons */
+.collapsed-buttons {
+    display: flex;
+    gap: 3px;
+}
+
+.collapsed-btn {
+    padding: 2px 4px;
+    font-size: 9px;
+    border: none;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    white-space: nowrap;
+    flex: 1;
+}
+
+.collapsed-btn.upgrade-btn {
+    background-color: #3498db;
+    color: white;
+}
+
+.collapsed-btn.upgrade-btn:hover:not(:disabled) {
+    background-color: #2980b9;
+}
+
+.collapsed-btn.upgrade-btn:disabled {
+    background-color: #95a5a6;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.collapsed-btn.restore-btn {
+    background-color: #3498db;
+    color: white;
+}
+
+.collapsed-btn.restore-btn.hp-restore {
+    background-color: #3498db;
+}
+
+.collapsed-btn.restore-btn.ep-restore {
+    background-color: #3498db;
+}
+
+.collapsed-btn.restore-btn:hover:not(:disabled) {
+    background-color: #2980b9;
+}
+
+.collapsed-btn.restore-btn:disabled {
+    background-color: #7f8c8d;
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+/* Collapsed Resources */
+.collapsed-resources {
+    background: #2c3e50;
+    padding: 4px 6px;
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.collapsed-resource-row {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 10px;
+}
+
+.collapsed-resource-row .resource-label {
+    min-width: 50px;
+    font-weight: bold;
+}
+
+/* Color for money label */
+.collapsed-resources .collapsed-resource-row:first-child .resource-label {
+    color: #f4d03f; /* Yellow for money */
+    background: #1a1a1a;
+    padding: 1px 4px;
+    border-radius: 2px;
+}
+
+/* Color for capacity label */
+.collapsed-resources .collapsed-resource-row:last-child .resource-label {
+    color: #3498db; /* Blue for capacity */
+}
+
+.collapsed-resource-row .resource-value {
+    color: #ecf0f1;
+    font-weight: bold;
+}
+
+/* Color for money value */
+.collapsed-resources .collapsed-resource-row:first-child .resource-value {
+    color: #f7dc6f; /* Light yellow for money value */
+}
+
+.collapsed-resource-row .resource-max {
+    color: #95a5a6;
+}
+
+/* Collapsed Dice Section */
+.collapsed-dice-row {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 10px;
+}
+
+.collapsed-dice-row .dice-icon {
+    font-size: 12px;
+}
+
+.collapsed-dice-row .dice-value {
+    font-weight: bold;
+    color: #ecf0f1;
+    min-width: 12px;
+    font-size: 14px;
+}
+
+/* Collapsed Popularity Section */
+.collapsed-popularity-section {
+    background: #2c3e50;
+    padding: 4px 6px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 5px;
+    font-size: 10px;
+}
+
+.collapsed-popularity-section .popularity-label {
+    color: #f39c12;
+    font-weight: bold;
+}
+
+.collapsed-popularity-section .popularity-value {
+    color: #ecf0f1;
+    font-weight: bold;
+    font-size: 14px;
 }
 
 /* Responsive Design */

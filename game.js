@@ -1075,7 +1075,8 @@ class Game {
         this.stationTotalCount = 0; // Track total count at station
         this.monsters = this.loadMonsters(); // Load monster data
         this.currentBattle = null; // Track ongoing monster battle
-        
+        this.boardsCollapsed = false; // Track collapsed/expanded state of player boards
+
         // Monster selection system
         this.defeatedMonsters = new Set(); // Track defeated monster IDs
         this.currentSelectedMonster = null; // Current monster shown to player
@@ -2671,11 +2672,17 @@ class Game {
     createPlayerBoards() {
         const container = document.getElementById('player-boards-container');
         container.innerHTML = ''; // Clear existing content
-        
+
         this.players.forEach(player => {
             const playerBoard = this.createPlayerBoardHTML(player);
             container.appendChild(playerBoard);
         });
+
+        // Show the toggle button
+        const toggleBtn = document.getElementById('toggle-boards-btn');
+        if (toggleBtn) {
+            toggleBtn.style.display = 'block';
+        }
     }
     
     createPlayerBoardHTML(player) {
@@ -2887,7 +2894,290 @@ class Game {
         
         return board;
     }
-    
+
+    createCollapsedPlayerBoardHTML(player) {
+        const board = document.createElement('div');
+        board.className = 'player-board collapsed';
+        board.id = `player-${player.id}-board`;
+
+        // Add player color as a border
+        if (player.color) {
+            board.style.borderColor = player.color.border;
+            board.style.borderWidth = '3px';
+            board.style.borderStyle = 'solid';
+        }
+
+        // Check if buttons should be disabled
+        const buttonsDisabled = this.shouldDisablePlayerButtons(player.id);
+        const disabledAttr = buttonsDisabled ? ' disabled' : '';
+        const disabledTitle = buttonsDisabled ? ' title="Cannot interact with this player board"' : '';
+
+        // Check if upgrade buttons should be disabled due to max reached
+        const hpUpgradeDisabled = buttonsDisabled || player.maxResources.hp >= 10;
+        const hpUpgradeAttr = hpUpgradeDisabled ? ' disabled' : '';
+        const hpUpgradeTitle = hpUpgradeDisabled ?
+            (player.maxResources.hp >= 10 ? ' title="HP is at maximum (10)"' : ' title="Cannot interact with this player board"') : '';
+
+        const epUpgradeDisabled = buttonsDisabled || player.maxResources.ep >= 10;
+        const epUpgradeAttr = epUpgradeDisabled ? ' disabled' : '';
+        const epUpgradeTitle = epUpgradeDisabled ?
+            (player.maxResources.ep >= 10 ? ' title="EP is at maximum (10)"' : ' title="Cannot interact with this player board"') : '';
+
+        // Check if restore buttons should be disabled
+        const hpRestoreDisabled = buttonsDisabled || player.resources.hp >= player.maxResources.hp || !player.inventory.some(item => item.name === 'Blood Bag');
+        const hpRestoreAttr = hpRestoreDisabled ? ' disabled' : '';
+        const hpRestoreTitle = hpRestoreDisabled ?
+            (player.resources.hp >= player.maxResources.hp ? ' title="HP is already full"' : !player.inventory.some(item => item.name === 'Blood Bag') ? ' title="No blood bag available"' : ' title="Cannot interact with this player board"') : ' title="Use blood bag to restore 1 HP"';
+
+        const epRestoreDisabled = buttonsDisabled || player.resources.ep >= player.maxResources.ep || !player.inventory.some(item => item.name === 'Beer');
+        const epRestoreAttr = epRestoreDisabled ? ' disabled' : '';
+        const epRestoreTitle = epRestoreDisabled ?
+            (player.resources.ep >= player.maxResources.ep ? ' title="EP is already full"' : !player.inventory.some(item => item.name === 'Beer') ? ' title="No beer available"' : ' title="Cannot interact with this player board"') : ' title="Use beer to restore 1 EP"';
+
+        // Calculate current inventory size for capacity display
+        const currentInventorySize = this.getInventorySize(player);
+
+        board.innerHTML = `
+            <!-- Player Name and Score Header -->
+            <div class="collapsed-header">
+                <h3 class="collapsed-player-name">
+                    ${player.color ? `<span class="player-color-indicator" style="background-color: ${player.color.background}; border-color: ${player.color.border};"></span>` : ''}
+                    ${player.name}
+                </h3>
+                <div class="collapsed-score">
+                    <span class="score-label">Score:</span>
+                    <span class="score-value" id="p${player.id}-score">${player.score}</span>
+                </div>
+                <div class="collapsed-weapon">
+                    <span id="p${player.id}-weapon-name">${player.weapon.name}</span>
+                </div>
+            </div>
+
+            <!-- Left Column: HP and EP -->
+            <div class="collapsed-left-col">
+                <!-- HP Section -->
+                <div class="collapsed-hp-section">
+                    <div class="collapsed-stat-header">
+                        <span class="stat-label">HP</span>
+                        <span class="stat-value" id="p${player.id}-hp">${player.resources.hp}</span>
+                        <span class="stat-max">/${player.maxResources.hp}</span>
+                    </div>
+                    <div class="collapsed-buttons">
+                        <button class="collapsed-btn upgrade-btn" onclick="game.addToUpgrade(${player.id}, 'hp')"${hpUpgradeAttr}${hpUpgradeTitle}>Upgrade: ${player.upgradeProgress.hp}/3</button>
+                        <button class="collapsed-btn restore-btn hp-restore" onclick="game.restoreHP(${player.id})"${hpRestoreAttr}${hpRestoreTitle}>Restore</button>
+                    </div>
+                </div>
+
+                <!-- EP Section -->
+                <div class="collapsed-ep-section">
+                    <div class="collapsed-stat-header">
+                        <span class="stat-label">EP</span>
+                        <span class="stat-value" id="p${player.id}-ep">${player.resources.ep}</span>
+                        <span class="stat-max">/${player.maxResources.ep}</span>
+                    </div>
+                    <div class="collapsed-buttons">
+                        <button class="collapsed-btn upgrade-btn" onclick="game.addToUpgrade(${player.id}, 'ep')"${epUpgradeAttr}${epUpgradeTitle}>Upgrade: ${player.upgradeProgress.ep}/4</button>
+                        <button class="collapsed-btn restore-btn ep-restore" onclick="game.restoreEP(${player.id})"${epRestoreAttr}${epRestoreTitle}>Restore</button>
+                    </div>
+                </div>
+
+                <!-- Money and Capacity -->
+                <div class="collapsed-resources">
+                    <div class="collapsed-resource-row">
+                        <span class="resource-label">$</span>
+                        <span class="resource-value" id="p${player.id}-money">${player.resources.money}</span>
+                        <span class="resource-max">/15</span>
+                    </div>
+                    <div class="collapsed-resource-row">
+                        <span class="resource-label">Capacity</span>
+                        <span class="resource-value" id="p${player.id}-capacity">${currentInventorySize}/${player.maxInventoryCapacity}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: EXP and Dice -->
+            <div class="collapsed-right-col">
+                <!-- EXP -->
+                <div class="collapsed-exp-section">
+                    <div class="collapsed-stat-header">
+                        <span class="stat-label">EXP</span>
+                        <span class="stat-value" id="p${player.id}-exp">${player.resources.exp}</span>
+                        <span class="stat-max">/15</span>
+                    </div>
+                </div>
+
+                <!-- Attack Dice -->
+                <div class="collapsed-dice-section">
+                    <div class="collapsed-dice-row">
+                        <span class="dice-icon">⚔️</span>
+                        <span class="dice-value" id="p${player.id}-attack-dice">${player.weapon.currentAttackDice}</span>
+                        <button class="collapsed-btn upgrade-btn" onclick="game.upgradeWeapon(${player.id}, 'attack')"${disabledAttr}${disabledTitle}>Upgrade (<span id="p${player.id}-req-exp-attack">${player.weapon.reqExpAttack}</span>)</button>
+                    </div>
+                </div>
+
+                <!-- Defense Dice -->
+                <div class="collapsed-dice-section">
+                    <div class="collapsed-dice-row">
+                        <span class="dice-icon">🛡️</span>
+                        <span class="dice-value" id="p${player.id}-defense-dice">${player.weapon.currentDefenseDice}</span>
+                        <button class="collapsed-btn upgrade-btn" onclick="game.upgradeWeapon(${player.id}, 'defense')"${disabledAttr}${disabledTitle}>Upgrade (<span id="p${player.id}-req-exp-defense">3</span>)</button>
+                    </div>
+                </div>
+
+                <!-- Popularity Track -->
+                <div class="collapsed-popularity-section">
+                    <span class="popularity-label">Popularity:</span>
+                    <span class="popularity-value" id="p${player.id}-popularity-collapsed">${player.popularityTrack.pointToken}/${player.popularityTrack.rewardToken}</span>
+                </div>
+            </div>
+        `;
+
+        return board;
+    }
+
+    restoreHP(playerId) {
+        const player = this.players.find(p => p.id === playerId);
+        if (!player) return;
+
+        // Check if HP is already full
+        if (player.resources.hp >= player.maxResources.hp) {
+            alert('HP is already full!');
+            return;
+        }
+
+        // Check if player has blood bag
+        const bloodBagIndex = player.inventory.findIndex(item => item.name === 'Blood Bag');
+        if (bloodBagIndex === -1) {
+            alert('No blood bag available to restore HP!');
+            return;
+        }
+
+        // Use blood bag to restore 1 HP
+        player.inventory.splice(bloodBagIndex, 1);
+        this.modifyResource(playerId, 'hp', 1);
+        this.addLogEntry(`${player.name} used blood bag to restore 1 HP (${player.resources.hp}/${player.maxResources.hp})`, player.color?.background);
+
+        // Update displays
+        this.updateResourceDisplay(playerId);
+        this.updateInventoryDisplay(playerId);
+
+        // Refresh the player board to update button states
+        if (this.boardsCollapsed) {
+            this.refreshPlayerBoard(playerId);
+        }
+    }
+
+    restoreEP(playerId) {
+        const player = this.players.find(p => p.id === playerId);
+        if (!player) return;
+
+        // Check if EP is already full
+        if (player.resources.ep >= player.maxResources.ep) {
+            alert('EP is already full!');
+            return;
+        }
+
+        // Check if player has beer
+        const beerIndex = player.inventory.findIndex(item => item.name === 'Beer');
+        if (beerIndex === -1) {
+            alert('No beer available to restore EP!');
+            return;
+        }
+
+        // Use beer to restore 1 EP
+        player.inventory.splice(beerIndex, 1);
+        this.modifyResource(playerId, 'ep', 1);
+        this.addLogEntry(`${player.name} used beer to restore 1 EP (${player.resources.ep}/${player.maxResources.ep})`, player.color?.background);
+
+        // Update displays
+        this.updateResourceDisplay(playerId);
+        this.updateInventoryDisplay(playerId);
+
+        // Refresh the player board to update button states
+        if (this.boardsCollapsed) {
+            this.refreshPlayerBoard(playerId);
+        }
+    }
+
+    refreshPlayerBoard(playerId) {
+        const player = this.players.find(p => p.id === playerId);
+        if (!player) return;
+
+        const container = document.getElementById('player-boards-container');
+        const oldBoard = document.getElementById(`player-${playerId}-board`);
+
+        if (!oldBoard || !container) return;
+
+        // Create new board based on current collapse state
+        const newBoard = this.boardsCollapsed ?
+            this.createCollapsedPlayerBoardHTML(player) :
+            this.createPlayerBoardHTML(player);
+
+        // Replace old board with new one
+        container.replaceChild(newBoard, oldBoard);
+
+        // Update common displays for this player
+        this.updateResourceDisplay(playerId);
+
+        // Only update expanded-view elements if not collapsed
+        if (!this.boardsCollapsed) {
+            this.updateInventoryDisplay(playerId);
+            this.updateDamageGrid(playerId);
+            this.updatePopularityTrackDisplay(playerId);
+            if (typeof this.updatePowerTrackPosition === 'function') {
+                this.updatePowerTrackPosition(playerId);
+            }
+            this.updateMilestoneCheckboxes(playerId);
+        }
+    }
+
+    toggleAllPlayerBoards() {
+        // Toggle the collapse state
+        this.boardsCollapsed = !this.boardsCollapsed;
+
+        const container = document.getElementById('player-boards-container');
+        if (!container) return;
+
+        // Toggle the collapsed class on the container
+        if (this.boardsCollapsed) {
+            container.classList.add('collapsed');
+        } else {
+            container.classList.remove('collapsed');
+        }
+
+        // Replace all player boards with new versions
+        this.players.forEach(player => {
+            const oldBoard = document.getElementById(`player-${player.id}-board`);
+            if (!oldBoard) return;
+
+            const newBoard = this.boardsCollapsed ?
+                this.createCollapsedPlayerBoardHTML(player) :
+                this.createPlayerBoardHTML(player);
+
+            container.replaceChild(newBoard, oldBoard);
+
+            // Update common displays for this player
+            this.updateResourceDisplay(player.id);
+
+            // Only update expanded-view elements if not collapsed
+            if (!this.boardsCollapsed) {
+                this.updateInventoryDisplay(player.id);
+                this.updateDamageGrid(player.id);
+                this.updatePopularityTrackDisplay(player.id);
+                if (typeof this.updatePowerTrackPosition === 'function') {
+                    this.updatePowerTrackPosition(player.id);
+                }
+                this.updateMilestoneCheckboxes(player.id);
+            }
+        });
+
+        // Update the toggle button text
+        const toggleBtn = document.getElementById('toggle-boards-btn');
+        if (toggleBtn) {
+            toggleBtn.textContent = this.boardsCollapsed ? 'Expand All Boards' : 'Collapse All Boards';
+        }
+    }
+
     getRandomWeapons(count) {
         // Create a copy of weapons array to avoid modifying original
         const availableWeapons = [...this.weapons];
@@ -3740,10 +4030,10 @@ class Game {
         // Reset all milestone checkboxes for all players
         this.players.forEach(player => {
             const checkboxIds = [
-                `p${player.id}-ep-milestone-8`, `p${player.id}-ep-milestone-10`,
-                `p${player.id}-hp-milestone-8`, `p${player.id}-hp-milestone-10`
+                `p${player.id}-hp-milestone-6`, `p${player.id}-hp-milestone-8`, `p${player.id}-hp-milestone-10`,
+                `p${player.id}-ep-milestone-8`, `p${player.id}-ep-milestone-10`
             ];
-            
+
             checkboxIds.forEach(id => {
                 const checkbox = document.getElementById(id);
                 if (checkbox) {
@@ -3751,6 +4041,30 @@ class Game {
                 }
             });
         });
+    }
+
+    updateMilestoneCheckboxes(playerId) {
+        // Skip UI updates in automated mode
+        if (this.isAutomatedMode) return;
+
+        const player = this.players.find(p => p.id === playerId);
+        if (!player) return;
+
+        // Update HP milestones
+        const hp6Checkbox = document.getElementById(`p${playerId}-hp-milestone-6`);
+        const hp8Checkbox = document.getElementById(`p${playerId}-hp-milestone-8`);
+        const hp10Checkbox = document.getElementById(`p${playerId}-hp-milestone-10`);
+
+        if (hp6Checkbox) hp6Checkbox.checked = player.maxResources.hp >= 6;
+        if (hp8Checkbox) hp8Checkbox.checked = player.maxResources.hp >= 8;
+        if (hp10Checkbox) hp10Checkbox.checked = player.maxResources.hp >= 10;
+
+        // Update EP milestones
+        const ep8Checkbox = document.getElementById(`p${playerId}-ep-milestone-8`);
+        const ep10Checkbox = document.getElementById(`p${playerId}-ep-milestone-10`);
+
+        if (ep8Checkbox) ep8Checkbox.checked = player.maxResources.ep >= 8;
+        if (ep10Checkbox) ep10Checkbox.checked = player.maxResources.ep >= 10;
     }
     
     resetGame() {
@@ -3813,7 +4127,7 @@ class Game {
     updateResourceDisplay() {
         // Skip UI updates in automated mode for performance
         if (this.isAutomatedMode) return;
-        
+
         this.players.forEach(player => {
             const prefix = `p${player.id}`;
             const moneyEl = document.getElementById(`${prefix}-money`);
@@ -3827,7 +4141,7 @@ class Game {
             if (hpEl) hpEl.textContent = player.resources.hp;
             if (epEl) epEl.textContent = player.resources.ep;
             if (scoreEl) scoreEl.textContent = player.score;
-            
+
             // Update max values for HP and EP since they can change
             if (player.maxResources) {
                 const hpMaxElement = document.querySelector(`#player-${player.id}-board .hp-section .stat-max`);
@@ -3835,15 +4149,18 @@ class Game {
                 if (hpMaxElement) hpMaxElement.textContent = `/${player.maxResources.hp}`;
                 if (epMaxElement) epMaxElement.textContent = `/${player.maxResources.ep}`;
             }
-            
-            // Update inventory display
-            this.updateInventoryDisplay(player.id);
-            
-            // Update weapon power display
-            this.updateWeaponPowerDisplay(player.id);
-            
-            // Update damage grid display
-            this.updateDamageGrid(player.id);
+
+            // Only update expanded-view elements if boards are not collapsed
+            if (!this.boardsCollapsed) {
+                // Update inventory display
+                this.updateInventoryDisplay(player.id);
+
+                // Update weapon power display
+                this.updateWeaponPowerDisplay(player.id);
+
+                // Update damage grid display
+                this.updateDamageGrid(player.id);
+            }
         });
     }
     
@@ -3909,48 +4226,55 @@ class Game {
     // Unified player display update function
     updatePlayerDisplay(playerId) {
         if (this.isAutomatedMode) return;
-        
+
         const player = this.players.find(p => p.id === playerId);
         if (!player) return;
-        
+
         const prefix = `p${playerId}`;
-        
-        // Update upgrade progress
-        const epProgress = document.getElementById(`${prefix}-ep-progress`);
-        const hpProgress = document.getElementById(`${prefix}-hp-progress`);
-        if (epProgress) epProgress.textContent = `${player.upgradeProgress.ep}/4`;
-        if (hpProgress) hpProgress.textContent = `${player.upgradeProgress.hp}/3`;
-        
-        // Update weapon display
+
+        // Update weapon display (exists in both views)
         const weaponName = document.getElementById(`${prefix}-weapon-name`);
         if (weaponName) weaponName.textContent = player.weapon.name;
-        
+
         const attackDice = document.getElementById(`${prefix}-attack-dice`);
         const defenseDice = document.getElementById(`${prefix}-defense-dice`);
         if (attackDice) attackDice.textContent = player.weapon.currentAttackDice;
         if (defenseDice) defenseDice.textContent = player.weapon.currentDefenseDice;
-        
-        const capacity = document.getElementById(`${prefix}-capacity`);
-        if (capacity) capacity.textContent = `${this.getInventorySize(player)}/${player.maxInventoryCapacity}`;
-        
+
         const reqExpAttack = document.getElementById(`${prefix}-req-exp-attack`);
         const reqExpDefense = document.getElementById(`${prefix}-req-exp-defense`);
         if (reqExpAttack) reqExpAttack.textContent = player.weapon.reqExpAttack;
         if (reqExpDefense) reqExpDefense.textContent = player.weapon.reqExpDefense;
-        
-        // Update damage grid
-        this.updateDamageGrid(playerId);
-        
-        // Update weapon power display
-        this.updateWeaponPowerDisplay(playerId);
-        this.updateWeaponPowerDescriptions(playerId);
-        
-        // Update ammunition displays
-        this.updateBulletDisplay(playerId);
-        this.updateBatteryDisplay(playerId);
-        
-        // Update inventory items
-        this.updateInventoryItems(playerId);
+
+        // Update capacity (same format for both collapsed and expanded views)
+        const capacity = document.getElementById(`${prefix}-capacity`);
+        if (capacity) {
+            // Both views show current/max format
+            capacity.textContent = `${this.getInventorySize(player)}/${player.maxInventoryCapacity}`;
+        }
+
+        // Only update expanded-view elements if boards are not collapsed
+        if (!this.boardsCollapsed) {
+            // Update upgrade progress (only in expanded view)
+            const epProgress = document.getElementById(`${prefix}-ep-progress`);
+            const hpProgress = document.getElementById(`${prefix}-hp-progress`);
+            if (epProgress) epProgress.textContent = `${player.upgradeProgress.ep}/4`;
+            if (hpProgress) hpProgress.textContent = `${player.upgradeProgress.hp}/3`;
+
+            // Update damage grid
+            this.updateDamageGrid(playerId);
+
+            // Update weapon power display
+            this.updateWeaponPowerDisplay(playerId);
+            this.updateWeaponPowerDescriptions(playerId);
+
+            // Update ammunition displays
+            this.updateBulletDisplay(playerId);
+            this.updateBatteryDisplay(playerId);
+
+            // Update inventory items
+            this.updateInventoryItems(playerId);
+        }
     }
     
     // Separate function for inventory items only
@@ -5400,13 +5724,16 @@ class Game {
     
     updateBulletDisplay(playerId) {
         if (this.isAutomatedMode) return;
-        
+
         const player = this.players.find(p => p.id === playerId);
         if (!player) return;
-        
+
         const bulletStat = document.getElementById(`p${playerId}-bullets-stat`);
         const bulletCount = document.getElementById(`p${playerId}-bullet-count`);
-        
+
+        // Return early if elements don't exist (e.g., in collapsed view)
+        if (!bulletStat || !bulletCount) return;
+
         // Show bullet display only for Rifle players with Level 1 power
         if (player.weapon.name === 'Rifle' && player.weapon.powerTrackPosition >= 1) {
             const bullets = player.inventory.filter(item => item.name === 'Bullet').length;
@@ -5416,16 +5743,19 @@ class Game {
             bulletStat.style.display = 'none';
         }
     }
-    
+
     updateBatteryDisplay(playerId) {
         if (this.isAutomatedMode) return;
-        
+
         const player = this.players.find(p => p.id === playerId);
         if (!player) return;
-        
+
         const batteryStat = document.getElementById(`p${playerId}-batteries-stat`);
         const batteryCount = document.getElementById(`p${playerId}-battery-count`);
-        
+
+        // Return early if elements don't exist (e.g., in collapsed view)
+        if (!batteryStat || !batteryCount) return;
+
         // Show battery display only for Plasma players with Level 1 power
         if (player.weapon.name === 'Plasma' && player.weapon.powerTrackPosition >= 1) {
             if (player.weapon.powerTrackPosition >= 7) {
@@ -5624,6 +5954,14 @@ class Game {
         
         trackHTML += '</div>';
         trackElement.innerHTML = trackHTML;
+
+        // Also update collapsed popularity display if in collapsed mode
+        if (this.boardsCollapsed) {
+            const collapsedPopElement = document.getElementById(`p${playerId}-popularity-collapsed`);
+            if (collapsedPopElement) {
+                collapsedPopElement.textContent = `${player.popularityTrack.pointToken}/${player.popularityTrack.rewardToken}`;
+            }
+        }
     }
     
     updatePopularityTrack() {
@@ -5725,12 +6063,17 @@ class Game {
                 this.updateInventoryDisplay(player.id);
             });
             this.updateResourceDisplay();
-            
+
+            // Refresh collapsed board if in collapsed mode
+            if (this.boardsCollapsed) {
+                this.refreshPlayerBoard(playerId);
+            }
+
             // Update store capacity display if in store phase
             if (this.roundPhase === 'store') {
                 this.updateStoreCapacityDisplay();
             }
-            
+
             // Update location card states if in selection phase and EP was upgraded
             if (this.roundPhase === 'selection' && upgradeType === 'ep' && player.id === this.currentPlayer.id) {
                 this.updateLocationCardStates();
@@ -7965,15 +8308,18 @@ class Game {
         if (this.isAutomatedMode) return;
         const player = this.players.find(p => p.id === playerId);
         if (!player) return;
-        
+
         const token = document.getElementById(`p${playerId}-power-token`);
+        // Return early if token doesn't exist (e.g., in collapsed view)
+        if (!token) return;
+
         const position = player.weapon.powerTrackPosition;
-        
+
         // Set token color to match player color
         const playerColors = this.getPlayerColors(playerId);
         token.style.backgroundColor = playerColors.background;
         token.style.border = `2px solid ${playerColors.border}`;
-        
+
         // Calculate token position to center in each track space
         // With 7 spaces, each space takes up 1/7 of the track width
         // Position 1 centers at 1/14, position 2 at 3/14, etc.
@@ -7994,11 +8340,15 @@ class Game {
     updateWeaponPowerDescriptions(playerId) {
         const player = this.players.find(p => p.id === playerId);
         if (!player || !player.weapon) return;
-        
-        // Update power descriptions
-        document.getElementById(`p${playerId}-power-desc-1`).textContent = player.weapon.lv1Power || 'No power';
-        document.getElementById(`p${playerId}-power-desc-2`).textContent = player.weapon.lv2Power || 'No power';
-        document.getElementById(`p${playerId}-power-desc-3`).textContent = player.weapon.lv3Power || 'No power';
+
+        // Update power descriptions (only exist in expanded view)
+        const powerDesc1 = document.getElementById(`p${playerId}-power-desc-1`);
+        const powerDesc2 = document.getElementById(`p${playerId}-power-desc-2`);
+        const powerDesc3 = document.getElementById(`p${playerId}-power-desc-3`);
+
+        if (powerDesc1) powerDesc1.textContent = player.weapon.lv1Power || 'No power';
+        if (powerDesc2) powerDesc2.textContent = player.weapon.lv2Power || 'No power';
+        if (powerDesc3) powerDesc3.textContent = player.weapon.lv3Power || 'No power';
     }
     
     activateWeaponPower(playerId, level, battleActions = null) {
