@@ -2252,10 +2252,10 @@ class Game {
     updateResourceDisplay() {
         // Skip UI updates in automated mode for performance
         if (this.isAutomatedMode) return;
-        
+
         this.players.forEach(player => {
             const playerId = player.id;
-            
+
             // Update resource values
             const elements = {
                 money: document.getElementById(`p${playerId}-money`),
@@ -2264,31 +2264,105 @@ class Game {
                 ep: document.getElementById(`p${playerId}-ep`),
                 score: document.getElementById(`p${playerId}-score`)
             };
-            
+
             Object.entries(elements).forEach(([resource, element]) => {
                 if (element) {
                     if (resource === 'score') {
                         element.textContent = player.score;
-                        // Update score token position when score changes
                     } else {
                         element.textContent = player.resources[resource];
                     }
                 }
             });
-            
-            // Update max resource displays
+
+            // Update max resource displays (expanded board)
             const maxElements = {
                 hp: document.querySelector(`#p${playerId}-hp + .resource-max`),
                 ep: document.querySelector(`#p${playerId}-ep + .resource-max`)
             };
-            
+
             if (maxElements.hp) {
                 maxElements.hp.textContent = `/${player.maxResources.hp}`;
             }
             if (maxElements.ep) {
                 maxElements.ep.textContent = `/${player.maxResources.ep}`;
             }
+
+            // Update collapsed board display
+            this.updateCollapsedBoardDisplay(player);
         });
+    }
+
+    updateCollapsedBoardDisplay(player) {
+        // Skip UI updates in automated mode for performance
+        if (this.isAutomatedMode) return;
+
+        const collapsedBoard = document.querySelector(`#player-board-${player.id} .player-board-collapsed`);
+        if (!collapsedBoard) return;
+
+        // Update max HP/EP displays
+        const hpMaxElement = collapsedBoard.querySelector('.collapsed-hp-section .stat-max');
+        if (hpMaxElement) {
+            hpMaxElement.textContent = `/${player.maxResources.hp}`;
+        }
+
+        const epMaxElement = collapsedBoard.querySelector('.collapsed-ep-section .stat-max');
+        if (epMaxElement) {
+            epMaxElement.textContent = `/${player.maxResources.ep}`;
+        }
+
+        // Update restore button states
+        this.updateRestoreButtons(player, collapsedBoard);
+
+        // Update popularity track
+        const popularityElement = document.getElementById(`p${player.id}-popularity-collapsed`);
+        if (popularityElement) {
+            popularityElement.textContent = `${player.popularityTrack.pointToken}/${player.popularityTrack.rewardToken}`;
+        }
+
+        // Update upgrade progress buttons
+        const hpUpgradeBtn = collapsedBoard.querySelector('.collapsed-hp-section .upgrade-btn');
+        if (hpUpgradeBtn) {
+            hpUpgradeBtn.textContent = `Upgrade: ${player.upgradeProgress.hp}/3`;
+        }
+
+        const epUpgradeBtn = collapsedBoard.querySelector('.collapsed-ep-section .upgrade-btn');
+        if (epUpgradeBtn) {
+            epUpgradeBtn.textContent = `Upgrade: ${player.upgradeProgress.ep}/4`;
+        }
+    }
+
+    updateRestoreButtons(player, collapsedBoard) {
+        const hasBloodBag = player.inventory.some(item => item.name === 'Blood Bag');
+        const hasBeer = player.inventory.some(item => item.name === 'Beer');
+        const hpFull = player.resources.hp >= player.maxResources.hp;
+        const epFull = player.resources.ep >= player.maxResources.ep;
+
+        // Update HP restore button
+        const hpRestoreBtn = collapsedBoard.querySelector('.hp-restore');
+        if (hpRestoreBtn) {
+            hpRestoreBtn.disabled = !hasBloodBag || hpFull;
+            if (!hasBloodBag) {
+                hpRestoreBtn.title = 'No Blood Bag available';
+            } else if (hpFull) {
+                hpRestoreBtn.title = 'HP is already full';
+            } else {
+                hpRestoreBtn.title = 'Restore HP using Blood Bag';
+            }
+        }
+
+        // Update EP restore button
+        const epRestoreBtn = collapsedBoard.querySelector('.ep-restore');
+        if (epRestoreBtn) {
+            epRestoreBtn.disabled = !hasBeer || epFull;
+            if (!hasBeer) {
+                epRestoreBtn.title = 'No Beer available';
+            } else if (epFull) {
+                epRestoreBtn.title = 'EP is already full';
+            } else {
+                epRestoreBtn.title = 'Restore EP using Beer';
+            }
+        }
     }
     
     // Duplicate methods removed - using the main confirmSelection method below
@@ -3370,8 +3444,8 @@ class Game {
         
         
         // Force basic styling to ensure visibility, but allow CSS classes to override
-        card.style.width = '80px';
-        card.style.height = '100px';
+        card.style.width = '100px';
+        card.style.height = '50px';
         card.style.borderRadius = '8px';
         card.style.display = 'flex';
         card.style.alignItems = 'center';

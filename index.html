@@ -78,9 +78,13 @@
                 <button class="back-btn" onclick="game.backToModeSelection()">Back</button>
             </div>
         </div>
-        
-        <!-- Player Boards -->
-        <div class="player-boards-controls">
+
+        <!-- Main Game Layout Wrapper -->
+        <div class="main-game-layout">
+            <!-- Left Column: Player Boards + Game Board + Game Status -->
+            <div class="main-left-column">
+                <!-- Player Boards -->
+                <div class="player-boards-controls">
             <button id="toggle-boards-btn" class="toggle-boards-btn" onclick="game.toggleAllPlayerBoards()" style="display: none;">Collapse All Boards</button>
         </div>
         <div class="player-boards" id="player-boards-container">
@@ -136,8 +140,16 @@
             </div>
         </div>
 
-        <!-- Player Area -->
-        <div class="player-area">
+                <!-- Game Status -->
+                <div class="game-status">
+                    <p id="status-message">Player 1: Select locations for your Hunter and Apprentice</p>
+                </div>
+            </div>
+
+            <!-- Right Column: Player Area -->
+            <div class="main-right-column">
+                <!-- Player Area -->
+                <div class="player-area">
             <div class="current-player">
                 <h2>Current Player: <span id="current-player-name">Player 1</span></h2>
             </div>
@@ -178,12 +190,9 @@
                 <button id="next-player" style="display: none;">Next Player</button>
             </div>
         </div>
-
-        <!-- Game Status -->
-        <div class="game-status">
-            <p id="status-message">Player 1: Select locations for your Hunter and Apprentice</p>
+            </div>
         </div>
-        
+
         <!-- Station Choice Modal -->
         <div id="station-modal" class="modal" style="display: none;">
             <div class="modal-content">
