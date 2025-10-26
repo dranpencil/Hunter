@@ -5992,9 +5992,10 @@ class Game {
         if (this.isAutomatedMode) return;
         const player = this.players.find(p => p.id === playerId);
         if (!player) return;
-        
+
         const trackElement = document.getElementById(`p${playerId}-popularity-track`);
-        if (!trackElement) return;
+        // Only return early if element doesn't exist AND boards are not collapsed
+        if (!trackElement && !this.boardsCollapsed) return;
         
         // Define track levels with rewards
         const trackLevels = [
@@ -6031,7 +6032,11 @@ class Game {
         });
         
         trackHTML += '</div>';
-        trackElement.innerHTML = trackHTML;
+
+        // Update expanded track only if element exists
+        if (trackElement) {
+            trackElement.innerHTML = trackHTML;
+        }
 
         // Also update collapsed popularity display if in collapsed mode
         if (this.boardsCollapsed) {
@@ -7195,7 +7200,13 @@ class Game {
         } else {
             petInfo.innerHTML = '';
         }
-        
+
+        // Reset Knife 2x damage button for new battle
+        const tripleDamageBtn = document.getElementById('battle-triple-damage-btn');
+        if (tripleDamageBtn) {
+            tripleDamageBtn.style.display = 'none';
+        }
+
         // Update battle phase
         this.updateBattlePhase();
         

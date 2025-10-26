@@ -1,7 +1,7 @@
-# Hunter & Apprentice Board Game System Documentation
+# Rock, Paper, Hunter Board Game System Documentation
 
 ## Overview
-Hunter & Apprentice is a strategic digital board game for 2-4 players where each player controls a Hunter and an Apprentice token, placing them on 7 different locations to gather resources, fight monsters, and score points. The game features sophisticated AI opponents, 11 unique weapons with special powers, and dynamic resource management.
+Rock, Paper, Hunter is a strategic digital board game for 2-4 players where each player controls a Hunter and an Apprentice token, placing them on 7 different locations to gather resources, fight monsters, and score points. The game features sophisticated AI opponents, 11 unique weapons with special powers, and dynamic resource management.
 
 ## Core Game Architecture
 

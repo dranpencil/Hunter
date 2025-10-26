@@ -119,6 +119,7 @@ h1 {
     gap: 10px;
     margin-bottom: 15px;
     width: 100%;
+    min-width: 1120px;
 }
 
 /* Dynamic grid layouts based on player count */
