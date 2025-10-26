@@ -1007,7 +1007,7 @@ h1 {
 
 .store-items-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    grid-template-columns: repeat(3, 1fr);
     gap: 8px;
     margin-bottom: 10px;
 }
@@ -1043,7 +1043,7 @@ h1 {
 }
 
 .item-icon-large {
-    font-size: 48px;
+    font-size: 36px;
     margin-bottom: 5px;
 }
 
@@ -2294,6 +2294,12 @@ button {
 .collapsed-stat-header .stat-max {
     color: #95a5a6;
     font-size: 14px;
+}
+
+.collapsed-stat-header .inventory-counter {
+    margin-left: auto;
+    font-size: 10px;
+    color: #95a5a6;
 }
 
 /* Collapsed Buttons */

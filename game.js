@@ -2292,6 +2292,9 @@ class Game {
                 maxElements.ep.textContent = `/${player.maxResources.ep}`;
             }
 
+            // Update expanded board restore buttons
+            this.updateExpandedRestoreButtons(playerId);
+
             // Update collapsed board display
             this.updateCollapsedBoardDisplay(player);
         });
@@ -2301,8 +2304,8 @@ class Game {
         // Skip UI updates in automated mode for performance
         if (this.isAutomatedMode) return;
 
-        const collapsedBoard = document.querySelector(`#player-board-${player.id} .player-board-collapsed`);
-        if (!collapsedBoard) return;
+        const collapsedBoard = document.getElementById(`player-${player.id}-board`);
+        if (!collapsedBoard || !collapsedBoard.classList.contains('collapsed')) return;
 
         // Update max HP/EP displays
         const hpMaxElement = collapsedBoard.querySelector('.collapsed-hp-section .stat-max');
@@ -2334,6 +2337,20 @@ class Game {
         if (epUpgradeBtn) {
             epUpgradeBtn.textContent = `Upgrade: ${player.upgradeProgress.ep}/4`;
         }
+
+        // Update inventory counters
+        const bloodBagCount = player.inventory.filter(item => item.name === 'Blood Bag').length;
+        const beerCount = player.inventory.filter(item => item.name === 'Beer').length;
+
+        const bloodBagCounter = document.getElementById(`p${player.id}-bloodbag-count`);
+        if (bloodBagCounter) {
+            bloodBagCounter.textContent = `🩸 ${bloodBagCount}`;
+        }
+
+        const beerCounter = document.getElementById(`p${player.id}-beer-count`);
+        if (beerCounter) {
+            beerCounter.textContent = `🍺 ${beerCount}`;
+        }
     }
 
     updateRestoreButtons(player, collapsedBoard) {
@@ -2357,6 +2374,45 @@ class Game {
 
         // Update EP restore button
         const epRestoreBtn = collapsedBoard.querySelector('.ep-restore');
+        if (epRestoreBtn) {
+            epRestoreBtn.disabled = !hasBeer || epFull;
+            if (!hasBeer) {
+                epRestoreBtn.title = 'No Beer available';
+            } else if (epFull) {
+                epRestoreBtn.title = 'EP is already full';
+            } else {
+                epRestoreBtn.title = 'Restore EP using Beer';
+            }
+        }
+    }
+
+    updateExpandedRestoreButtons(playerId) {
+        // Skip UI updates in automated mode for performance
+        if (this.isAutomatedMode) return;
+
+        const player = this.players.find(p => p.id === playerId);
+        if (!player) return;
+
+        const hasBloodBag = player.inventory.some(item => item.name === 'Blood Bag');
+        const hasBeer = player.inventory.some(item => item.name === 'Beer');
+        const hpFull = player.resources.hp >= player.maxResources.hp;
+        const epFull = player.resources.ep >= player.maxResources.ep;
+
+        // Update HP restore button
+        const hpRestoreBtn = document.getElementById(`p${playerId}-hp-restore-btn`);
+        if (hpRestoreBtn) {
+            hpRestoreBtn.disabled = !hasBloodBag || hpFull;
+            if (!hasBloodBag) {
+                hpRestoreBtn.title = 'No Blood Bag available';
+            } else if (hpFull) {
+                hpRestoreBtn.title = 'HP is already full';
+            } else {
+                hpRestoreBtn.title = 'Restore HP using Blood Bag';
+            }
+        }
+
+        // Update EP restore button
+        const epRestoreBtn = document.getElementById(`p${playerId}-ep-restore-btn`);
         if (epRestoreBtn) {
             epRestoreBtn.disabled = !hasBeer || epFull;
             if (!hasBeer) {
@@ -2396,10 +2452,10 @@ class Game {
         return [
             { name: 'Beer', price: 2, size: 1 },
             { name: 'Blood Bag', price: 2, size: 1 },
+            { name: 'Fake Blood', price: 2, size: 2 },
             { name: 'Grenade', price: 2, size: 2 },
             { name: 'Bomb', price: 4, size: 3 },
             { name: 'Dynamite', price: 6, size: 4 },
-            { name: 'Fake Blood', price: 2, size: 2 },
             { name: 'Bullet', price: 2, size: 1 },
             { name: 'Battery', price: 2, size: 1 }
         ];
@@ -2800,12 +2856,13 @@ class Game {
                         <span class="stat-label">HP</span>
                         <span class="stat-value" id="p${player.id}-hp">${player.resources.hp}</span>
                         <span class="stat-max">/${player.maxResources.hp}</span>
+                        <button class="small-btn" onclick="game.restoreHP(${player.id})"${disabledAttr} id="p${player.id}-hp-restore-btn">+🩸</button>
                     </div>
                     <div class="upgrade-section">
                         <div class="upgrade-bar">
                             <span>Upgrade:</span>
                             <span id="p${player.id}-hp-progress">${player.upgradeProgress.hp}/3</span>
-                            <button class="small-btn" onclick="game.addToUpgrade(${player.id}, 'hp')"${hpUpgradeAttr}${hpUpgradeTitle}>+🩸</button>
+                            <button class="small-btn" onclick="game.addToUpgrade(${player.id}, 'hp')"${hpUpgradeAttr}${hpUpgradeTitle}>Max⬆️</button>
                         </div>
                         <div class="milestones">
                             <label><input type="checkbox" id="p${player.id}-hp-milestone-6" disabled> 6(+2pts)</label>
@@ -2821,12 +2878,13 @@ class Game {
                         <span class="stat-label">EP</span>
                         <span class="stat-value" id="p${player.id}-ep">${player.resources.ep}</span>
                         <span class="stat-max">/${player.maxResources.ep}</span>
+                        <button class="small-btn" onclick="game.restoreEP(${player.id})"${disabledAttr} id="p${player.id}-ep-restore-btn">+🍺</button>
                     </div>
                     <div class="upgrade-section">
                         <div class="upgrade-bar">
                             <span>Upgrade:</span>
                             <span id="p${player.id}-ep-progress">${player.upgradeProgress.ep}/4</span>
-                            <button class="small-btn" onclick="game.addToUpgrade(${player.id}, 'ep')"${epUpgradeAttr}${epUpgradeTitle}>+🍺</button>
+                            <button class="small-btn" onclick="game.addToUpgrade(${player.id}, 'ep')"${epUpgradeAttr}${epUpgradeTitle}>Max⬆️</button>
                         </div>
                         <div class="milestones">
                             <label><input type="checkbox" id="p${player.id}-ep-milestone-8" disabled> 8(+2pts)</label>
@@ -3039,10 +3097,11 @@ class Game {
                         <span class="stat-label">HP</span>
                         <span class="stat-value" id="p${player.id}-hp">${player.resources.hp}</span>
                         <span class="stat-max">/${player.maxResources.hp}</span>
+                        <span class="inventory-counter" id="p${player.id}-bloodbag-count">🩸 ${player.inventory.filter(item => item.name === 'Blood Bag').length}</span>
                     </div>
                     <div class="collapsed-buttons">
                         <button class="collapsed-btn upgrade-btn" onclick="game.addToUpgrade(${player.id}, 'hp')"${hpUpgradeAttr}${hpUpgradeTitle}>Upgrade: ${player.upgradeProgress.hp}/3</button>
-                        <button class="collapsed-btn restore-btn hp-restore" onclick="game.restoreHP(${player.id})"${hpRestoreAttr}${hpRestoreTitle}>Restore</button>
+                        <button class="collapsed-btn restore-btn hp-restore" onclick="game.restoreHP(${player.id})"${hpRestoreAttr}${hpRestoreTitle}>+🩸</button>
                     </div>
                 </div>
 
@@ -3052,10 +3111,11 @@ class Game {
                         <span class="stat-label">EP</span>
                         <span class="stat-value" id="p${player.id}-ep">${player.resources.ep}</span>
                         <span class="stat-max">/${player.maxResources.ep}</span>
+                        <span class="inventory-counter" id="p${player.id}-beer-count">🍺 ${player.inventory.filter(item => item.name === 'Beer').length}</span>
                     </div>
                     <div class="collapsed-buttons">
                         <button class="collapsed-btn upgrade-btn" onclick="game.addToUpgrade(${player.id}, 'ep')"${epUpgradeAttr}${epUpgradeTitle}>Upgrade: ${player.upgradeProgress.ep}/4</button>
-                        <button class="collapsed-btn restore-btn ep-restore" onclick="game.restoreEP(${player.id})"${epRestoreAttr}${epRestoreTitle}>Restore</button>
+                        <button class="collapsed-btn restore-btn ep-restore" onclick="game.restoreEP(${player.id})"${epRestoreAttr}${epRestoreTitle}>+🍺</button>
                     </div>
                 </div>
 
@@ -3252,7 +3312,7 @@ class Game {
         // Update the toggle button text
         const toggleBtn = document.getElementById('toggle-boards-btn');
         if (toggleBtn) {
-            toggleBtn.textContent = this.boardsCollapsed ? 'Expand All Boards' : 'Collapse All Boards';
+            toggleBtn.textContent = this.boardsCollapsed ? 'Expand' : 'Collapse';
         }
     }
 
@@ -4339,6 +4399,9 @@ class Game {
             if (epProgress) epProgress.textContent = `${player.upgradeProgress.ep}/4`;
             if (hpProgress) hpProgress.textContent = `${player.upgradeProgress.hp}/3`;
 
+            // Update restore button states
+            this.updateExpandedRestoreButtons(playerId);
+
             // Update damage grid
             this.updateDamageGrid(playerId);
 
@@ -4352,6 +4415,9 @@ class Game {
 
             // Update inventory items
             this.updateInventoryItems(playerId);
+        } else {
+            // Update collapsed board when boards are collapsed
+            this.updateCollapsedBoardDisplay(player);
         }
     }
     
@@ -4385,37 +4451,14 @@ class Game {
         const buttonsDisabled = this.shouldDisablePlayerButtons(playerId);
         
         // Display all items with their counts (0 if not owned)
+        // Note: Beer and Blood Bag no longer have Use buttons - restore buttons are now in HP/EP sections
         const htmlContent = allItems
             .map(item => {
                 const count = itemCounts[item.name] || 0;
-                let canUse = false;
-                let useButton = '';
-                
-                if (count > 0) {
-                    if (item.name === 'Beer') {
-                        // Can use beer if EP is not at maximum
-                        canUse = player.resources.ep < player.maxResources.ep;
-                        const disabled = (!canUse || buttonsDisabled) ? ' disabled' : '';
-                        const title = buttonsDisabled ? 'Cannot interact with this player board' : 
-                                     (canUse ? 'Use Beer (+1 EP)' : 'EP is already at maximum');
-                        useButton = `<button class="small-btn"${disabled} onclick="game.useInventoryItem(${playerId}, '${item.name}')" title="${title}">Use</button>`;
-                        
-                    } else if (item.name === 'Blood Bag') {
-                        // Can use blood bag if HP is not at maximum
-                        canUse = player.resources.hp < player.maxResources.hp;
-                        const disabled = (!canUse || buttonsDisabled) ? ' disabled' : '';
-                        const title = buttonsDisabled ? 'Cannot interact with this player board' :
-                                     (canUse ? 'Use Blood Bag (+1 HP)' : 'HP is already at maximum');
-                        useButton = `<button class="small-btn"${disabled} onclick="game.useInventoryItem(${playerId}, '${item.name}')" title="${title}">Use</button>`;
-                        
-                        // Katana Level 1 Power removed (no longer has Level 1 power)
-                    }
-                }
-                
+
                 return `<div class="inventory-item-counter" title="${item.description}">
                     <span class="item-icon">${item.icon}</span>
                     <span class="item-count" id="p${playerId}-${item.name.replace(' ', '')}-count">${count}</span>
-                    ${useButton}
                 </div>`;
             }).join('');
         
@@ -8626,10 +8669,10 @@ class Game {
         return [
             { name: 'Beer', size: 1, price: 2, effect: 'gain_1_energy', icon: '🍺', description: 'Restores 1 EP / Upgrade EP max' },
             { name: 'Blood Bag', size: 1, price: 2, effect: 'gain_1_blood', icon: '🩸', description: 'Restores 1 HP / Upgrade HP max' },
+            { name: 'Fake Blood', size: 2, price: 2, effect: 'bonus_points_on_kill', icon: '🩹', description: '+2 points when defeating monster' },
             { name: 'Grenade', size: 2, price: 2, effect: 'reduce_1_monster_hp', icon: '💣', description: '+1 damage to monster' },
             { name: 'Bomb', size: 3, price: 4, effect: 'reduce_2_monster_hp', icon: '💥', description: '+2 damage to monster' },
-            { name: 'Dynamite', size: 4, price: 6, effect: 'reduce_3_monster_hp', icon: '🧨', description: '+3 damage to monster' },
-            { name: 'Fake Blood', size: 2, price: 2, effect: 'bonus_points_on_kill', icon: '🩹', description: '+2 points when defeating monster' }
+            { name: 'Dynamite', size: 4, price: 6, effect: 'reduce_3_monster_hp', icon: '🧨', description: '+3 damage to monster' }
         ];
     }
     
