@@ -1685,9 +1685,13 @@ class Game {
         );
         const apprenticeLocation = bot.selectApprenticeLocation(this, apprenticeAvailableLocations, hunterLocation);
         player.selectedCards.apprentice = apprenticeLocation;
-        
+
+        // Track location selections for statistics
+        player.locationSelections[hunterLocation].hunter++;
+        player.locationSelections[apprenticeLocation].apprentice++;
+
         console.log(`Bot ${playerId + 1} selected: Hunter→${hunterLocation}, Apprentice→${apprenticeLocation}`);
-        
+
         // Store bot selection for batch logging
         const locationNames = {
             1: 'Work Site',
@@ -8292,7 +8296,14 @@ class Game {
         if (!wasTamed && monster.effectId) {
             this.applyDeathEffect(monster.effectId, battle.playerId);
         }
-        
+
+        // Update collapsed board display immediately after rewards
+        this.updateResourceDisplay();
+        this.updateInventoryDisplayOld();
+        this.players.forEach(p => {
+            this.updateInventoryDisplay(p.id);
+        });
+
         this.endMonsterBattle(true);
     }
     
