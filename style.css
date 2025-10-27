@@ -2252,11 +2252,16 @@ button {
 /* Collapsed Sections */
 .collapsed-hp-section,
 .collapsed-ep-section,
-.collapsed-exp-section,
-.collapsed-dice-section {
+.collapsed-exp-section {
     background: #2c3e50;
     padding: 4px 6px;
     border-radius: 4px;
+}
+
+.collapsed-exp-section {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
 }
 
 .collapsed-stat-header {

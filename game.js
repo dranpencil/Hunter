@@ -3136,26 +3136,20 @@ class Game {
 
             <!-- Right Column: EXP and Dice -->
             <div class="collapsed-right-col">
-                <!-- EXP -->
+                <!-- EXP and Dice Section -->
                 <div class="collapsed-exp-section">
                     <div class="collapsed-stat-header">
                         <span class="stat-label">EXP</span>
                         <span class="stat-value" id="p${player.id}-exp">${player.resources.exp}</span>
                         <span class="stat-max">/15</span>
                     </div>
-                </div>
-
-                <!-- Attack Dice -->
-                <div class="collapsed-dice-section">
+                    <!-- Attack Dice -->
                     <div class="collapsed-dice-row">
                         <span class="dice-icon">⚔️</span>
                         <span class="dice-value" id="p${player.id}-attack-dice">${player.weapon.currentAttackDice}</span>
                         <button class="collapsed-btn upgrade-btn" onclick="game.upgradeWeapon(${player.id}, 'attack')"${disabledAttr}${disabledTitle}>Upgrade (<span id="p${player.id}-req-exp-attack">${player.weapon.reqExpAttack}</span>)</button>
                     </div>
-                </div>
-
-                <!-- Defense Dice -->
-                <div class="collapsed-dice-section">
+                    <!-- Defense Dice -->
                     <div class="collapsed-dice-row">
                         <span class="dice-icon">🛡️</span>
                         <span class="dice-value" id="p${player.id}-defense-dice">${player.weapon.currentDefenseDice}</span>
