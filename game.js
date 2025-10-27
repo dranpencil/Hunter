@@ -3204,6 +3204,15 @@ class Game {
         if (this.boardsCollapsed) {
             this.refreshPlayerBoard(playerId);
         }
+
+        // Refresh store display if in store phase to update capacity warnings
+        if (this.roundPhase === 'store') {
+            if (this.gameMode === 'simultaneous') {
+                this.showStoreForPlayer(player);
+            } else {
+                this.showStore();
+            }
+        }
     }
 
     restoreEP(playerId) {
@@ -3235,6 +3244,15 @@ class Game {
         // Refresh the player board to update button states
         if (this.boardsCollapsed) {
             this.refreshPlayerBoard(playerId);
+        }
+
+        // Refresh store display if in store phase to update capacity warnings
+        if (this.roundPhase === 'store') {
+            if (this.gameMode === 'simultaneous') {
+                this.showStoreForPlayer(player);
+            } else {
+                this.showStore();
+            }
         }
     }
 
@@ -10693,7 +10711,16 @@ class Game {
     removeItem(playerId, itemIndex) {
         const player = this.players.find(p => p.id === playerId);
         player.inventory.splice(itemIndex, 1);
-        
+
+        // Refresh store display if in store phase to update capacity warnings
+        if (this.roundPhase === 'store') {
+            if (this.gameMode === 'simultaneous') {
+                this.showStoreForPlayer(player);
+            } else {
+                this.showStore();
+            }
+        }
+
         if (this.getInventorySize(player) <= player.maxInventoryCapacity) {
             // Capacity is now fine
             document.getElementById('capacity-modal').style.display = 'none';
@@ -10726,11 +10753,20 @@ class Game {
         
         // Remove item from inventory
         player.inventory.splice(itemIndex, 1);
-        
+
         // Update displays
         this.updateResourceDisplay();
         this.updateInventoryDisplay(playerId);
-        
+
+        // Refresh store display if in store phase to update capacity warnings
+        if (this.roundPhase === 'store') {
+            if (this.gameMode === 'simultaneous') {
+                this.showStoreForPlayer(player);
+            } else {
+                this.showStore();
+            }
+        }
+
         // Check if capacity is now within limits
         if (this.getInventorySize(player) <= player.maxInventoryCapacity) {
             // Capacity is now fine
@@ -10772,12 +10808,16 @@ class Game {
             this.updateInventoryDisplay(player.id);
         });
         this.updateResourceDisplay();
-        
-        // Update store capacity display if in store phase
+
+        // Refresh store display if in store phase to update capacity warnings
         if (this.roundPhase === 'store') {
-            this.updateStoreCapacityDisplay();
+            if (this.gameMode === 'simultaneous') {
+                this.showStoreForPlayer(player);
+            } else {
+                this.showStore();
+            }
         }
-        
+
         // Check if capacity is now within limits
         if (this.getInventorySize(player) <= player.maxInventoryCapacity) {
             // Capacity is now fine
