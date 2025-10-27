@@ -351,6 +351,14 @@ h1 {
     font-size: 14px;
 }
 
+.weapon-image {
+    width: 90px;
+    height: auto;
+    object-fit: contain;
+    margin: 8px auto;
+    display: block;
+}
+
 .dice-stats {
     display: flex;
     flex-direction: column;
@@ -1751,15 +1759,17 @@ h1 {
 }
 
 .location-card {
-    width: 100px;
+    width: 150px;
     height: 50px;
     background-color: #ecf0f1;
     color: #2c3e50;
     border: 3px solid #95a5a6;
     border-radius: 8px;
     display: flex;
+    flex-direction: row;
     align-items: center;
     justify-content: center;
+    gap: 6px;
     font-weight: bold;
     cursor: pointer;
     transition: all 0.3s ease;
@@ -1781,6 +1791,12 @@ h1 {
     cursor: not-allowed !important;
     filter: grayscale(50%);
     pointer-events: none;
+}
+
+.location-icon {
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
 }
 
 /* Battle Items */

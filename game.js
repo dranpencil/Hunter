@@ -2922,6 +2922,7 @@ class Game {
             <div class="board-center-section">
                 <div class="weapon-header">
                     <h3 id="p${player.id}-weapon-name">${player.weapon.name}</h3>
+                    <img id="p${player.id}-weapon-image" class="weapon-image" src="${player.weapon.name.toLowerCase()}.png" alt="${player.weapon.name}">
                     <div class="damage-grid" id="p${player.id}-damage-grid">
                         <!-- Damage grid will be populated by JavaScript -->
                     </div>
@@ -3504,16 +3505,39 @@ class Game {
         card.dataset.locationId = location.id;
         card.dataset.location = location.id; // Add data-location attribute for Forest button queries
         card.dataset.tokenType = tokenType;
-        card.textContent = location.name;
-        
-        
+
+        // Create location icon mapping
+        const locationIcons = {
+            'Work Site': 'work_site.png',
+            'Station': 'station.png',
+            'Dojo': 'dojo.png',
+            'Plaza': 'plaza.png',
+            'Bar': 'bar.png',
+            'Hospital': 'hospital.png',
+            'Forest': 'forest.png'
+        };
+
+        // Add icon image
+        const icon = document.createElement('img');
+        icon.src = locationIcons[location.name] || '';
+        icon.alt = location.name;
+        icon.className = 'location-icon';
+        card.appendChild(icon);
+
+        // Add location name text
+        const nameSpan = document.createElement('span');
+        nameSpan.textContent = location.name;
+        card.appendChild(nameSpan);
+
         // Force basic styling to ensure visibility, but allow CSS classes to override
-        card.style.width = '100px';
+        card.style.width = '150px';
         card.style.height = '50px';
         card.style.borderRadius = '8px';
         card.style.display = 'flex';
+        card.style.flexDirection = 'row';
         card.style.alignItems = 'center';
         card.style.justifyContent = 'center';
+        card.style.gap = '6px';
         card.style.fontWeight = 'bold';
         // Don't set cursor here - let CSS handle it based on disabled state
         card.style.margin = '5px';
@@ -4373,6 +4397,9 @@ class Game {
         // Update weapon display (exists in both views)
         const weaponName = document.getElementById(`${prefix}-weapon-name`);
         if (weaponName) weaponName.textContent = player.weapon.name;
+
+        const weaponImage = document.getElementById(`${prefix}-weapon-image`);
+        if (weaponImage) weaponImage.src = `${player.weapon.name.toLowerCase()}.png`;
 
         const attackDice = document.getElementById(`${prefix}-attack-dice`);
         const defenseDice = document.getElementById(`${prefix}-defense-dice`);
