@@ -11014,6 +11014,11 @@ class Game {
         if (this.isAutomatedMode) return;
 
         this.players.forEach(player => {
+            // Ensure player.pets exists
+            if (!player.pets) {
+                player.pets = { level1: 0, level2: 0, level3: 0 };
+            }
+
             // Update individual pet level counts in the new structure
             const lv1Element = document.getElementById(`p${player.id}-pet-lv1`);
             const lv2Element = document.getElementById(`p${player.id}-pet-lv2`);
