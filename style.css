@@ -2464,6 +2464,38 @@ button {
     font-size: 14px;
 }
 
+/* Collapsed Pet Section */
+.collapsed-pet-section {
+    background: #2c3e50;
+    padding: 4px 6px;
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    font-size: 10px;
+}
+
+.collapsed-pet-section .pet-label {
+    color: #9b59b6;
+    font-weight: bold;
+}
+
+.collapsed-pet-counts {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.collapsed-pet-counts .pet-count-item {
+    color: #ecf0f1;
+    font-size: 10px;
+}
+
+.collapsed-pet-counts .pet-count-item span {
+    font-weight: bold;
+    color: #fff;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
     .player-boards {

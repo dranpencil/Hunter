@@ -3014,15 +3014,15 @@ class Game {
                     <div class="pet-display">
                         <div class="pet-row">
                             <span>Lv1:</span>
-                            <span id="p${player.id}-pet-lv1">0</span>
+                            <span id="p${player.id}-pet-lv1">${player.pets?.level1 || 0}</span>
                         </div>
                         <div class="pet-row">
                             <span>Lv2:</span>
-                            <span id="p${player.id}-pet-lv2">0</span>
+                            <span id="p${player.id}-pet-lv2">${player.pets?.level2 || 0}</span>
                         </div>
                         <div class="pet-row">
                             <span>Lv3:</span>
-                            <span id="p${player.id}-pet-lv3">0</span>
+                            <span id="p${player.id}-pet-lv3">${player.pets?.level3 || 0}</span>
                         </div>
                     </div>
                 </div>
@@ -3167,6 +3167,16 @@ class Game {
                 <div class="collapsed-popularity-section">
                     <span class="popularity-label">Popularity:</span>
                     <span class="popularity-value" id="p${player.id}-popularity-collapsed">${player.popularityTrack.pointToken}/${player.popularityTrack.rewardToken}</span>
+                </div>
+
+                <!-- Pet Display -->
+                <div class="collapsed-pet-section">
+                    <span class="pet-label">Pet:</span>
+                    <div class="collapsed-pet-counts">
+                        <span class="pet-count-item">Lv1: <span id="p${player.id}-pet-lv1">${player.pets?.level1 || 0}</span></span>
+                        <span class="pet-count-item">Lv2: <span id="p${player.id}-pet-lv2">${player.pets?.level2 || 0}</span></span>
+                        <span class="pet-count-item">Lv3: <span id="p${player.id}-pet-lv3">${player.pets?.level3 || 0}</span></span>
+                    </div>
                 </div>
             </div>
         `;
