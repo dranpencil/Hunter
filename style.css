@@ -2072,6 +2072,9 @@ button {
     cursor: pointer;
     font-weight: bold;
     transition: background-color 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .pet-counter button:hover {
@@ -2083,6 +2086,74 @@ button {
     font-weight: bold;
     min-width: 30px;
     text-align: center;
+}
+
+/* Beer Consumption Section in Monster Modal */
+.beer-consumption-section {
+    margin-top: 15px;
+    padding: 15px;
+    background-color: rgba(52, 152, 219, 0.15);
+    border-radius: 5px;
+    border: 1px solid #3498db;
+}
+
+.beer-consumption-section h4 {
+    color: #3498db;
+    margin-bottom: 12px;
+    text-align: center;
+    font-size: 14px;
+}
+
+.beer-consumption-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.beer-info {
+    color: #ecf0f1;
+    font-size: 13px;
+}
+
+.beer-counter {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.beer-counter button {
+    background-color: #3498db;
+    color: white;
+    border: none;
+    width: 25px;
+    height: 25px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.beer-counter button:hover {
+    background-color: #2980b9;
+}
+
+.beer-counter span {
+    color: #ecf0f1;
+    font-weight: bold;
+    min-width: 20px;
+    text-align: center;
+}
+
+.beer-ep-preview {
+    text-align: center;
+    color: #ecf0f1;
+    font-size: 12px;
+    margin-top: 5px;
+    font-weight: bold;
 }
 
 .ep-cost-summary {

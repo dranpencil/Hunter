@@ -248,6 +248,22 @@
                     <div id="pet-selection-container">
                         <!-- Pet selection options will be populated here -->
                     </div>
+                    <div class="beer-consumption-section" id="beer-consumption-section" style="display: none;">
+                        <h4>Consume Beers to Increase EP (Optional)</h4>
+                        <div class="beer-consumption-controls">
+                            <span class="beer-info">
+                                Available Beers: <span id="available-beers-count">0</span>
+                            </span>
+                            <span class="beer-counter">
+                                <button onclick="game.adjustBeerConsumptionInBattle(-1)">-</button>
+                                <span id="beers-to-consume">0</span>
+                                <button onclick="game.adjustBeerConsumptionInBattle(1)">+</button>
+                            </span>
+                        </div>
+                        <div class="beer-ep-preview">
+                            Current EP: <span id="current-ep-display">0</span> / <span id="max-ep-display">10</span>
+                        </div>
+                    </div>
                     <div class="ep-cost-summary">
                         <span>Total EP Cost: </span>
                         <span id="total-ep-cost">0</span>
@@ -340,7 +356,16 @@
                 <div id="capacity-items" class="capacity-items"></div>
             </div>
         </div>
-        
+
+        <!-- Forest Failure Modal -->
+        <div id="forest-failure-modal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <h3>⚠️ Forest Entry Failed</h3>
+                <p id="forest-failure-message"></p>
+                <button onclick="game.acknowledgeForestFailure()">OK</button>
+            </div>
+        </div>
+
         <!-- Monster Selection Modal -->
         <div id="monster-selection-modal" class="modal" style="display: none;">
             <div class="modal-content">

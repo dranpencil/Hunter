@@ -4362,40 +4362,19 @@ class Game {
         this.players.forEach(player => {
             const playerId = player.id;
             const disabledTitle = 'Game is over - cannot interact with player boards';
-            
-            // Disable HP upgrade button
-            const hpUpgradeBtn = document.getElementById(`p${playerId}-hp-upgrade-btn`);
-            if (hpUpgradeBtn) {
-                hpUpgradeBtn.disabled = true;
-                hpUpgradeBtn.title = disabledTitle;
-            }
-            
-            // Disable EP upgrade button
-            const epUpgradeBtn = document.getElementById(`p${playerId}-ep-upgrade-btn`);
-            if (epUpgradeBtn) {
-                epUpgradeBtn.disabled = true;
-                epUpgradeBtn.title = disabledTitle;
-            }
-            
-            // Disable attack and defense dice upgrade buttons using better selector
+
+            // Get the player board (works for both expanded and collapsed)
             const playerBoard = document.getElementById(`player-${playerId}-board`);
-            if (playerBoard) {
-                // Find attack dice button
-                const attackBtns = playerBoard.querySelectorAll(`button[onclick*="upgradeWeapon(${playerId}, 'attack')"]`);
-                attackBtns.forEach(btn => {
-                    btn.disabled = true;
-                    btn.title = disabledTitle;
-                });
-                
-                // Find defense dice button
-                const defenseBtns = playerBoard.querySelectorAll(`button[onclick*="upgradeWeapon(${playerId}, 'defense')"]`);
-                defenseBtns.forEach(btn => {
-                    btn.disabled = true;
-                    btn.title = disabledTitle;
-                });
-            }
-            
-            // Disable inventory use buttons WITHOUT re-rendering
+            if (!playerBoard) return;
+
+            // Disable ALL buttons in the player board
+            const allButtons = playerBoard.querySelectorAll('button');
+            allButtons.forEach(btn => {
+                btn.disabled = true;
+                btn.title = disabledTitle;
+            });
+
+            // Also disable inventory use buttons
             const inventoryContainer = document.getElementById(`p${playerId}-inventory`);
             if (inventoryContainer) {
                 const useButtons = inventoryContainer.querySelectorAll('button');
@@ -4677,16 +4656,17 @@ class Game {
         }
         
         document.getElementById('monster-modal-title').textContent = `${player.name}: Choose Monster to Fight`;
-        
-        // Reset selected pets and monster level
+
+        // Reset selected pets, beer consumption, and monster level
         this.selectedMonsterLevel = null;
         this.selectedPets = { level1: 0, level2: 0, level3: 0 };
-        
+        this.selectedBeerConsumption = 0;
+
         // Clear monster button selection state
         document.querySelectorAll('.monster-choice').forEach(btn => {
             btn.classList.remove('selected');
         });
-        
+
         // Update pet selection UI
         this.updatePetSelectionUI();
         
@@ -7036,7 +7016,9 @@ class Game {
             }
             return;
         }
-        
+
+        // Note: Beer consumption already applied by adjustBeerConsumptionInBattle()
+
         // Hide monster level selection modal
         document.getElementById('monster-modal').style.display = 'none';
         
@@ -9675,8 +9657,8 @@ class Game {
         if (playersWithOverflow.length > 0) {
             this.handleCapacityOverflow(playersWithOverflow);
         } else {
-            // After capacity check, start battle phase
-            this.startBattlePhase();
+            // After capacity check, check forest readiness before battle
+            this.checkForestReadiness();
         }
     }
     
@@ -9916,22 +9898,115 @@ class Game {
             this.enterStorePhase();
         }
     }
-    
+
+    checkForestReadiness() {
+        // After store phase, before battle phase - check if Forest hunters have sufficient resources
+        let forestHunters = this.players.filter(p => p.tokens.hunter === 7);
+
+        if (forestHunters.length === 0) {
+            this.startBattlePhase();
+            return;
+        }
+
+        // Initialize queue and failed players tracking
+        this.forestReadinessQueue = forestHunters.map(p => p.id);
+        if (!this.failedForestPlayers) {
+            this.failedForestPlayers = [];
+        }
+
+        // Start checking hunters one by one
+        this.checkNextForestHunter();
+    }
+
+    checkNextForestHunter() {
+        // Check if queue is empty
+        if (this.forestReadinessQueue.length === 0) {
+            this.startBattlePhase();
+            return;
+        }
+
+        const playerId = this.forestReadinessQueue[0];
+        const player = this.players.find(p => p.id === playerId);
+
+        // Check Condition 1: Ammunition for Rifle/Plasma
+        const lacksAmmo = (player.weapon.name === 'Rifle' && !player.inventory.some(i => i.name === 'Bullet')) ||
+                         (player.weapon.name === 'Plasma' && !player.inventory.some(i => i.name === 'Battery'));
+
+        // Check Condition 2: Total EP (current EP + beers) < 2
+        const beerCount = player.inventory.filter(i => i.name === 'Beer').length;
+        const lacksEP = player.resources.ep + beerCount < 2;
+
+        // Check conditions and take appropriate action
+        if (lacksAmmo && lacksEP) {
+            // Both conditions fail - show failure with both messages
+            this.showForestFailureModal(player, true, true);
+        } else if (lacksAmmo) {
+            // Only ammunition condition fails
+            this.showForestFailureModal(player, true, false);
+        } else if (lacksEP) {
+            // Only EP condition fails
+            this.showForestFailureModal(player, false, true);
+        } else {
+            // Player is ready for battle
+            this.forestReadinessQueue.shift();
+            this.checkNextForestHunter();
+        }
+    }
+
+    showForestFailureModal(player, lacksAmmo, lacksEP) {
+        // Determine message based on which conditions failed
+        let message = '';
+        if (lacksAmmo && lacksEP) {
+            message = 'You had failed to fight the monster due to lack of EP and ammunition.';
+        } else if (lacksAmmo) {
+            message = 'You had failed to fight the monster due to a lack of ammunition.';
+        } else {
+            message = 'You had failed to fight the monster due to lack of EP.';
+        }
+
+        // Store current player
+        this.currentFailurePlayer = player.id;
+
+        // Show modal
+        document.getElementById('forest-failure-message').textContent = message;
+        document.getElementById('forest-failure-modal').style.display = 'flex';
+    }
+
+    acknowledgeForestFailure() {
+        // Add player to failed list
+        this.failedForestPlayers.push(this.currentFailurePlayer);
+
+        // Hide modal
+        document.getElementById('forest-failure-modal').style.display = 'none';
+
+        // Move to next hunter
+        this.forestReadinessQueue.shift();
+        this.checkNextForestHunter();
+    }
+
     startBattlePhase() {
         this.roundPhase = 'battle';
-        
+
         if (this.isAutomatedMode) {
             console.log(`[${new Date().toISOString()}] Starting battle phase - Round ${this.currentRound}`);
         }
-        
-        // Get all hunters in the Forest
+
+        // Track all Forest players (including failed ones) for monster effects
+        this.forestPlayersThisRound = new Set();
+        this.players.forEach(player => {
+            if (player.tokens.hunter === 7) {
+                this.forestPlayersThisRound.add(player.id);
+            }
+        });
+
+        // Get hunters who will actually battle (excluding failed ones)
         let forestHunters = [];
         this.players.forEach(player => {
-            if (player.tokens.hunter === 7) { // Forest is location id 7
+            if (player.tokens.hunter === 7 && !this.failedForestPlayers.includes(player.id)) {
                 forestHunters.push(player.id);
             }
         });
-        
+
         if (forestHunters.length > 0) {
             // Sort forest hunters by score (lowest first), then by weapon priority (lowest first)
             forestHunters.sort((a, b) => {
@@ -10476,7 +10551,12 @@ class Game {
         
         // Clear all monster effects from this round
         this.cleanupRoundEffects();
-        
+
+        // Reset forest readiness tracking
+        this.failedForestPlayers = [];
+        this.forestPlayersThisRound = new Set();
+        this.forestReadinessQueue = [];
+
         // Clear the board - bring all tokens back to players
         if (!this.isAutomatedMode) {
             document.querySelectorAll('.token').forEach(token => token.remove());
@@ -10646,7 +10726,7 @@ class Game {
     
     handleCapacityOverflow(overflowPlayers) {
         if (overflowPlayers.length === 0) {
-            this.startBattlePhase();
+            this.checkForestReadiness();
             return;
         }
         
@@ -11068,22 +11148,90 @@ class Game {
         if (container.innerHTML === '') {
             container.innerHTML = '<p>No pets available</p>';
         }
-        
+
         this.updateTotalEPCost();
+        this.updateBeerConsumptionUI();
     }
-    
+
+    updateBeerConsumptionUI() {
+        const player = this.players.find(p => p.id === this.currentMonsterPlayer);
+        const beerCount = player.inventory.filter(i => i.name === 'Beer').length;
+
+        const section = document.getElementById('beer-consumption-section');
+
+        // Always show section
+        section.style.display = 'block';
+
+        // Update displays to show current state
+        document.getElementById('available-beers-count').textContent = beerCount;
+        document.getElementById('current-ep-display').textContent = player.resources.ep;
+        document.getElementById('max-ep-display').textContent = player.maxResources.ep;
+        document.getElementById('beers-to-consume').textContent = this.selectedBeerConsumption || 0;
+    }
+
     adjustPetSelection(level, delta) {
         const player = this.players.find(p => p.id === this.currentMonsterPlayer);
         const availablePets = player.pets[`level${level}`];
         const currentCount = this.selectedPets[`level${level}`];
         const newCount = Math.max(0, Math.min(availablePets, currentCount + delta));
-        
+
         this.selectedPets[`level${level}`] = newCount;
         document.getElementById(`pet-count-${level}`).textContent = newCount;
-        
+
         this.updateTotalEPCost();
     }
-    
+
+    adjustBeerConsumptionInBattle(delta) {
+        const player = this.players.find(p => p.id === this.currentMonsterPlayer);
+        const beerCount = player.inventory.filter(i => i.name === 'Beer').length;
+
+        // Store previous consumption amount
+        const previousConsumption = this.selectedBeerConsumption || 0;
+
+        // Calculate max beers that can be consumed (limited by available beers and EP capacity)
+        const maxConsumable = Math.min(beerCount, player.maxResources.ep - player.resources.ep);
+
+        // Calculate new selected count (min 0, max available or capacity limit)
+        const newConsumption = Math.max(0, Math.min(maxConsumable, previousConsumption + delta));
+
+        // Calculate actual delta to apply
+        const actualDelta = newConsumption - previousConsumption;
+
+        if (actualDelta > 0) {
+            // Consume more beers
+            for (let i = 0; i < actualDelta; i++) {
+                const beerIndex = player.inventory.findIndex(item => item.name === 'Beer');
+                if (beerIndex !== -1) {
+                    player.inventory.splice(beerIndex, 1);
+                    player.resources.ep = Math.min(player.resources.ep + 1, player.maxResources.ep);
+                }
+            }
+        } else if (actualDelta < 0) {
+            // Restore beers
+            for (let i = 0; i < Math.abs(actualDelta); i++) {
+                player.inventory.push({ name: 'Beer', size: 1 });
+                player.resources.ep = Math.max(0, player.resources.ep - 1);
+            }
+        }
+
+        // Update selected consumption tracker
+        this.selectedBeerConsumption = newConsumption;
+
+        // Update resource and inventory displays
+        this.updateResourceDisplay(player.id);
+        this.updateInventoryDisplay(player.id);
+
+        // Update beer consumption UI
+        const currentBeerCount = player.inventory.filter(i => i.name === 'Beer').length;
+        document.getElementById('available-beers-count').textContent = currentBeerCount;
+        document.getElementById('current-ep-display').textContent = player.resources.ep;
+        document.getElementById('max-ep-display').textContent = player.maxResources.ep;
+        document.getElementById('beers-to-consume').textContent = this.selectedBeerConsumption;
+
+        // Refresh confirm button visibility
+        this.updateTotalEPCost();
+    }
+
     updateTotalEPCost() {
         const monsterCost = this.selectedMonsterLevel || 0;
         
