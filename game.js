@@ -1070,6 +1070,7 @@ class Game {
         this.roundPhase = 'setup'; // 'setup', 'selection', 'distribution', 'station', 'store', 'battle', 'nextround'
         this.gameMode = null; // 'simultaneous' or 'turnbased' - determined after players are created
         this.playerCompletionStatus = {}; // Track which players have completed current phase
+        this.storePhaseCompleted = false; // Prevent duplicate store completion checks
         this.stationChoices = {}; // Store station choices for each player
         this.pendingStationPlayer = null; // Track which player needs to choose
         this.stationTotalCount = 0; // Track total count at station
@@ -8724,6 +8725,9 @@ class Game {
     }
 
     enterStorePhaseSimultaneous() {
+        // Reset completion flag
+        this.storePhaseCompleted = false;
+
         // Show status indicators and reset completion status
         this.showPlayerStatusIndicators();
         this.resetPlayerCompletionStatus();
@@ -8745,6 +8749,9 @@ class Game {
     }
 
     enterStorePhaseTurnBased() {
+        // Reset completion flag
+        this.storePhaseCompleted = false;
+
         // Show status indicators
         this.showPlayerStatusIndicators();
         this.resetPlayerCompletionStatus();
@@ -9314,13 +9321,8 @@ class Game {
                     // In simultaneous mode, mark bot as complete
                     this.updatePlayerStatus(player.id, true);
 
-                    // Check if all players are complete
-                    if (this.checkAllPlayersComplete()) {
-                        console.log('All players completed shopping (simultaneous mode)');
-                        this.hidePlayerStatusIndicators();
-                        // Check for capacity overflow
-                        this.checkCapacityOverflow();
-                    }
+                    // Trigger centralized completion check
+                    this.checkStorePhaseCompletion();
                 } else {
                     // Turn-based mode: proceed to next player
                     this.finishShopping();
@@ -9598,13 +9600,25 @@ class Game {
             document.getElementById('store-area').style.display = 'none';
         }
 
+        // Trigger centralized completion check
+        this.checkStorePhaseCompletion();
+    }
+
+    checkStorePhaseCompletion() {
+        // Guard: Only check once
+        if (this.storePhaseCompleted) {
+            return; // Already processed
+        }
+
         // Check if all players are complete
         if (this.checkAllPlayersComplete()) {
-            console.log('All players completed shopping (simultaneous mode)');
+            // Set flag to prevent duplicate execution
+            this.storePhaseCompleted = true;
 
+            console.log('All players completed shopping (simultaneous mode)');
             this.hidePlayerStatusIndicators();
 
-            // Check for capacity overflow
+            // Proceed to capacity overflow check
             this.checkCapacityOverflow();
         }
     }
