@@ -6430,7 +6430,7 @@ class Game {
             { level: 1, hp: 4, att: 1, money: 3, energy: 1, blood: 0, effect: "無", effectId: 1, pts: 2 },
             { level: 1, hp: 4, att: 1, money: 0, energy: 3, blood: 0, effect: "血減半時，攻擊力+1", effectId: 2, pts: 3 },
             { level: 1, hp: 4, att: 2, money: 2, energy: 1, blood: 0, effect: "偷走玩家2金幣", effectId: 3, pts: 4 },
-            { level: 1, hp: 3, att: 2, money: 0, energy: 1, blood: 1, effect: "死亡時，玩家及在森林裡的玩家-1血", effectId: 4, pts: 3 },
+            { level: 1, hp: 3, att: 2, money: 0, energy: 1, blood: 1, effect: "死亡時，玩家及在森林裡的玩家-1血(不會導致玩家血歸零)", effectId: 4, pts: 3 },
             { level: 1, hp: 3, att: 1, money: 0, energy: 0, blood: 1, effect: "玩家受傷無法獲得經驗", effectId: 5, pts: 2 },
             { level: 1, hp: 3, att: 2, money: 0, energy: 0, blood: 1, effect: "玩家無法一次給予怪獸超過2點傷害", effectId: 6, pts: 4 },
             { level: 1, hp: 3, att: 1, money: 1, energy: 1, blood: 0, effect: "玩家防禦力1以上先攻", effectId: 7, pts: 2 },
@@ -6449,7 +6449,7 @@ class Game {
             { level: 2, hp: 6, att: 3, money: 0, energy: 3, blood: 1, effect: "需要+1體力收服", effectId: 20, pts: 6 },
             { level: 2, hp: 5, att: 4, money: 2, energy: 1, blood: 0, effect: "玩家防禦力2以上先攻", effectId: 21, pts: 8 },
             { level: 2, hp: 5, att: 4, money: 2, energy: 0, blood: 1, effect: "玩家受傷最多獲得2經驗", effectId: 22, pts: 7 },
-            { level: 2, hp: 5, att: 4, money: 0, energy: 2, blood: 1, effect: "不在森林的玩家-1分", effectId: 23, pts: 7 },
+            { level: 2, hp: 5, att: 4, money: 0, energy: 2, blood: 1, effect: "不在森林的玩家-2經驗", effectId: 23, pts: 7 },
             { level: 2, hp: 5, att: 3, money: 2, energy: 2, blood: 0, effect: "血減半時，攻擊力+1", effectId: 24, pts: 6 },
             { level: 3, hp: 13, att: 3, money: 0, energy: 0, blood: 3, effect: "不在森林的玩家-2血", effectId: 25, pts: 15 },
             { level: 3, hp: 12, att: 3, money: 1, energy: 3, blood: 0, effect: "血減半時，攻擊力+1", effectId: 26, pts: 15 },
@@ -6457,7 +6457,7 @@ class Game {
             { level: 3, hp: 11, att: 3, money: 2, energy: 2, blood: 0, effect: "不在森林的玩家-2分", effectId: 28, pts: 14 },
             { level: 3, hp: 11, att: 5, money: 2, energy: 1, blood: 1, effect: "每次玩家攻擊-1體力", effectId: 29, pts: 16 },
             { level: 3, hp: 11, att: 4, money: 1, energy: 3, blood: 0, effect: "玩家無法一次給予怪獸超過6點傷害", effectId: 30, pts: 15 },
-            { level: 3, hp: 11, att: 4, money: 2, energy: 2, blood: 0, effect: "死亡時，玩家及在森林裡的玩家-1血", effectId: 31, pts: 15 },
+            { level: 3, hp: 11, att: 4, money: 2, energy: 2, blood: 0, effect: "死亡時，玩家及在森林裡的玩家-1血(不會導致玩家血歸零)", effectId: 31, pts: 15 },
             { level: 3, hp: 11, att: 5, money: 1, energy: 0, blood: 2, effect: "玩家防禦力4以上先攻", effectId: 32, pts: 16 },
             { level: 3, hp: 10, att: 4, money: 3, energy: 1, blood: 0, effect: "這回合其他怪獸+1血", effectId: 33, pts: 14 },
             { level: 3, hp: 10, att: 4, money: 4, energy: 0, blood: 0, effect: "玩家受傷最多獲得4經驗", effectId: 34, pts: 14 },
@@ -6538,18 +6538,20 @@ class Game {
                 }
                 break;
                 
-            case 23: // Players not in forest lose 1 point
+            case 23: // Players not in forest lose 2 EXP
                 const affectedPlayers23 = [];
                 this.players.forEach(p => {
                     if (!this.forestPlayersThisRound.has(p.id)) {
-                        p.score = Math.max(0, p.score - 1);
+                        p.resources.exp = Math.max(0, p.resources.exp - 2);
                         affectedPlayers23.push(p.name);
+                        // Update resource display for affected player
+                        this.updateResourceDisplay(p.id);
                     }
                 });
                 if (affectedPlayers23.length > 0) {
                     this.showEffectNotification(
-                        `Players not in forest lose 1 point: ${affectedPlayers23.join(', ')}`,
-                        `This monster's curse affects the scores of those who avoid the forest.`
+                        `Players not in forest lose 2 EXP: ${affectedPlayers23.join(', ')}`,
+                        `This monster drains the experience of those who avoid the forest.`
                     );
                 }
                 break;
@@ -6760,12 +6762,12 @@ class Game {
     applyDeathEffect(effectId, defeaterPlayerId) {
         // Apply effects when a monster is defeated
         switch(effectId) {
-            case 4: // Forest players lose 1 HP
-            case 31: // Forest players lose 1 HP
+            case 4: // Forest players lose 1 HP (won't cause HP to become zero)
+            case 31: // Forest players lose 1 HP (won't cause HP to become zero)
                 const affectedPlayers = [];
                 this.forestPlayersThisRound.forEach(playerId => {
                     const player = this.players.find(p => p.id === playerId);
-                    if (player) {
+                    if (player && player.resources.hp > 1) {
                         this.modifyResource(playerId, 'hp', -1);
                         affectedPlayers.push(player.name);
                     }
@@ -6773,7 +6775,7 @@ class Game {
                 if (affectedPlayers.length > 0) {
                     this.showEffectNotification(
                         `Monster's death curse! Forest players lose 1 HP: ${affectedPlayers.join(', ')}`,
-                        `Upon death, this monster releases a curse that damages all hunters in the forest.`
+                        `Upon death, this monster releases a curse that damages all hunters in the forest (won't reduce HP below 1).`
                     );
                 }
                 break;
