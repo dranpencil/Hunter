@@ -6225,9 +6225,13 @@ class Game {
                 this.refreshPlayerBoard(playerId);
             }
 
-            // Update store capacity display if in store phase
+            // Refresh store display if in store phase to update capacity warnings
             if (this.roundPhase === 'store') {
-                this.updateStoreCapacityDisplay();
+                if (this.gameMode === 'simultaneous') {
+                    this.showStoreForPlayer(player);
+                } else {
+                    this.showStore();
+                }
             }
 
             // Update location card states if in selection phase and EP was upgraded
@@ -6393,9 +6397,8 @@ class Game {
                     this.updateInventoryDisplay(player.id);
                 }); // Update weapon display immediately
                 return true;
-            } else {
-                alert(`${player.name} needs ${requiredExp} EXP to upgrade attack dice (current: ${player.resources.exp})`);
             }
+            // Insufficient EXP - silently fail (button should be disabled)
         } else if (upgradeType === 'defense') {
             // Check if already at max defense dice (6)
             if (player.weapon.currentDefenseDice >= 6) {
@@ -6414,9 +6417,8 @@ class Game {
                     this.updateInventoryDisplay(player.id);
                 }); // Update weapon display immediately
                 return true;
-            } else {
-                alert(`${player.name} needs ${requiredExp} EXP to upgrade defense dice (current: ${player.resources.exp})`);
             }
+            // Insufficient EXP - silently fail (button should be disabled)
         }
         
         return false;
@@ -9496,29 +9498,9 @@ class Game {
             }
         }
         
-        // Check if buying this item would exceed capacity
-        const currentInventorySize = this.getInventorySize(player);
-        // If Plasma Level 3 and buying batteries, size is 0
-        const effectiveSize = (player.weapon.name === 'Plasma' && player.weapon.powerTrackPosition >= 7 && itemName === 'Battery') ? 0 : size;
-        const newTotalSize = currentInventorySize + effectiveSize;
-        const capacity = player.maxInventoryCapacity;
-        
-        if (newTotalSize > capacity) {
-            const overflow = newTotalSize - capacity;
-            const confirmed = confirm(
-                `⚠️ Capacity Warning ⚠️\n\n` +
-                `${player.name}, buying ${itemName} (size ${size}) will exceed your capacity!\n\n` +
-                `Current inventory: ${currentInventorySize}/${capacity}\n` +
-                `After purchase: ${newTotalSize}/${capacity} (${overflow} over capacity)\n\n` +
-                `You'll need to remove items after shopping to fit within capacity.\n\n` +
-                `Do you still want to buy this item?`
-            );
-            
-            if (!confirmed) {
-                return; // Player decided not to buy
-            }
-        }
-        
+        // Note: Capacity warnings are shown beneath each item in the store UI
+        // Players can buy items that exceed capacity, they'll be prompted to manage overflow after shopping
+
         // Create item object
         const item = {
             name: itemName,
@@ -10858,15 +10840,6 @@ class Game {
         this.updateResourceDisplay();
         this.updateInventoryDisplay(playerId);
 
-        // Refresh store display if in store phase to update capacity warnings
-        if (this.roundPhase === 'store') {
-            if (this.gameMode === 'simultaneous') {
-                this.showStoreForPlayer(player);
-            } else {
-                this.showStore();
-            }
-        }
-
         // Check if capacity is now within limits
         if (this.getInventorySize(player) <= player.maxInventoryCapacity) {
             // Capacity is now fine
@@ -10908,15 +10881,6 @@ class Game {
             this.updateInventoryDisplay(player.id);
         });
         this.updateResourceDisplay();
-
-        // Refresh store display if in store phase to update capacity warnings
-        if (this.roundPhase === 'store') {
-            if (this.gameMode === 'simultaneous') {
-                this.showStoreForPlayer(player);
-            } else {
-                this.showStore();
-            }
-        }
 
         // Check if capacity is now within limits
         if (this.getInventorySize(player) <= player.maxInventoryCapacity) {
@@ -11004,10 +10968,14 @@ class Game {
         // Update displays
         this.updateResourceDisplay();
         this.updateInventoryDisplay(playerId);
-        
-        // Update store capacity display if in store phase
+
+        // Refresh store display if in store phase to update capacity warnings
         if (this.roundPhase === 'store') {
-            this.updateStoreCapacityDisplay();
+            if (this.gameMode === 'simultaneous') {
+                this.showStoreForPlayer(player);
+            } else {
+                this.showStore();
+            }
         }
         
         // Update location card states if in selection phase and EP changed
