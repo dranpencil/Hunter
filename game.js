@@ -4350,12 +4350,29 @@ class Game {
     }
     
     shouldDisablePlayerButtons(playerId) {
-        // Disable buttons if:
-        // 1. The player is a bot (no one can interact with bot boards)
-        // 2. The game is over (no one can interact with any boards)
         const player = this.players.find(p => p.id === playerId);
         if (!player) return true;
-        return player.isBot || this.roundPhase === 'gameover';
+
+        // Always disable bot buttons
+        if (player.isBot) return true;
+
+        // Always disable when game is over
+        if (this.roundPhase === 'gameover') return true;
+
+        // In simultaneous mode, human players are always enabled
+        if (this.gameMode === 'simultaneous') return false;
+
+        // In turn-based mode, only enable current player's buttons
+        if (this.gameMode === 'turnbased') {
+            if (this.roundPhase === 'selection') {
+                return playerId !== this.currentPlayer?.id;
+            } else if (this.roundPhase === 'store') {
+                return playerId !== this.currentStorePlayer;
+            }
+        }
+
+        // Default: don't disable in other phases
+        return false;
     }
     
     disableAllPlayerButtons() {
