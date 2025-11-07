@@ -9649,15 +9649,23 @@ class Game {
     }
     
     checkCapacityOverflow() {
+        // Ensure store area is hidden (it should already be hidden by finishShopping)
+        if (!this.isAutomatedMode) {
+            const storeArea = document.getElementById('store-area');
+            if (storeArea) {
+                storeArea.style.display = 'none';
+            }
+        }
+
         let playersWithOverflow = [];
-        
+
         this.players.forEach(player => {
             if (this.getInventorySize(player) > player.maxInventoryCapacity) {
                 // If player is a bot, handle overflow automatically
                 if (player.isBot) {
                     const botPlayer = new BotPlayer(player.id, player.weapon);
                     botPlayer.handleBotCapacityOverflow(player, this);
-                    
+
                     // Update displays after bot handles overflow
                     this.updateResourceDisplay();
                     this.updateInventoryDisplayOld();
@@ -9668,7 +9676,7 @@ class Game {
                 }
             }
         });
-        
+
         if (playersWithOverflow.length > 0) {
             this.handleCapacityOverflow(playersWithOverflow);
         } else {
@@ -10594,12 +10602,15 @@ class Game {
     }
     
     startNewRound() {
+        // Reset store phase completion flag for new round
+        this.storePhaseCompleted = false;
+
         // Move dummy tokens to next locations
         this.moveDummyTokens();
-        
+
         // Increment round counter
         this.currentRound++;
-        
+
         // Log round start
         this.addLogEntry(`🔄 <strong>Round ${this.currentRound} Started</strong>`, 'round-start');
         
@@ -10811,14 +10822,9 @@ class Game {
         const player = this.players.find(p => p.id === playerId);
         player.inventory.splice(itemIndex, 1);
 
-        // Refresh store display if in store phase to update capacity warnings
-        if (this.roundPhase === 'store') {
-            if (this.gameMode === 'simultaneous') {
-                this.showStoreForPlayer(player);
-            } else {
-                this.showStore();
-            }
-        }
+        // Update displays
+        this.updateResourceDisplay();
+        this.updateInventoryDisplay(playerId);
 
         if (this.getInventorySize(player) <= player.maxInventoryCapacity) {
             // Capacity is now fine
