@@ -225,19 +225,22 @@
         <!-- Monster Selection Modal -->
         <div id="monster-modal" class="modal" style="display: none;">
             <div class="modal-content">
-                <h3 id="monster-modal-title">Choose Monster Level</h3>
+                <div class="modal-header-with-info">
+                    <h3 id="monster-modal-title">Choose Monster Level</h3>
+                    <button class="info-btn" onclick="game.showMonsterLevelInfo()" title="View monster statistics">ℹ️</button>
+                </div>
                 <div class="monster-choices">
-                    <button class="monster-choice" onclick="game.selectMonsterLevel(game.currentMonsterPlayer, 1)">
+                    <button class="monster-choice" onclick="game.selectMonsterLevel(game.currentMonsterPlayer, 1)" data-tooltip="🩸 3 | ⚔️ 2 | 🏆 3">
                         <span class="choice-icon">👹</span>
                         <span>Level 1</span>
                         <span class="choice-cost">2 EP</span>
                     </button>
-                    <button class="monster-choice" onclick="game.selectMonsterLevel(game.currentMonsterPlayer, 2)">
+                    <button class="monster-choice" onclick="game.selectMonsterLevel(game.currentMonsterPlayer, 2)" data-tooltip="🩸 6 | ⚔️ 3 | 🏆 7">
                         <span class="choice-icon">👺</span>
                         <span>Level 2</span>
                         <span class="choice-cost">3 EP</span>
                     </button>
-                    <button class="monster-choice" onclick="game.selectMonsterLevel(game.currentMonsterPlayer, 3)">
+                    <button class="monster-choice" onclick="game.selectMonsterLevel(game.currentMonsterPlayer, 3)" data-tooltip="🩸 10 | ⚔️ 4 | 🏆 15">
                         <span class="choice-icon">😈</span>
                         <span>Level 3</span>
                         <span class="choice-cost">4 EP</span>
@@ -272,7 +275,50 @@
                 </div>
             </div>
         </div>
-        
+
+        <!-- Monster Level Info Modal -->
+        <div id="monster-level-info-modal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <h3>Monster Level Information</h3>
+                <div class="monster-level-info-content">
+                    <div class="level-info-row">
+                        <div class="level-info-header">
+                            <span class="choice-icon">👹</span>
+                            <strong>Level 1 Monsters</strong>
+                        </div>
+                        <div class="level-stats">
+                            <span>Ave. 🩸 3</span>
+                            <span>Ave. ⚔️ 2</span>
+                            <span>Ave. 🏆 3</span>
+                        </div>
+                    </div>
+                    <div class="level-info-row">
+                        <div class="level-info-header">
+                            <span class="choice-icon">👺</span>
+                            <strong>Level 2 Monsters</strong>
+                        </div>
+                        <div class="level-stats">
+                            <span>Ave. 🩸 6</span>
+                            <span>Ave. ⚔️ 3</span>
+                            <span>Ave. 🏆 7</span>
+                        </div>
+                    </div>
+                    <div class="level-info-row">
+                        <div class="level-info-header">
+                            <span class="choice-icon">😈</span>
+                            <strong>Level 3 Monsters</strong>
+                        </div>
+                        <div class="level-stats">
+                            <span>Ave. 🩸 10</span>
+                            <span>Ave. ⚔️ 4</span>
+                            <span>Ave. 🏆 15</span>
+                        </div>
+                    </div>
+                </div>
+                <button class="close-info-btn" onclick="game.closeMonsterLevelInfo()">Close</button>
+            </div>
+        </div>
+
         <!-- Monster Battle UI -->
         <div id="monster-battle" class="modal" style="display: none;">
             <div class="battle-content">

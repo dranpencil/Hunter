@@ -2151,6 +2151,9 @@ class Game {
                 }, this.getDelay(50 * (index + 1))); // Small stagger for visual effect only
             }
         });
+
+        // Refresh button states for all players
+        this.refreshAllPlayerButtonStates();
     }
 
     updateCurrentPlayerTurnBased() {
@@ -2187,6 +2190,9 @@ class Game {
             // Show location cards for human players
             this.showLocationCardsForHuman();
         }
+
+        // Refresh button states for all players
+        this.refreshAllPlayerButtonStates();
     }
     
     hideLocationCardsForBot() {
@@ -4084,6 +4090,9 @@ class Game {
             this.updateCurrentPlayer();  // This will handle bot/human UI switching
             this.updateLocationCardStates();
             this.updateStatusMessage();
+
+            // Refresh button states for turn-based mode
+            this.refreshAllPlayerButtonStates();
         }
     }
     
@@ -4374,7 +4383,33 @@ class Game {
         // Default: don't disable in other phases
         return false;
     }
-    
+
+    refreshAllPlayerButtonStates() {
+        // Update button disabled states for all players without re-rendering boards
+        this.players.forEach(player => {
+            const shouldDisable = this.shouldDisablePlayerButtons(player.id);
+            const disabledTitle = shouldDisable ? 'Cannot interact with this player board' : '';
+
+            // Update expanded board buttons
+            const expandedBoard = document.getElementById(`player-${player.id}-board`);
+            if (expandedBoard) {
+                expandedBoard.querySelectorAll('button').forEach(btn => {
+                    btn.disabled = shouldDisable;
+                    btn.title = disabledTitle || btn.getAttribute('data-original-title') || '';
+                });
+            }
+
+            // Update collapsed board buttons
+            const collapsedBoard = document.getElementById(`collapsed-player-${player.id}`);
+            if (collapsedBoard) {
+                collapsedBoard.querySelectorAll('button').forEach(btn => {
+                    btn.disabled = shouldDisable;
+                    btn.title = disabledTitle || btn.getAttribute('data-original-title') || '';
+                });
+            }
+        });
+    }
+
     disableAllPlayerButtons() {
         // Disable all buttons for all players when game ends
         this.players.forEach(player => {
@@ -7013,7 +7048,7 @@ class Game {
     selectMonsterLevel(playerId, level) {
         this.selectedMonsterLevel = level + 1; // Level 1 = 2 EP, Level 2 = 3 EP, Level 3 = 4 EP
         this.updateTotalEPCost();
-        
+
         // Highlight selected monster button
         document.querySelectorAll('.monster-choice').forEach((btn, index) => {
             if (index === level - 1) {
@@ -7023,7 +7058,17 @@ class Game {
             }
         });
     }
-    
+
+    showMonsterLevelInfo() {
+        // Show the monster level info modal
+        document.getElementById('monster-level-info-modal').style.display = 'flex';
+    }
+
+    closeMonsterLevelInfo() {
+        // Hide the monster level info modal
+        document.getElementById('monster-level-info-modal').style.display = 'none';
+    }
+
     confirmBattleSelection() {
         const playerId = this.currentMonsterPlayer;
         const player = this.players.find(p => p.id === playerId);
@@ -8767,6 +8812,9 @@ class Game {
         if (humanPlayer && !this.isAutomatedMode) {
             this.showStoreForPlayer(humanPlayer);
         }
+
+        // Refresh button states for all players
+        this.refreshAllPlayerButtonStates();
     }
 
     enterStorePhaseTurnBased() {
@@ -8779,6 +8827,9 @@ class Game {
 
         // Show store for first player (turn-based)
         this.showStore();
+
+        // Refresh button states for all players
+        this.refreshAllPlayerButtonStates();
     }
     
     showStore() {
@@ -9645,6 +9696,7 @@ class Game {
         } else {
             // Next player's turn to shop
             this.showStore();
+            this.refreshAllPlayerButtonStates();
         }
     }
     
