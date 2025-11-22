@@ -216,16 +216,16 @@ class BotPlayer {
             }
         }
         
-        // Ammunition penalty for Rifle/Plasma weapons
+        // Ammunition penalty for Rifle/Plasma weapons (only if can't buy ammo)
         if (player.weapon.name === 'Rifle') {
             const bullets = player.inventory.filter(item => item.name === 'Bullet').length;
-            if (bullets === 0) {
-                entries[7] -= 100; // Strong penalty to discourage Forest entry without bullets
+            if (bullets === 0 && player.resources.money < 2) {
+                entries[7] -= 100; // Strong penalty: no bullets AND can't afford to buy
             }
         } else if (player.weapon.name === 'Plasma') {
             const batteries = player.inventory.filter(item => item.name === 'Battery').length;
-            if (batteries === 0) {
-                entries[7] -= 100; // Strong penalty to discourage Forest entry without batteries
+            if (batteries === 0 && player.resources.money < 2) {
+                entries[7] -= 100; // Strong penalty: no batteries AND can't afford to buy
             }
         }
         
@@ -345,7 +345,27 @@ class BotPlayer {
         
         // Forest coordination logic
         if (hunterLocation === 7 && entries[7] > -95) { // Hunter is in forest
-            entries[7] += 1; // +1 entry for forest coordination
+            // Check if any other player has both point token and reward token at same level
+            let otherPlayerHasMatchingTokens = false;
+
+            for (let i = 0; i < gameState.players.length; i++) {
+                if (i === this.playerId) continue; // Skip self
+
+                const otherPlayer = gameState.players[i];
+                const pointLevel = otherPlayer.popularityLevel || 0;
+                const rewardLevel = otherPlayer.popularityRewardLevel || 0;
+
+                // Check if this player's point token equals their reward token
+                if (pointLevel === rewardLevel) {
+                    otherPlayerHasMatchingTokens = true;
+                    break;
+                }
+            }
+
+            // +2 entries if NO other player has matching point/reward tokens
+            if (!otherPlayerHasMatchingTokens) {
+                entries[7] += 2;
+            }
         } else if (hunterLocation !== 7 && entries[7] > -95) { // Hunter is NOT in forest
             entries[7] = -100; // Prevent apprentice from going to forest alone
         }
@@ -393,13 +413,13 @@ class BotPlayer {
             }
         }
         
-        // Give +1 additional entry to highest scoring player's preferred location
+        // Give +2 additional entry to highest scoring player's preferred location
         if (highestScorePlayer && highestScorePlayer.weapon) {
             const preferredLocationName = highestScorePlayer.weapon.preferLocation;
             const preferredLocationId = this.getLocationIdByName(preferredLocationName);
-            
+
             if (preferredLocationId && entries[preferredLocationId] > -95) {
-                entries[preferredLocationId] += 1;
+                entries[preferredLocationId] += 2;
             }
         }
     }

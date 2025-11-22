@@ -65,16 +65,98 @@ Rock, Paper, Hunter is a strategic digital board game for 2-4 players where each
 
 ## Bot System AI
 
-### Hunter Decision Logic (BotPlayer class)
-- **Base Entries**: 4 entries per location
-- **Weapon Preference**: +2 entries for preferred location
-- **Resource Adjustments**: Dynamic based on HP/EP ratios, capacity
-- **CSV Lookup Tables**: Stage-based Dojo and Forest requirements
+### Location Selection System
+Bots use a **probabilistic entry system** where each location receives "entries" (like lottery tickets). Higher entries = higher selection probability. The system calculates entries based on multiple factors, then randomly selects weighted by entry count.
 
-### Apprentice Decision Logic
-- Social-aware following of other players' choices
-- Highest score player gets additional preference weight
-- Forest coordination prevents solo apprentice placement
+### Hunter Location Selection Logic (BotPlayer.selectHunterLocation)
+
+**Base System:**
+- All 7 locations start with **4 base entries**
+- Unavailable locations: **-100 entries** (effectively eliminated)
+
+**Adjustments Applied (in order):**
+
+1. **Weapon Preference** (+2 entries)
+   - Each weapon has a preferred location (Bat→Plaza, Rifle→Work Site, Chain→Bar, etc.)
+   - If preferred location unavailable: redirect +2 bonus to Station (if available)
+   - Exception: Plaza preference doesn't redirect
+
+2. **Resource-Based Adjustments**
+   - **Hospital (HP-based)**:
+     - HP ≤ 50%: +2 entries
+     - HP 50-99%: +1 entry
+   - **Bar (EP-based)**:
+     - EP < required for Forest: +2 entries
+     - EP < max: +1 entry
+   - **Work Site (Capacity-based)**:
+     - Available capacity > 4: +2 entries
+     - Available capacity 3-4: +1 entry
+     - Available capacity ≤ 2: no bonus
+
+3. **Dojo Adjustment** (CSV table-based)
+   - Lookup based on: attack dice, defense dice, weapon power track level
+   - Power track determines table: positions 1-2→lv1 table, 3-6→lv2 table, 7→lv3 table
+   - Adds variable entries based on table value
+
+4. **Plaza Adjustment**
+   - If bot hasn't visited Plaza in 2+ rounds: +2 entries
+
+5. **Forest Adjustments** (most complex)
+   - **Bonuses:**
+     - EP at maximum: +3 entries
+     - Has Grenade: +2 entries
+     - Has Bomb: +4 entries
+     - Has Dynamite: +6 entries
+     - Has lowest score: +4 entries
+   - **Penalties:**
+     - HP < 50%: -3 entries
+     - **Rifle with 0 bullets AND money < 2: -100 entries**
+     - **Plasma with 0 batteries AND money < 2: -100 entries**
+   - **CSV Table Lookup:** Adds variable entries based on attack/defense dice + power track level
+
+**Selection Process:**
+1. Calculate total of all positive entries
+2. Generate random number × total
+3. Subtract entries from each location until random ≤ 0
+4. First location to bring random ≤ 0 is selected
+
+### Apprentice Location Selection Logic (BotPlayer.selectApprenticeLocation)
+
+**Base System:**
+- All locations (except hunter's) start with **4 base entries**
+- Hunter's location: **0 entries** (cannot overlap)
+- Unavailable locations: **-100 entries**
+
+**Social-Aware Adjustments:**
+
+1. **Other Players' Preferences** (+2 entries each)
+   - For EACH other player (excluding self):
+   - Add +2 entries to that player's weapon preferred location
+   - Example: If 2 other players prefer Plaza, Plaza gets +4 total
+
+2. **Highest Score Player Bonus** (+2 additional entries)
+   - Find player with highest score (excluding self)
+   - Add +2 extra entries to that player's preferred location
+   - Creates "follow the leader" behavior
+
+3. **Forest Coordination Logic**
+   - **If Hunter is IN Forest:**
+     - Check all other players (excluding self)
+     - For each player: check if `popularityLevel === popularityRewardLevel`
+     - If NO other player has matching popularity tokens: +2 entries
+     - If ANY other player has matching tokens: no bonus
+     - Encourages Forest when bot can capitalize on popularity rewards without competition
+   - **If Hunter is NOT in Forest:**
+     - Forest entries = -100 (prevents solo apprentice Forest entry)
+
+**Design Principles:**
+- **Probabilistic**: Adds variety and unpredictability to bot behavior
+- **Resource-driven**: Prioritizes locations based on current needs (HP, EP, capacity)
+- **Combat-ready**: Strong Forest bonuses when prepared (items, full EP, ammunition available or money to buy)
+- **Safety-first**: Heavy penalties for Forest without resources to fight
+- **Social apprentice**: Follows other players to maximize resource competition and strategic positioning
+- **Adaptive scaling**: CSV tables adjust Dojo/Forest preferences as weapons grow stronger
+- **Weapon synergy**: Each weapon's preferred location guides both hunter and apprentice decisions
 
 ### Resource Management AI
 - Priority order: Money → EP → HP → EXP
