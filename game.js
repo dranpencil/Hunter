@@ -1102,7 +1102,8 @@ class Game {
         this.defeatedMonsters = new Set(); // Track defeated monster IDs
         this.currentSelectedMonster = null; // Current monster shown to player
         this.monsterSelectionEPSpent = 0; // Track EP spent on changing monsters
-        
+        this.playerShownMonsters = {}; // Track shown monsters per player during current selection
+
         // Monster effect system
         this.activeMonsterEffects = []; // Track all active effects in the round
         this.currentMonsterEffect = null; // Track the selected monster's effect
@@ -4719,7 +4720,10 @@ class Game {
         // Handle one hunter at a time
         this.currentMonsterPlayer = forestHunters[0];
         this.remainingForestHunters = forestHunters.slice(1);
-        
+
+        // Reset shown monsters pool for this player (fresh start for each player)
+        this.playerShownMonsters[this.currentMonsterPlayer] = new Set();
+
         const player = this.players.find(p => p.id === this.currentMonsterPlayer);
         
         // Check if current player is a bot
@@ -4984,9 +4988,9 @@ class Game {
         
         // Deduct EP
         this.modifyResource(player.id, 'ep', -totalEPCost);
-        
+
         // Select random available monster from the level
-        const selectedMonster = this.selectRandomAvailableMonster(selectedLevel);
+        const selectedMonster = this.selectRandomAvailableMonster(selectedLevel, player.id);
         if (!selectedMonster) {
             console.error(`No available monsters found for level ${selectedLevel}`);
             return;
@@ -5164,6 +5168,8 @@ class Game {
                 if (this.remainingForestHunters && this.remainingForestHunters.length > 0) {
                     this.handleForestEncounters(this.remainingForestHunters);
                 } else {
+                    // Clean up shown monsters data (all forest battles complete)
+                    this.playerShownMonsters = {};
                     this.endRound();
                 }
             }, this.getDelay(2000));
@@ -5507,6 +5513,8 @@ class Game {
             if (this.remainingForestHunters && this.remainingForestHunters.length > 0) {
                 this.handleForestEncounters(this.remainingForestHunters);
             } else {
+                // Clean up shown monsters data (all forest battles complete)
+                this.playerShownMonsters = {};
                 this.endRound();
             }
         }, this.getDelay(2000));
@@ -6885,18 +6893,32 @@ class Game {
         }
     }
 
-    selectRandomAvailableMonster(level) {
+    selectRandomAvailableMonster(level, playerId = null) {
         // Get all monsters of the specified level
         const monsters = this.monsters[level] || [];
-        
-        // Filter out defeated monsters
+
+        // Filter out defeated monsters (permanent, game-wide)
+        // and shown monsters for this player (temporary, per-player)
         const availableMonsters = monsters.filter(monster => {
             const monsterId = `L${level}-${monster.index}`;
-            return !this.defeatedMonsters.has(monsterId);
+
+            // First check: Remove permanently defeated monsters
+            if (this.defeatedMonsters.has(monsterId)) {
+                return false;
+            }
+
+            // Second check: Remove monsters shown to this player (if playerId provided)
+            if (playerId !== null && this.playerShownMonsters[playerId]) {
+                if (this.playerShownMonsters[playerId].has(monster.index)) {
+                    return false;
+                }
+            }
+
+            return true;
         });
 
         if (availableMonsters.length === 0) {
-            console.warn(`No available monsters for level ${level}`);
+            console.warn(`No available monsters for level ${level} for player ${playerId}`);
             return null;
         }
 
@@ -6933,14 +6955,33 @@ class Game {
         document.getElementById('monster-pts-display').textContent = monster.pts;
         document.getElementById('monster-effect-display').textContent = monster.effect;
 
-        // Enable/disable Change button based on player's EP
+        // Check how many monsters are still available for this player at this level
+        const currentLevel = monster.level;
+        const monstersAtLevel = this.monsters[currentLevel] || [];
+        const availableCount = monstersAtLevel.filter(m => {
+            const monsterId = `L${currentLevel}-${m.index}`;
+            // Filter out defeated monsters
+            if (this.defeatedMonsters.has(monsterId)) {
+                return false;
+            }
+            // Filter out monsters shown to this player
+            if (this.playerShownMonsters[playerId] && this.playerShownMonsters[playerId].has(m.index)) {
+                return false;
+            }
+            return true;
+        }).length;
+
+        // Enable/disable Change button based on player's EP and available monsters
         const changeButton = document.getElementById('change-monster-btn');
-        if (player && player.resources.ep > 0) {
-            changeButton.disabled = false;
-            changeButton.textContent = `Change (-1 EP)`;
-        } else {
+        if (!player || player.resources.ep <= 0) {
             changeButton.disabled = true;
             changeButton.textContent = `Change (No EP)`;
+        } else if (availableCount === 0) {
+            changeButton.disabled = true;
+            changeButton.textContent = `Change (No More Monsters)`;
+        } else {
+            changeButton.disabled = false;
+            changeButton.textContent = `Change (-1 EP)`;
         }
 
         // Show the modal
@@ -6950,7 +6991,7 @@ class Game {
     changeMonster() {
         const playerId = this.currentMonsterPlayer;
         const player = this.players.find(p => p.id === playerId);
-        
+
         if (!player || player.resources.ep <= 0) {
             console.log('Player has no EP to change monster');
             return;
@@ -6960,10 +7001,17 @@ class Game {
         player.resources.ep -= 1;
         this.monsterSelectionEPSpent += 1;
 
-        // Select new random monster of the same level as current monster
+        // Select new random monster of the same level (filtering by player's shown monsters)
         const currentMonsterLevel = this.currentSelectedMonster.level;
-        const newMonster = this.selectRandomAvailableMonster(currentMonsterLevel);
+        const newMonster = this.selectRandomAvailableMonster(currentMonsterLevel, playerId);
+
         if (newMonster) {
+            // Track that this new monster was shown to this player
+            if (!this.playerShownMonsters[playerId]) {
+                this.playerShownMonsters[playerId] = new Set();
+            }
+            this.playerShownMonsters[playerId].add(newMonster.index);
+
             // Apply the same bonuses as the original monster selection
             newMonster.maxHp = newMonster.hp;
 
@@ -6980,15 +7028,35 @@ class Game {
                 newMonster.hp = Math.max(1, newMonster.hp - 1);
                 console.log(`${player.name}'s apprentice in Forest - new monster HP reduced by 1 (${newMonster.maxHp} -> ${newMonster.hp})`);
             }
-            
+
             this.currentSelectedMonster = newMonster;
             this.showMonsterSelectionUI(newMonster, playerId);
-            
+
             // Update resource display to show EP reduction
             this.updateResourceDisplay();
-            
+
             this.addLogEntry(
                 `${player.name} spent 1 EP to change monster`,
+                'system',
+                player
+            );
+        } else {
+            // No monsters left in available pool - refund EP
+            player.resources.ep += 1;
+            this.monsterSelectionEPSpent -= 1;
+
+            // Update resource display to show EP refund
+            this.updateResourceDisplay();
+
+            // Show UI with disabled button and message
+            this.showMonsterSelectionUI(this.currentSelectedMonster, playerId);
+
+            if (!this.isAutomatedMode) {
+                alert('No more monsters available at this level! All remaining monsters have been shown to you.');
+            }
+
+            this.addLogEntry(
+                `${player.name} tried to change monster but no more available (EP refunded)`,
                 'system',
                 player
             );
@@ -7117,13 +7185,19 @@ class Game {
         // this.forestPlayersThisRound.add(playerId); // REMOVED - now done at start of round
 
         // Select random available monster from the level
-        const selectedMonster = this.selectRandomAvailableMonster(monsterLevel);
+        const selectedMonster = this.selectRandomAvailableMonster(monsterLevel, playerId);
         if (!selectedMonster) {
             if (!this.isAutomatedMode) {
                 alert(`No available monsters at level ${monsterLevel}!`);
             }
             return;
         }
+
+        // Track that this monster was shown to this player
+        if (!this.playerShownMonsters[playerId]) {
+            this.playerShownMonsters[playerId] = new Set();
+        }
+        this.playerShownMonsters[playerId].add(selectedMonster.index);
 
         // Store original HP
         selectedMonster.maxHp = selectedMonster.hp;
@@ -8506,6 +8580,8 @@ class Game {
             if (this.remainingForestHunters && this.remainingForestHunters.length > 0) {
                 this.handleForestEncounters(this.remainingForestHunters);
             } else {
+                // Clean up shown monsters data (all forest battles complete)
+                this.playerShownMonsters = {};
                 this.endRound();
             }
         }, 3000);
