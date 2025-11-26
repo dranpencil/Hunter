@@ -223,9 +223,12 @@ class BotPlayer {
                 entries[7] -= 100; // Strong penalty: no bullets AND can't afford to buy
             }
         } else if (player.weapon.name === 'Plasma') {
-            const batteries = player.inventory.filter(item => item.name === 'Battery').length;
-            if (batteries === 0 && player.resources.money < 2) {
-                entries[7] -= 100; // Strong penalty: no batteries AND can't afford to buy
+            // Level 3 has infinite batteries - no penalty needed
+            if (player.weapon.powerTrackPosition < 7) {
+                const batteries = player.inventory.filter(item => item.name === 'Battery').length;
+                if (batteries === 0 && player.resources.money < 2) {
+                    entries[7] -= 100; // Strong penalty: no batteries AND can't afford to buy
+                }
             }
         }
         
@@ -2052,6 +2055,10 @@ class Game {
             const bullets = player.inventory.filter(item => item.name === 'Bullet').length;
             return bullets > 0;
         } else if (player.weapon.name === 'Plasma') {
+            // Level 3 has infinite batteries
+            if (player.weapon.powerTrackPosition >= 7) {
+                return true;
+            }
             const batteries = player.inventory.filter(item => item.name === 'Battery').length;
             return batteries > 0;
         }
