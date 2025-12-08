@@ -10720,6 +10720,10 @@ class Game {
                                 <span class="stat-value">${player.scoreFromMilestones || 0}</span>
                             </div>
                             <div class="stat-row">
+                                <span class="stat-label">From Fake Blood:</span>
+                                <span class="stat-value">${player.scoreFromFakeBlood || 0}</span>
+                            </div>
+                            <div class="stat-row">
                                 <span class="stat-label">From Other:</span>
                                 <span class="stat-value">${player.scoreFromOther || 0}</span>
                             </div>
