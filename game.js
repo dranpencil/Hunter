@@ -4741,10 +4741,11 @@ class Game {
         
         document.getElementById('monster-modal-title').textContent = `${player.name}: Choose Monster to Fight`;
 
-        // Reset selected pets, beer consumption, and monster level
+        // Reset selected pets, beer consumption, overflow EP, and monster level
         this.selectedMonsterLevel = null;
         this.selectedPets = { level1: 0, level2: 0, level3: 0 };
         this.selectedBeerConsumption = 0;
+        this.overflowEP = 0;
 
         // Clear monster button selection state
         document.querySelectorAll('.monster-choice').forEach(btn => {
@@ -6936,14 +6937,18 @@ class Game {
 
     showMonsterSelectionUI(monster, playerId) {
         const player = this.players.find(p => p.id === playerId);
-        
+
+        // Reset beer consumption tracking for monster selection modal
+        this.monsterSelectBeerConsumption = 0;
+        this.monsterSelectOverflowEP = 0;
+
         // Update all display elements with monster data
         document.getElementById('monster-level-display').textContent = monster.level;
-        
+
         // Special HP display: show original HP and battle HP if apprentice is in Forest
         const originalHp = monster.maxHp || monster.hp; // Use maxHp if available, otherwise current hp
         const battleHp = monster.hp; // This should be the actual HP they'll face in battle
-        
+
         const hpDisplay = document.getElementById('monster-hp-display');
         if (player && player.tokens.apprentice === 7 && originalHp !== battleHp) {
             // Apprentice is in Forest and HP is reduced - show both values
@@ -6954,7 +6959,7 @@ class Game {
             hpDisplay.textContent = monster.hp;
             hpDisplay.classList.remove('hp-bonus');
         }
-        
+
         document.getElementById('monster-att-display').textContent = monster.att;
         document.getElementById('monster-money-display').textContent = monster.money;
         document.getElementById('monster-energy-display').textContent = monster.energy;
@@ -6962,34 +6967,22 @@ class Game {
         document.getElementById('monster-pts-display').textContent = monster.pts;
         document.getElementById('monster-effect-display').textContent = monster.effect;
 
-        // Check how many monsters are still available for this player at this level
-        const currentLevel = monster.level;
-        const monstersAtLevel = this.monsters[currentLevel] || [];
-        const availableCount = monstersAtLevel.filter(m => {
-            const monsterId = `L${currentLevel}-${m.index}`;
-            // Filter out defeated monsters
-            if (this.defeatedMonsters.has(monsterId)) {
-                return false;
-            }
-            // Filter out monsters shown to this player
-            if (this.playerShownMonsters[playerId] && this.playerShownMonsters[playerId].has(m.index)) {
-                return false;
-            }
-            return true;
-        }).length;
+        // Initialize beer consumption section
+        const beerSection = document.getElementById('monster-select-beer-section');
+        const beerCount = player ? player.inventory.filter(i => i.name === 'Beer').length : 0;
 
-        // Enable/disable Change button based on player's EP and available monsters
-        const changeButton = document.getElementById('change-monster-btn');
-        if (!player || player.resources.ep <= 0) {
-            changeButton.disabled = true;
-            changeButton.textContent = `Change (No EP)`;
-        } else if (availableCount === 0) {
-            changeButton.disabled = true;
-            changeButton.textContent = `Change (No More Monsters)`;
+        if (beerCount > 0) {
+            beerSection.style.display = 'block';
+            document.getElementById('monster-select-beers-count').textContent = beerCount;
+            document.getElementById('monster-select-beers-to-consume').textContent = 0;
+            document.getElementById('monster-select-ep-display').textContent = player.resources.ep;
+            document.getElementById('monster-select-max-ep').textContent = player.maxResources.ep;
         } else {
-            changeButton.disabled = false;
-            changeButton.textContent = `Change (-1 EP)`;
+            beerSection.style.display = 'none';
         }
+
+        // Update Change button state
+        this.updateChangeButtonState(playerId, monster.level);
 
         // Show the modal
         document.getElementById('monster-selection-modal').style.display = 'flex';
@@ -6999,13 +6992,19 @@ class Game {
         const playerId = this.currentMonsterPlayer;
         const player = this.players.find(p => p.id === playerId);
 
-        if (!player || player.resources.ep <= 0) {
+        // Check effective EP (regular + overflow from beers)
+        const effectiveEP = player.resources.ep + (this.monsterSelectOverflowEP || 0);
+        if (!player || effectiveEP <= 0) {
             console.log('Player has no EP to change monster');
             return;
         }
 
-        // Deduct 1 EP
-        player.resources.ep -= 1;
+        // Deduct 1 EP - use overflow first, then regular EP
+        if (this.monsterSelectOverflowEP > 0) {
+            this.monsterSelectOverflowEP -= 1;
+        } else {
+            player.resources.ep -= 1;
+        }
         this.monsterSelectionEPSpent += 1;
 
         // Select new random monster of the same level (filtering by player's shown monsters)
@@ -7068,6 +7067,110 @@ class Game {
                 player
             );
         }
+    }
+
+    updateChangeButtonState(playerId, monsterLevel) {
+        const player = this.players.find(p => p.id === playerId);
+        if (!player) return;
+
+        // Check how many monsters are still available for this player at this level
+        const monstersAtLevel = this.monsters[monsterLevel] || [];
+        const availableCount = monstersAtLevel.filter(m => {
+            const monsterId = `L${monsterLevel}-${m.index}`;
+            // Filter out defeated monsters
+            if (this.defeatedMonsters.has(monsterId)) {
+                return false;
+            }
+            // Filter out monsters shown to this player
+            if (this.playerShownMonsters[playerId] && this.playerShownMonsters[playerId].has(m.index)) {
+                return false;
+            }
+            return true;
+        }).length;
+
+        // Calculate effective EP (regular + overflow from beers)
+        const effectiveEP = player.resources.ep + (this.monsterSelectOverflowEP || 0);
+
+        // Enable/disable Change button based on effective EP and available monsters
+        const changeButton = document.getElementById('change-monster-btn');
+        if (effectiveEP <= 0) {
+            changeButton.disabled = true;
+            changeButton.textContent = `Change (No EP)`;
+        } else if (availableCount === 0) {
+            changeButton.disabled = true;
+            changeButton.textContent = `Change (No More Monsters)`;
+        } else {
+            changeButton.disabled = false;
+            changeButton.textContent = `Change (-1 EP)`;
+        }
+    }
+
+    adjustBeerInMonsterSelection(delta) {
+        const player = this.players.find(p => p.id === this.currentMonsterPlayer);
+        if (!player) return;
+
+        const beerCount = player.inventory.filter(i => i.name === 'Beer').length;
+
+        // Store previous consumption amount
+        const previousConsumption = this.monsterSelectBeerConsumption || 0;
+
+        // Calculate max beers that can be consumed (only limited by available beers)
+        const maxConsumable = beerCount;
+
+        // Calculate new selected count (min 0, max available beers)
+        const newConsumption = Math.max(0, Math.min(maxConsumable, previousConsumption + delta));
+
+        // Calculate actual delta to apply
+        const actualDelta = newConsumption - previousConsumption;
+
+        if (actualDelta > 0) {
+            // Consume more beers
+            for (let i = 0; i < actualDelta; i++) {
+                const beerIndex = player.inventory.findIndex(item => item.name === 'Beer');
+                if (beerIndex !== -1) {
+                    player.inventory.splice(beerIndex, 1);
+                    // If EP is at max, add to overflow instead
+                    if (player.resources.ep >= player.maxResources.ep) {
+                        this.monsterSelectOverflowEP = (this.monsterSelectOverflowEP || 0) + 1;
+                    } else {
+                        player.resources.ep = Math.min(player.resources.ep + 1, player.maxResources.ep);
+                    }
+                }
+            }
+        } else if (actualDelta < 0) {
+            // Restore beers
+            for (let i = 0; i < Math.abs(actualDelta); i++) {
+                player.inventory.push({ name: 'Beer', size: 1 });
+                // If overflow exists, reduce it first
+                if (this.monsterSelectOverflowEP > 0) {
+                    this.monsterSelectOverflowEP -= 1;
+                } else {
+                    player.resources.ep = Math.max(0, player.resources.ep - 1);
+                }
+            }
+        }
+
+        // Update selected consumption tracker
+        this.monsterSelectBeerConsumption = newConsumption;
+
+        // Update resource and inventory displays
+        this.updateResourceDisplay(player.id);
+        this.updateInventoryDisplay(player.id);
+
+        // Update beer consumption UI
+        const currentBeerCount = player.inventory.filter(i => i.name === 'Beer').length;
+        document.getElementById('monster-select-beers-count').textContent = currentBeerCount;
+        document.getElementById('monster-select-beers-to-consume').textContent = this.monsterSelectBeerConsumption;
+
+        // Show overflow EP in '10+2/10' format
+        if (this.monsterSelectOverflowEP > 0) {
+            document.getElementById('monster-select-ep-display').textContent = `${player.resources.ep}+${this.monsterSelectOverflowEP}`;
+        } else {
+            document.getElementById('monster-select-ep-display').textContent = player.resources.ep;
+        }
+
+        // Update Change button state
+        this.updateChangeButtonState(this.currentMonsterPlayer, this.currentSelectedMonster.level);
     }
 
     confirmMonsterSelection() {
@@ -7871,31 +7974,38 @@ class Game {
         // Clear existing buttons
         itemButtonsContainer.innerHTML = '';
         
-        // Define usable battle items (all except beer)
+        // Define usable battle items
         const battleItems = [
+            { name: 'Beer', icon: '🍺', effect: 'Recover 1 EP' },
             { name: 'Blood Bag', icon: '🩸', effect: 'Recover 1 HP' },
             { name: 'Grenade', icon: '💣', effect: 'Monster -1 HP' },
             { name: 'Bomb', icon: '💥', effect: 'Monster -2 HP' },
             { name: 'Dynamite', icon: '🧨', effect: 'Monster -3 HP' },
             { name: 'Fake Blood', icon: '🩹', effect: 'Bonus +2 PTS' }
         ];
-        
+
         battleItems.forEach(item => {
             const itemCount = player.inventory.filter(inv => inv.name === item.name).length;
             const button = document.createElement('button');
             button.className = 'battle-item-btn';
             button.innerHTML = `${item.icon} ${item.name} (${itemCount})`;
             button.title = item.effect;
-            
+
             // Check if button should be disabled
             let isDisabled = itemCount === 0 || (battle.turn !== 'player_items' && battle.turn !== 'player_items_after_monster');
-            
+
+            // Special case for Beer - disable if player is at max EP
+            if (item.name === 'Beer' && player.resources.ep >= player.maxResources.ep) {
+                isDisabled = true;
+                button.title = 'EP is already at maximum';
+            }
+
             // Special case for Blood Bag - disable if player is at max HP
             if (item.name === 'Blood Bag' && player.resources.hp >= player.maxResources.hp) {
                 isDisabled = true;
                 button.title = 'HP is already at maximum';
             }
-            
+
             button.disabled = isDisabled;
             button.onclick = () => this.useBattleItem(item.name);
             itemButtonsContainer.appendChild(button);
@@ -8138,7 +8248,17 @@ class Game {
         player.inventory.splice(itemIndex, 1);
         
         // Apply item effect
-        if (itemName === 'Blood Bag') {
+        if (itemName === 'Beer') {
+            // Recover 1 EP
+            if (player.resources.ep < player.maxResources.ep) {
+                player.resources.ep = Math.min(player.resources.ep + 1, player.maxResources.ep);
+                this.logBattleAction(`${player.name} uses Beer! EP restored to ${player.resources.ep}`, player);
+                // Update player EP display
+                document.getElementById('battle-player-ep').textContent = `${player.resources.ep}/${player.maxResources.ep}`;
+            } else {
+                this.logBattleAction(`${player.name} uses Beer but EP is already at maximum!`, player);
+            }
+        } else if (itemName === 'Blood Bag') {
             // Recover 1 HP
             if (player.resources.hp < player.maxResources.hp) {
                 player.resources.hp = Math.min(player.resources.hp + 1, player.maxResources.hp);
@@ -11326,7 +11446,12 @@ class Game {
 
         // Update displays to show current state
         document.getElementById('available-beers-count').textContent = beerCount;
-        document.getElementById('current-ep-display').textContent = player.resources.ep;
+        // Show overflow EP in '10+2/10' format
+        if (this.overflowEP > 0) {
+            document.getElementById('current-ep-display').textContent = `${player.resources.ep}+${this.overflowEP}`;
+        } else {
+            document.getElementById('current-ep-display').textContent = player.resources.ep;
+        }
         document.getElementById('max-ep-display').textContent = player.maxResources.ep;
         document.getElementById('beers-to-consume').textContent = this.selectedBeerConsumption || 0;
     }
@@ -11350,10 +11475,10 @@ class Game {
         // Store previous consumption amount
         const previousConsumption = this.selectedBeerConsumption || 0;
 
-        // Calculate max beers that can be consumed (limited by available beers and EP capacity)
-        const maxConsumable = Math.min(beerCount, player.maxResources.ep - player.resources.ep);
+        // Calculate max beers that can be consumed (only limited by available beers, not EP capacity)
+        const maxConsumable = beerCount;
 
-        // Calculate new selected count (min 0, max available or capacity limit)
+        // Calculate new selected count (min 0, max available beers)
         const newConsumption = Math.max(0, Math.min(maxConsumable, previousConsumption + delta));
 
         // Calculate actual delta to apply
@@ -11365,14 +11490,24 @@ class Game {
                 const beerIndex = player.inventory.findIndex(item => item.name === 'Beer');
                 if (beerIndex !== -1) {
                     player.inventory.splice(beerIndex, 1);
-                    player.resources.ep = Math.min(player.resources.ep + 1, player.maxResources.ep);
+                    // If EP is at max, add to overflow instead
+                    if (player.resources.ep >= player.maxResources.ep) {
+                        this.overflowEP = (this.overflowEP || 0) + 1;
+                    } else {
+                        player.resources.ep = Math.min(player.resources.ep + 1, player.maxResources.ep);
+                    }
                 }
             }
         } else if (actualDelta < 0) {
             // Restore beers
             for (let i = 0; i < Math.abs(actualDelta); i++) {
                 player.inventory.push({ name: 'Beer', size: 1 });
-                player.resources.ep = Math.max(0, player.resources.ep - 1);
+                // If overflow exists, reduce it first
+                if (this.overflowEP > 0) {
+                    this.overflowEP -= 1;
+                } else {
+                    player.resources.ep = Math.max(0, player.resources.ep - 1);
+                }
             }
         }
 
@@ -11386,7 +11521,12 @@ class Game {
         // Update beer consumption UI
         const currentBeerCount = player.inventory.filter(i => i.name === 'Beer').length;
         document.getElementById('available-beers-count').textContent = currentBeerCount;
-        document.getElementById('current-ep-display').textContent = player.resources.ep;
+        // Show overflow EP in '10+2/10' format
+        if (this.overflowEP > 0) {
+            document.getElementById('current-ep-display').textContent = `${player.resources.ep}+${this.overflowEP}`;
+        } else {
+            document.getElementById('current-ep-display').textContent = player.resources.ep;
+        }
         document.getElementById('max-ep-display').textContent = player.maxResources.ep;
         document.getElementById('beers-to-consume').textContent = this.selectedBeerConsumption;
 
@@ -11425,12 +11565,14 @@ class Game {
         }
         
         const totalCost = monsterCost + petCost;
-        
+
         document.getElementById('total-ep-cost').textContent = totalCost;
-        
+
         // Show/hide confirm button based on valid selection
+        // Use effective EP (current EP + overflow from beers)
+        const effectiveEP = player.resources.ep + (this.overflowEP || 0);
         const confirmBtn = document.querySelector('.confirm-battle-btn');
-        if (this.selectedMonsterLevel && totalCost <= player.resources.ep) {
+        if (this.selectedMonsterLevel && totalCost <= effectiveEP) {
             confirmBtn.style.display = 'block';
         } else {
             confirmBtn.style.display = 'none';

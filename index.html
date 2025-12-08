@@ -434,13 +434,29 @@
                         <div id="monster-effect-display" class="effect-text"></div>
                     </div>
                 </div>
+                <div class="beer-consumption-section" id="monster-select-beer-section" style="display: none;">
+                    <h4>Consume Beers to Increase EP</h4>
+                    <div class="beer-consumption-controls">
+                        <span class="beer-info">
+                            Available Beers: <span id="monster-select-beers-count">0</span>
+                        </span>
+                        <span class="beer-counter">
+                            <button onclick="game.adjustBeerInMonsterSelection(-1)">-</button>
+                            <span id="monster-select-beers-to-consume">0</span>
+                            <button onclick="game.adjustBeerInMonsterSelection(1)">+</button>
+                        </span>
+                    </div>
+                    <div class="beer-ep-preview">
+                        Current EP: <span id="monster-select-ep-display">0</span> / <span id="monster-select-max-ep">10</span>
+                    </div>
+                </div>
                 <div class="monster-actions">
                     <button onclick="game.changeMonster()" id="change-monster-btn">Change (-1 EP)</button>
                     <button onclick="game.confirmMonsterSelection()">Ready</button>
                 </div>
             </div>
         </div>
-        
+
         <!-- Data Collection Modal -->
         <div id="data-collection-modal" class="modal" style="display: none;">
             <div class="modal-content">
