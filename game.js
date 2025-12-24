@@ -5256,8 +5256,13 @@ class Game {
                 }
 
                 let defense = 0;
+                // Bow Level 1 Power: 3,4,5,6 = 1 defense (+16% dodge)
+                let defenseThreshold = 4;
+                if (player.weapon.name === 'Bow' && player.weapon.powerTrackPosition >= 1) {
+                    defenseThreshold = 3;
+                }
                 defenseRolls.forEach(roll => {
-                    if (roll >= 4) defense++; // 4, 5, 6 = 1 defense each
+                    if (roll >= defenseThreshold) defense++;
                 });
 
                 const finalDamage = Math.max(0, monsterDamage - defense);
@@ -5416,10 +5421,15 @@ class Game {
             }
             
             let defense = 0;
+            // Bow Level 1 Power: 3,4,5,6 = 1 defense (+16% dodge)
+            let defenseThreshold = 4;
+            if (player.weapon.name === 'Bow' && player.weapon.powerTrackPosition >= 1) {
+                defenseThreshold = 3;
+            }
             defenseRolls.forEach(roll => {
-                if (roll >= 4) defense++; // 4, 5, 6 = 1 defense each
+                if (roll >= defenseThreshold) defense++;
             });
-            
+
             const finalDamage = Math.max(0, monsterDamage - defense);
             currentPlayerHP -= finalDamage;
 
@@ -8387,12 +8397,12 @@ class Game {
         let totalDefense = 0;
         defenseRolls.forEach(roll => {
             // Standard defense: 4,5,6 = 1 defense, 1,2,3 = 0 defense
-            // Bow Level 1 Power: 2,3,4,5,6 = 1 defense, 1 = 0 defense
+            // Bow Level 1 Power: 3,4,5,6 = 1 defense, 1,2 = 0 defense (+16% dodge)
             let defenseThreshold = 4;
             if (player.weapon.name === 'Bow' && player.weapon.powerTrackPosition >= 1) {
-                defenseThreshold = 2;
+                defenseThreshold = 3;
             }
-            
+
             if (roll >= defenseThreshold) totalDefense += 1;
         });
         
