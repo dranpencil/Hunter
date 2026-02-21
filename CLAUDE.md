@@ -231,7 +231,7 @@ Each weapon features:
 - Lv3: Pet damage x2
 
 **Axe**
-- Lv1: Deal 1 damage when taking damage
+- Lv1: Deal 1 damage when taking damage (no EXP from monster damage)
 - Lv2: +1 blood bag at round start
 - Lv3: Deal equal damage when taking damage
 
@@ -253,7 +253,7 @@ Each weapon features:
 **Knife**
 - Lv1: Can double damage once per battle
 - Lv2: +2 points when hunter is alone at location
-- Lv3: Battle rewards x2
+- Lv3: +2 points at the start of a round
 
 **Gloves**
 - Lv1: +1 damage [5,6] when taking damage (per attack)

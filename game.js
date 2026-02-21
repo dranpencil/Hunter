@@ -1061,7 +1061,7 @@ class Game {
             { name: 'Chain', reqExpAttack: 4, reqExpDefense: 3, capacity: 6, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 1, 1, 1], priority: 6,
               lv1Power: '怪獸於血量3以下即可收服', lv2Power: '回合開始+2啤酒', lv3Power: '寵物攻擊x2', preferLocation: 'bar' },
             { name: 'Axe', reqExpAttack: 4, reqExpDefense: 3, capacity: 6, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 0, 1, 1], priority: 4,
-              lv1Power: '玩家受傷時反擊怪獸受1點傷害', lv2Power: '回合開始+1血袋', lv3Power: '玩家受傷時反擊怪獸受一樣的傷害', preferLocation: 'hospital' },
+              lv1Power: '玩家受傷時反擊怪獸受1點傷害(受傷時無法獲得經驗)', lv2Power: '回合開始+1血袋', lv3Power: '玩家受傷時反擊怪獸受一樣的傷害', preferLocation: 'hospital' },
             { name: 'Whip', reqExpAttack: 4, reqExpDefense: 3, capacity: 6, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 1, 1, 1], priority: 5,
               lv1Power: '寵物和收服怪獸體力-1', lv2Power: '回合開始+2啤酒', lv3Power: '寵物和收服不耗體力', preferLocation: 'bar' },
             { name: 'Bow', reqExpAttack: 5, reqExpDefense: 3, capacity: 6, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 0, 0, 4], priority: 1,
@@ -1069,7 +1069,7 @@ class Game {
             { name: 'Sword', reqExpAttack: 5, reqExpDefense: 3, capacity: 4, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 1, 1, 2], priority: 9,
               lv1Power: '無', lv2Power: '單獨存在區域+2經驗', lv3Power: '每骰到至少1個1即+1分', preferLocation: 'dojo' },
             { name: 'Knife', reqExpAttack: 3, reqExpDefense: 3, capacity: 10, initialMoney: 8, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 0, 1, 1], priority: 2,
-              lv1Power: '可將一次的攻擊力x2', lv2Power: '單獨存在區域+1分', lv3Power: '打贏的資源獎勵x2', preferLocation: 'plaza' },
+              lv1Power: '可將一次的攻擊力x2', lv2Power: '單獨存在區域+2分', lv3Power: '回合開始+2分', preferLocation: 'plaza' },
             { name: 'Gloves', reqExpAttack: 4, reqExpDefense: 3, capacity: 6, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 0, 1, 1], priority: 7,
               lv1Power: '基礎攻擊力=1，當hp少於一半時攻擊力+1', lv2Power: '回合開始+1血袋', lv3Power: '每次遭受攻擊而扣血，攻擊力+1', preferLocation: 'hospital' }
         ];
@@ -4998,12 +4998,45 @@ class Game {
         this.modifyResource(player.id, 'ep', -totalEPCost);
 
         // Select random available monster from the level
-        const selectedMonster = this.selectRandomAvailableMonster(selectedLevel, player.id);
+        let selectedMonster = this.selectRandomAvailableMonster(selectedLevel, player.id);
         if (!selectedMonster) {
             console.error(`No available monsters found for level ${selectedLevel}`);
             return;
         }
-        
+
+        // Bot monster switching: avoid monsters that attack first when defense is insufficient
+        const defenseCount = player.weapon.currentDefenseDice || 0;
+        if (!this.playerShownMonsters[player.id]) {
+            this.playerShownMonsters[player.id] = new Set();
+        }
+        this.playerShownMonsters[player.id].add(selectedMonster.index);
+
+        while (selectedMonster && selectedMonster.effectId &&
+               this.checkBattleOrder(selectedMonster.effectId, defenseCount) &&
+               player.resources.ep > 0) {
+            // Monster would attack first — spend 1 EP to try another
+            this.modifyResource(player.id, 'ep', -1);
+            this.addLogEntry(
+                `🔄 <strong>${player.name}</strong> (Bot) spent 1 EP to change monster (monster attacks first, defense: ${defenseCount})`,
+                'battle',
+                player
+            );
+
+            const newMonster = this.selectRandomAvailableMonster(selectedLevel, player.id);
+            if (!newMonster) {
+                // No more monsters available — must fight current one
+                this.addLogEntry(
+                    `⚠️ <strong>${player.name}</strong> (Bot) no more monsters available, must fight current monster`,
+                    'battle',
+                    player
+                );
+                break;
+            }
+
+            this.playerShownMonsters[player.id].add(newMonster.index);
+            selectedMonster = newMonster;
+        }
+
         // Store original HP and apply apprentice bonus if applicable
         selectedMonster.maxHp = selectedMonster.hp;
 
@@ -5268,9 +5301,12 @@ class Game {
                 const finalDamage = Math.max(0, monsterDamage - defense);
                 currentPlayerHP -= finalDamage;
 
-                // Bot gains EXP equal to damage taken (unless monster effect prevents it)
+                // Bot gains EXP equal to damage taken (unless Axe or monster effect prevents it)
                 let expGained = 0;
                 if (finalDamage > 0) {
+                    if (player.weapon.name === 'Axe' && player.weapon.powerTrackPosition >= 1) {
+                        battleActions.push(`Monster attacks first for ${monsterDamage} damage. ${player.name} defends: [${defenseRolls.join(', ')}] = ${defense} defense. Final damage: ${finalDamage} (no EXP from Axe)`);
+                    } else {
                     const damageEffect = this.applyBattleEffect(monster, 'playerDamaged', player);
                     if (damageEffect && damageEffect.noEXP) {
                         battleActions.push(`Monster attacks first for ${monsterDamage} damage. ${player.name} defends: [${defenseRolls.join(', ')}] = ${defense} defense. Final damage: ${finalDamage} (no EXP from monster effect)`);
@@ -5282,6 +5318,7 @@ class Game {
                         expGained = finalDamage;
                         player.resources.exp = Math.min(player.maxResources.exp, player.resources.exp + expGained);
                         battleActions.push(`Monster attacks first for ${monsterDamage} damage. ${player.name} defends: [${defenseRolls.join(', ')}] = ${defense} defense. Final damage: ${finalDamage} (+${expGained} EXP)`);
+                    }
                     }
                 } else {
                     battleActions.push(`Monster attacks first for ${monsterDamage} damage. ${player.name} defends: [${defenseRolls.join(', ')}] = ${defense} defense. Final damage: ${finalDamage}`);
@@ -5436,6 +5473,9 @@ class Game {
             // Bot gains EXP equal to damage taken (unless monster effect prevents it)
             let expGained = 0;
             if (finalDamage > 0) {
+                if (player.weapon.name === 'Axe' && player.weapon.powerTrackPosition >= 1) {
+                    battleActions.push(`Monster attacks for ${monsterDamage} damage. ${player.name} defends: [${defenseRolls.join(', ')}] = ${defense} defense. Final damage: ${finalDamage} (no EXP from Axe)`);
+                } else {
                 const damageEffect = this.applyBattleEffect(monster, 'playerDamaged', player);
                 if (damageEffect && damageEffect.noEXP) {
                     battleActions.push(`Monster attacks for ${monsterDamage} damage. ${player.name} defends: [${defenseRolls.join(', ')}] = ${defense} defense. Final damage: ${finalDamage} (no EXP from monster effect)`);
@@ -5447,6 +5487,7 @@ class Game {
                     expGained = finalDamage;
                     player.resources.exp = Math.min(player.maxResources.exp, player.resources.exp + expGained);
                     battleActions.push(`Monster attacks for ${monsterDamage} damage. ${player.name} defends: [${defenseRolls.join(', ')}] = ${defense} defense. Final damage: ${finalDamage} (+${expGained} EXP)`);
+                }
                 }
             } else {
                 battleActions.push(`Monster attacks for ${monsterDamage} damage. ${player.name} defends: [${defenseRolls.join(', ')}] = ${defense} defense. Final damage: ${finalDamage}`);
@@ -5547,21 +5588,17 @@ class Game {
         player.monstersDefeated[`level${monster.level}`]++;
         battleActions.push(`${player.name} has defeated ${player.monstersDefeated.level1} Lv1, ${player.monstersDefeated.level2} Lv2, ${player.monstersDefeated.level3} Lv3 monsters`);
         
-        // Check for Knife Level 3 Power: Double resources (not points)
-        const knifeDoubleRewards = player.weapon.name === 'Knife' && player.weapon.powerTrackPosition >= 7;
-        const rewardMultiplier = knifeDoubleRewards ? 2 : 1;
-        
         // Apply monster rewards
-        const finalMoney = monster.money * rewardMultiplier;
-        const finalEnergy = monster.energy * rewardMultiplier;
-        const finalBlood = monster.blood * rewardMultiplier;
-        
+        const finalMoney = monster.money;
+        const finalEnergy = monster.energy;
+        const finalBlood = monster.blood;
+
         // Apply resource caps (money max 15, others handled by items)
         player.resources.money = Math.min(player.maxResources.money, player.resources.money + finalMoney);
         player.resources.beer += finalEnergy; // Monster data uses 'energy' not 'beer'
         player.resources.bloodBag += finalBlood; // Monster data uses 'blood' not 'bloodBag'
         // Split the points between monster and fake blood sources
-        this.addScore(player.id, monster.pts, 'monster'); // Points are NOT doubled by Knife Lv3
+        this.addScore(player.id, monster.pts, 'monster');
         if (battle.bonusPts > 0) {
             this.addScore(player.id, battle.bonusPts, 'fakeblood');
         }
@@ -5582,9 +5619,6 @@ class Game {
         if (finalEnergy > 0) rewardText += `, ${finalEnergy} beer`;
         if (finalBlood > 0) rewardText += `, ${finalBlood} blood bags`;
         rewardText += `, ${monster.pts + battle.bonusPts} points`;
-        if (knifeDoubleRewards) {
-            rewardText += ` (resources doubled by Knife Lv3 Power!)`;
-        }
         
         battleActions.push(rewardText);
         
@@ -6085,12 +6119,12 @@ class Game {
                     }
                 }
 
-                // Knife Level 2 Power: +1 point when hunter is alone
+                // Knife Level 2 Power: +2 points when hunter is alone
                 if (player.weapon.name === 'Knife' && player.weapon.powerTrackPosition >= 3) {
-                    this.addScore(player.id, 1, 'other');
+                    this.addScore(player.id, 2, 'other');
                     if (!this.isAutomatedMode) {
-                        console.log(`Knife Lv2 Power: ${player.name} receives +1 point for being alone at location`);
-                        this.addLogEntry(`🔪 ${player.name} receives +1 point from Knife Lv2 Power`, 'power', player);
+                        console.log(`Knife Lv2 Power: ${player.name} receives +2 points for being alone at location`);
+                        this.addLogEntry(`🔪 ${player.name} receives +2 points from Knife Lv2 Power`, 'power', player);
                     }
                 }
                 
@@ -8419,17 +8453,21 @@ class Game {
             // Update player HP display
             document.getElementById('battle-player-hp').textContent = `${player.resources.hp}/${player.maxResources.hp}`;
 
-            // Player gains EXP equal to damage received (unless monster effect prevents it)
-            const damageEffect = this.applyBattleEffect(battle.monster, 'playerDamaged', player);
-            if (damageEffect && damageEffect.noEXP) {
-                this.logBattleAction(`${player.name} gains no EXP (monster effect)!`, player);
-            } else if (damageEffect && damageEffect.maxEXP) {
-                const cappedEXP = Math.min(finalDamage, damageEffect.maxEXP);
-                this.modifyResource(battle.playerId, 'exp', cappedEXP);
-                this.logBattleAction(`${player.name} gains ${cappedEXP} EXP from taking damage (capped by monster effect)!`, player);
+            // Player gains EXP equal to damage received (unless Axe or monster effect prevents it)
+            if (player.weapon.name === 'Axe' && player.weapon.powerTrackPosition >= 1) {
+                this.logBattleAction(`${player.name} gains no EXP (no EXP from Axe)!`, player);
             } else {
-                this.modifyResource(battle.playerId, 'exp', finalDamage);
-                this.logBattleAction(`${player.name} gains ${finalDamage} EXP from taking damage!`, player);
+                const damageEffect = this.applyBattleEffect(battle.monster, 'playerDamaged', player);
+                if (damageEffect && damageEffect.noEXP) {
+                    this.logBattleAction(`${player.name} gains no EXP (monster effect)!`, player);
+                } else if (damageEffect && damageEffect.maxEXP) {
+                    const cappedEXP = Math.min(finalDamage, damageEffect.maxEXP);
+                    this.modifyResource(battle.playerId, 'exp', cappedEXP);
+                    this.logBattleAction(`${player.name} gains ${cappedEXP} EXP from taking damage (capped by monster effect)!`, player);
+                } else {
+                    this.modifyResource(battle.playerId, 'exp', finalDamage);
+                    this.logBattleAction(`${player.name} gains ${finalDamage} EXP from taking damage!`, player);
+                }
             }
             
             // Gloves Power: Level 3 only - increase attack for each time damaged
@@ -8613,39 +8651,20 @@ class Game {
         // Mark monster as defeated so it can't be selected again
         this.markMonsterDefeated(monster);
         
-        // Check for Knife Level 3 Power: Double rewards
-        const knifeDoubleRewards = player.weapon.name === 'Knife' && player.weapon.powerTrackPosition >= 7;
-        const rewardMultiplier = knifeDoubleRewards ? 2 : 1;
-        
         // Award rewards
         if (monster.money > 0) {
-            const finalMoney = monster.money * rewardMultiplier;
-            this.modifyResource(battle.playerId, 'money', finalMoney);
-            if (knifeDoubleRewards) {
-                this.logBattleAction(`+${finalMoney} money (doubled by Knife Lv3 Power!)`, player);
-            } else {
-                this.logBattleAction(`+${finalMoney} money`, player);
-            }
+            this.modifyResource(battle.playerId, 'money', monster.money);
+            this.logBattleAction(`+${monster.money} money`, player);
         }
         if (monster.energy > 0) {
-            const finalEnergy = monster.energy * rewardMultiplier;
-            player.resources.beer += finalEnergy;
-            this.addItemToInventory(battle.playerId, 'Beer', finalEnergy);
-            if (knifeDoubleRewards) {
-                this.logBattleAction(`+${finalEnergy} beer (doubled by Knife Lv3 Power!)`, player);
-            } else {
-                this.logBattleAction(`+${finalEnergy} beer`, player);
-            }
+            player.resources.beer += monster.energy;
+            this.addItemToInventory(battle.playerId, 'Beer', monster.energy);
+            this.logBattleAction(`+${monster.energy} beer`, player);
         }
         if (monster.blood > 0) {
-            const finalBlood = monster.blood * rewardMultiplier;
-            player.resources.bloodBag += finalBlood;
-            this.addItemToInventory(battle.playerId, 'Blood Bag', finalBlood);
-            if (knifeDoubleRewards) {
-                this.logBattleAction(`+${finalBlood} blood bags (doubled by Knife Lv3 Power!)`, player);
-            } else {
-                this.logBattleAction(`+${finalBlood} blood bags`, player);
-            }
+            player.resources.bloodBag += monster.blood;
+            this.addItemToInventory(battle.playerId, 'Blood Bag', monster.blood);
+            this.logBattleAction(`+${monster.blood} blood bags`, player);
         }
         if (monster.pts > 0) {
             let totalScore = monster.pts;
@@ -8655,7 +8674,6 @@ class Game {
                 totalScore += battle.bonusPts;
             }
             
-            // Knife Level 3 only doubles resources, not points
             if (battle.bonusPts) {
                 this.logBattleAction(`+${monster.pts} base score + ${battle.bonusPts} Fake Blood bonus = ${totalScore} total score`, player);
             } else {
@@ -11001,8 +11019,14 @@ class Game {
                 console.log(`Plasma Lv2 Power: ${player.name} receives +2$ at round start`);
             }
             
-            // Knife Level 2 power moved to resource distribution phase
-            // Now gives +1 point when hunter is alone at a location
+            // Knife Level 3 Power: +2 points at round start
+            if (player.weapon.name === 'Knife' && player.weapon.powerTrackPosition >= 7) {
+                this.addScore(player.id, 2, 'other');
+                if (!this.isAutomatedMode) {
+                    console.log(`Knife Lv3 Power: ${player.name} receives +2 points at round start`);
+                    this.addLogEntry(`🔪 ${player.name} receives +2 points from Knife Lv3 Power`, 'power', player);
+                }
+            }
         });
         
         // Update displays after applying round start effects
