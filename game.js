@@ -3008,15 +3008,15 @@ class Game {
                         <div class="track-token" id="p${player.id}-power-token"></div>
                     </div>
                     <div class="power-levels">
-                        <div class="power-level active" id="p${player.id}-power-lv1">
+                        <div class="power-level active" id="p${player.id}-power-lv1" data-tooltip="${player.weapon.lv1Power}">
                             <div class="power-title">Lv1</div>
                             <div class="power-desc" id="p${player.id}-power-desc-1">${player.weapon.lv1Power}</div>
                         </div>
-                        <div class="power-level" id="p${player.id}-power-lv2">
+                        <div class="power-level" id="p${player.id}-power-lv2" data-tooltip="${player.weapon.lv2Power}">
                             <div class="power-title">Lv2</div>
                             <div class="power-desc" id="p${player.id}-power-desc-2">${player.weapon.lv2Power}</div>
                         </div>
-                        <div class="power-level" id="p${player.id}-power-lv3">
+                        <div class="power-level" id="p${player.id}-power-lv3" data-tooltip="${player.weapon.lv3Power}">
                             <div class="power-title">Lv3</div>
                             <div class="power-desc" id="p${player.id}-power-desc-3">${player.weapon.lv3Power}</div>
                         </div>
@@ -8836,9 +8836,18 @@ class Game {
         const powerDesc2 = document.getElementById(`p${playerId}-power-desc-2`);
         const powerDesc3 = document.getElementById(`p${playerId}-power-desc-3`);
 
-        if (powerDesc1) powerDesc1.textContent = player.weapon.lv1Power || 'No power';
-        if (powerDesc2) powerDesc2.textContent = player.weapon.lv2Power || 'No power';
-        if (powerDesc3) powerDesc3.textContent = player.weapon.lv3Power || 'No power';
+        if (powerDesc1) {
+            powerDesc1.textContent = player.weapon.lv1Power || 'No power';
+            powerDesc1.closest('.power-level').setAttribute('data-tooltip', player.weapon.lv1Power || 'No power');
+        }
+        if (powerDesc2) {
+            powerDesc2.textContent = player.weapon.lv2Power || 'No power';
+            powerDesc2.closest('.power-level').setAttribute('data-tooltip', player.weapon.lv2Power || 'No power');
+        }
+        if (powerDesc3) {
+            powerDesc3.textContent = player.weapon.lv3Power || 'No power';
+            powerDesc3.closest('.power-level').setAttribute('data-tooltip', player.weapon.lv3Power || 'No power');
+        }
     }
     
     activateWeaponPower(playerId, level, battleActions = null) {
