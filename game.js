@@ -4079,11 +4079,13 @@ class Game {
             });
         }
 
-        // Track location selections for statistics
-        const hunterLocation = this.currentPlayer.selectedCards.hunter;
-        const apprenticeLocation = this.currentPlayer.selectedCards.apprentice;
-        this.currentPlayer.locationSelections[hunterLocation].hunter++;
-        this.currentPlayer.locationSelections[apprenticeLocation].apprentice++;
+        // Track location selections for statistics (only for human players, bots already tracked in handleBotSelection)
+        if (!this.currentPlayer.isBot) {
+            const hunterLocation = this.currentPlayer.selectedCards.hunter;
+            const apprenticeLocation = this.currentPlayer.selectedCards.apprentice;
+            this.currentPlayer.locationSelections[hunterLocation].hunter++;
+            this.currentPlayer.locationSelections[apprenticeLocation].apprentice++;
+        }
 
         // Update status indicator for this player
         this.updatePlayerStatus(this.currentPlayer.id, true);
