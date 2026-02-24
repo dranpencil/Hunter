@@ -1064,8 +1064,8 @@ class Game {
               lv1Power: '玩家受傷時反擊怪獸受1點傷害(受傷時無法獲得經驗)', lv2Power: '回合開始+1血袋', lv3Power: '玩家受傷時反擊怪獸受一樣的傷害', preferLocation: 'hospital' },
             { name: 'Whip', reqExpAttack: 4, reqExpDefense: 3, capacity: 6, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 1, 1, 1], priority: 5,
               lv1Power: '寵物和收服怪獸體力-1', lv2Power: '回合開始+2啤酒', lv3Power: '寵物和收服不耗體力', preferLocation: 'bar' },
-            { name: 'Bow', reqExpAttack: 5, reqExpDefense: 3, capacity: 6, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 0, 0, 4], priority: 1,
-              lv1Power: '閃避率+16%', lv2Power: '回合開始+1經驗', lv3Power: '傷害x2', preferLocation: 'plaza' },
+            { name: 'Bow', reqExpAttack: 5, reqExpDefense: 3, capacity: 6, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 0, 0, 3], priority: 1,
+              lv1Power: '閃避率+16%', lv2Power: '單獨存在區域+2經驗', lv3Power: '傷害x2', preferLocation: 'plaza' },
             { name: 'Sword', reqExpAttack: 5, reqExpDefense: 3, capacity: 4, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 1, 1, 2], priority: 9,
               lv1Power: '無', lv2Power: '單獨存在區域+2經驗', lv3Power: '每骰到至少1個1即+1分', preferLocation: 'dojo' },
             { name: 'Knife', reqExpAttack: 3, reqExpDefense: 3, capacity: 10, initialMoney: 8, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 0, 1, 1], priority: 2,
@@ -6113,7 +6113,7 @@ class Game {
             
             if (isAlone) {
                 // Sword and Katana Level 2 Power: +2 EXP when hunter is alone
-                if ((player.weapon.name === 'Sword' || player.weapon.name === 'Katana') &&
+                if ((player.weapon.name === 'Sword' || player.weapon.name === 'Katana' || player.weapon.name === 'Bow') &&
                     player.weapon.powerTrackPosition >= 3) {
                     this.modifyResource(player.id, 'exp', 2);
                     if (!this.isAutomatedMode) {
@@ -11000,12 +11000,6 @@ class Game {
                 player.resources.beer += 2;
                 this.addItemToInventory(player.id, 'Beer', 2);
                 console.log(`Whip Lv2 Power: ${player.name} receives +2 beers at round start`);
-            }
-            
-            // Bow Level 2 Power: +1 EXP at round start
-            if (player.weapon.name === 'Bow' && player.weapon.powerTrackPosition >= 3) {
-                this.modifyResource(player.id, 'exp', 1);
-                console.log(`Bow Lv2 Power: ${player.name} receives +1 EXP at round start`);
             }
             
             // Gloves Level 2 Power: +1 blood bag at round start
