@@ -2113,6 +2113,7 @@ class Game {
     }
     
     updateSelectionDisplay() {
+        if (this.isAutomatedMode) return;
         const currentPlayer = this.players[this.currentPlayerIndex];
         
         // Update current player display
@@ -2126,6 +2127,7 @@ class Game {
     }
     
     checkSelectionComplete() {
+        if (this.isAutomatedMode) return;
         const currentPlayer = this.players[this.currentPlayerIndex];
         const confirmButton = document.getElementById('confirm-selection');
         
@@ -2739,7 +2741,16 @@ class Game {
         
         // Create players with bot configuration
         this.createPlayers(playerCount, assignedWeapons, botConfiguration);
-        
+
+        // Set game mode (needed for selection/store phase branching)
+        const humanCount = this.players.filter(p => !p.isBot).length;
+        this.gameMode = humanCount === 1 ? 'simultaneous' : 'turnbased';
+
+        // Initialize player completion status
+        this.players.forEach(player => {
+            this.playerCompletionStatus[player.id] = false;
+        });
+
         // Start the game
         this.roundPhase = 'selection';
         this.currentPlayerIndex = 0;
@@ -10554,6 +10565,10 @@ class Game {
         
         // Hide the modal
         this.hideDataCollectionModal();
+
+        // Show the running overlay
+        const overlay = document.getElementById('data-collection-overlay');
+        if (overlay) overlay.style.display = 'flex';
         
         // Hide any game UI that might be visible
         const playerBoards = document.getElementById('player-boards-container');
@@ -10568,6 +10583,10 @@ class Game {
         if (gameStatus) gameStatus.style.display = 'none';
         if (gameLog) gameLog.style.display = 'none';
         
+        // Disable Local Play button during data collection
+        const localPlayBtn = document.querySelector('.local-play-btn');
+        if (localPlayBtn) localPlayBtn.disabled = true;
+
         // Start automated games
         this.runAutomatedGames(numberOfGames, playerCount);
     }
@@ -10641,34 +10660,104 @@ class Game {
         }
     }
     
+    stopDataCollection() {
+        if (!this.isAutomatedMode) return;
+        this.automatedGamesTotal = this.automatedGamesCompleted;
+    }
+
     finishDataCollection() {
         console.log(`[${new Date().toISOString()}] Data collection complete! Collected data from ${this.automatedGamesCompleted} games`);
-        
-        // Export all collected data to CSV
-        if (this.collectedGameData.length > 0) {
-            this.exportToCSV(this.collectedGameData);
-        }
-        
+
         // Reset automation flags
         this.isAutomatedMode = false;
         this.isDataCollectionMode = false;
-        
+
         // Reset game state completely
         this.resetGameState();
-        
+
         // Update UI
         this.updateDataCollectionProgress();
-        
+
         // Show completion message
         const statusElement = document.getElementById('data-collection-status');
         if (statusElement) {
             statusElement.textContent = `✅ Data collection complete! ${this.automatedGamesCompleted} games recorded.`;
         }
-        
-        // Show the data collection modal again with results
-        setTimeout(() => {
-            this.showDataCollectionModal();
-        }, 1000);
+
+        // Re-enable Local Play button
+        const localPlayBtn = document.querySelector('.local-play-btn');
+        if (localPlayBtn) localPlayBtn.disabled = false;
+
+        // Show results on the overlay
+        this.showDataCollectionResults();
+    }
+
+    showDataCollectionResults() {
+        // Aggregate data by weapon
+        const weaponStats = {};
+        for (const entry of this.collectedGameData) {
+            const w = entry.weapon;
+            if (!weaponStats[w]) {
+                weaponStats[w] = { picks: 0, wins: 0 };
+            }
+            weaponStats[w].picks++;
+            if (entry.rank === 1) {
+                weaponStats[w].wins++;
+            }
+        }
+
+        // Sort by picks descending
+        const sorted = Object.entries(weaponStats).sort((a, b) => b[1].picks - a[1].picks);
+
+        // Build table HTML
+        let html = '<table><thead><tr><th>Weapon</th><th>Picks</th><th>Wins</th><th>Win Rate</th></tr></thead><tbody>';
+        for (const [weapon, stats] of sorted) {
+            const winRate = ((stats.wins / stats.picks) * 100).toFixed(1);
+            html += `<tr><td>${weapon}</td><td>${stats.picks}</td><td>${stats.wins}</td><td>${winRate}%</td></tr>`;
+        }
+        html += '</tbody></table>';
+
+        // Inject into results container
+        const resultsContent = document.getElementById('dc-overlay-results-content');
+        if (resultsContent) resultsContent.innerHTML = html;
+
+        // Hide progress elements, show results
+        const progressText = document.getElementById('dc-overlay-progress-text');
+        const progressBarContainer = progressText ? progressText.nextElementSibling : null;
+        const stopBtn = document.querySelector('.dc-overlay-stop-btn');
+        if (progressText) progressText.style.display = 'none';
+        if (progressBarContainer) progressBarContainer.style.display = 'none';
+        if (stopBtn) stopBtn.style.display = 'none';
+
+        const resultsDiv = document.getElementById('dc-overlay-results');
+        if (resultsDiv) resultsDiv.style.display = 'block';
+
+        // Update title
+        const title = document.querySelector('.data-collection-overlay-content h2');
+        if (title) title.textContent = 'Data Collection Results';
+    }
+
+    closeDataCollectionOverlay() {
+        // Hide overlay
+        const overlay = document.getElementById('data-collection-overlay');
+        if (overlay) overlay.style.display = 'none';
+
+        // Reset overlay back to progress view for next run
+        const progressText = document.getElementById('dc-overlay-progress-text');
+        const progressBarContainer = progressText ? progressText.nextElementSibling : null;
+        const stopBtn = document.querySelector('.dc-overlay-stop-btn');
+        if (progressText) progressText.style.display = 'block';
+        if (progressBarContainer) progressBarContainer.style.display = 'block';
+        if (stopBtn) stopBtn.style.display = 'block';
+
+        const resultsDiv = document.getElementById('dc-overlay-results');
+        if (resultsDiv) resultsDiv.style.display = 'none';
+
+        const title = document.querySelector('.data-collection-overlay-content h2');
+        if (title) title.textContent = 'Data Collection Running';
+
+        // Show the data collection modal
+        this.showDataCollectionModal();
     }
     
     updateDataCollectionProgress() {
@@ -10680,6 +10769,17 @@ class Game {
             } else {
                 progressElement.style.display = 'none';
             }
+        }
+
+        // Update the overlay
+        const overlayText = document.getElementById('dc-overlay-progress-text');
+        const overlayBar = document.getElementById('dc-overlay-progress-bar');
+        if (overlayText && this.isAutomatedMode) {
+            overlayText.textContent = `Running game ${this.automatedGamesCompleted + 1} of ${this.automatedGamesTotal}...`;
+        }
+        if (overlayBar && this.automatedGamesTotal > 0) {
+            const pct = (this.automatedGamesCompleted / this.automatedGamesTotal) * 100;
+            overlayBar.style.width = `${pct}%`;
         }
     }
     
