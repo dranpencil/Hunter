@@ -253,7 +253,7 @@ Each weapon features:
 **Knife**
 - Lv1: Can double damage once per battle
 - Lv2: +2 points when hunter is alone at location
-- Lv3: +2 points at the start of a round
+- Lv3: +2 points when hunter is alone at location (stacks with Lv2 for +4 total)
 
 **Gloves**
 - Lv1: +1 damage [5,6] when taking damage (per attack)

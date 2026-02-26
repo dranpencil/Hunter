@@ -1069,7 +1069,7 @@ class Game {
             { name: 'Sword', reqExpAttack: 5, reqExpDefense: 3, capacity: 4, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 1, 1, 2], priority: 9,
               lv1Power: '無', lv2Power: '單獨存在區域+2經驗', lv3Power: '每骰到至少1個1即+1分', preferLocation: 'dojo' },
             { name: 'Knife', reqExpAttack: 3, reqExpDefense: 3, capacity: 10, initialMoney: 8, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 0, 1, 1], priority: 2,
-              lv1Power: '可將一次的攻擊力x2', lv2Power: '單獨存在區域+2分', lv3Power: '回合開始+2分', preferLocation: 'plaza' },
+              lv1Power: '可將一次的攻擊力x2', lv2Power: '單獨存在區域+2分', lv3Power: '單獨存在區域+2分', preferLocation: 'plaza' },
             { name: 'Gloves', reqExpAttack: 4, reqExpDefense: 3, capacity: 6, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 0, 1, 1], priority: 7,
               lv1Power: '基礎攻擊力=1，當hp少於一半時攻擊力+1', lv2Power: '回合開始+1血袋', lv3Power: '每次遭受攻擊而扣血，攻擊力+1', preferLocation: 'hospital' }
         ];
@@ -6132,12 +6132,14 @@ class Game {
                     }
                 }
 
-                // Knife Level 2 Power: +2 points when hunter is alone
+                // Knife Level 2/3 Power: +2 points when hunter is alone (stacks at lv3 for +4 total)
                 if (player.weapon.name === 'Knife' && player.weapon.powerTrackPosition >= 3) {
-                    this.addScore(player.id, 2, 'other');
+                    const knifePts = player.weapon.powerTrackPosition >= 7 ? 4 : 2;
+                    this.addScore(player.id, knifePts, 'other');
                     if (!this.isAutomatedMode) {
-                        console.log(`Knife Lv2 Power: ${player.name} receives +2 points for being alone at location`);
-                        this.addLogEntry(`🔪 ${player.name} receives +2 points from Knife Lv2 Power`, 'power', player);
+                        const lvLabel = player.weapon.powerTrackPosition >= 7 ? 'Lv2+Lv3' : 'Lv2';
+                        console.log(`Knife ${lvLabel} Power: ${player.name} receives +${knifePts} points for being alone at location`);
+                        this.addLogEntry(`🔪 ${player.name} receives +${knifePts} points from Knife ${lvLabel} Power`, 'power', player);
                     }
                 }
                 
@@ -11124,14 +11126,6 @@ class Game {
                 console.log(`Plasma Lv2 Power: ${player.name} receives +2$ at round start`);
             }
             
-            // Knife Level 3 Power: +2 points at round start
-            if (player.weapon.name === 'Knife' && player.weapon.powerTrackPosition >= 7) {
-                this.addScore(player.id, 2, 'other');
-                if (!this.isAutomatedMode) {
-                    console.log(`Knife Lv3 Power: ${player.name} receives +2 points at round start`);
-                    this.addLogEntry(`🔪 ${player.name} receives +2 points from Knife Lv3 Power`, 'power', player);
-                }
-            }
         });
         
         // Update displays after applying round start effects
