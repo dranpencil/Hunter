@@ -5403,9 +5403,9 @@ class Game {
 
             // Apply monster damaged effects (HP gain for effect 11) - only if monster survives
             if (totalDamage > 0 && currentMonsterHP > 0) {
+                monster.hp = currentMonsterHP;  // sync damage before effect
                 this.applyBattleEffect(monster, 'monsterDamaged', player);
-                // Update currentMonsterHP if monster gained HP
-                currentMonsterHP = monster.hp;
+                currentMonsterHP = monster.hp;  // read back after effect
             }
 
             battleActions.push(`${player.name} attacks: [${attackRolls.join(', ')}] = ${playerDamage} damage${petDamage > 0 ? ` + ${petDamage} pet damage` : ''} = ${totalDamage} total`);
@@ -6444,15 +6444,13 @@ class Game {
             
             // Gloves Powers: Enhance damage on dice that already deal damage (5,6)
             if (player.weapon.name === 'Gloves' && player.weapon.powerTrackPosition >= 1 && this.currentBattle) {
-                // Level 1: +1 attack when HP is below half of max HP (only on dice that deal damage)
-                if (player.weapon.powerTrackPosition >= 1 && player.weapon.powerTrackPosition < 7) {
-                    if (baseDamage > 0 && player.resources.hp < player.maxResources.hp / 2) {
+                if (baseDamage > 0) {
+                    // Level 1: +1 attack when HP is below half of max HP
+                    if (player.resources.hp < player.maxResources.hp / 2) {
                         baseDamage += 1;
                     }
-                }
-                // Level 3: +1 attack for each time damaged (only on dice that deal damage)
-                else if (player.weapon.powerTrackPosition >= 7) {
-                    if (baseDamage > 0) {
+                    // Level 3: +1 attack for each time damaged (cumulative, stacks with Lv1)
+                    if (player.weapon.powerTrackPosition >= 7) {
                         baseDamage += this.currentBattle.glovesPowerLevel;
                     }
                 }
@@ -7446,9 +7444,9 @@ class Game {
             petsUsed: selectedPets, // Track pets being used in this battle
             glovesPowerLevel: 0, // Track Gloves power level (damage taken)
             hasAttacked: false, // Track if player has attacked this battle
-            tripleDamageUsed: false, // Track if Knife Lv1 double damage was used
-            canUseTripleDamage: false, // Track if Knife Lv1 double damage is available
-            lastAttackDamage: 0, // Track last attack damage for triple damage calculation
+            doubleDamageUsed: false, // Track if Knife Lv1 double damage was used
+            canUseDoubleDamage: false, // Track if Knife Lv1 double damage is available
+            lastAttackDamage: 0, // Track last attack damage for double damage calculation
             ammunitionConsumed: false // Track if ammunition was consumed for this battle
         };
         
@@ -7606,9 +7604,9 @@ class Game {
         }
 
         // Reset Knife 2x damage button for new battle
-        const tripleDamageBtn = document.getElementById('battle-triple-damage-btn');
-        if (tripleDamageBtn) {
-            tripleDamageBtn.style.display = 'none';
+        const doubleDamageBtn = document.getElementById('battle-double-damage-btn');
+        if (doubleDamageBtn) {
+            doubleDamageBtn.style.display = 'none';
         }
 
         // Update battle phase
@@ -7679,7 +7677,7 @@ class Game {
         const attackBtn = document.getElementById('battle-attack-btn');
         const defenseBtn = document.getElementById('battle-defense-btn');
         const tameBtn = document.getElementById('battle-tame-btn');
-        const tripleDamageBtn = document.getElementById('battle-triple-damage-btn');
+        const doubleDamageBtn = document.getElementById('battle-double-damage-btn');
         const turnText = document.getElementById('battle-turn');
         
         // Check if taming is possible
@@ -7738,7 +7736,7 @@ class Game {
             attackBtn.style.display = 'none';
             tameBtn.style.display = 'none';
             defenseBtn.style.display = 'none';
-            tripleDamageBtn.style.display = 'none';
+            doubleDamageBtn.style.display = 'none';
             
             // Trigger monster attack
             battle.turn = 'monster';
@@ -7769,8 +7767,8 @@ class Game {
                 attackBtn.title = 'Attack the monster';
             }
             
-            // Hide triple damage button during attack phase
-            tripleDamageBtn.style.display = 'none';
+            // Hide double damage button during attack phase
+            doubleDamageBtn.style.display = 'none';
             
             // Don't hide defense button if we just switched to defense phase due to no ammo
             if (!needsAmmoButHasNone) {
@@ -7811,12 +7809,12 @@ class Game {
                 defenseBtn.style.display = 'block';
                 
                 // Knife Level 1 Power: Show 2x damage button after attack
-                if (battle.canUseTripleDamage) {
-                    tripleDamageBtn.style.display = 'block';
-                    tripleDamageBtn.textContent = `2x Damage (+${battle.lastAttackDamage} extra)`;
-                    tripleDamageBtn.onclick = () => this.useTripleDamage();
+                if (battle.canUseDoubleDamage) {
+                    doubleDamageBtn.style.display = 'block';
+                    doubleDamageBtn.textContent = `2x Damage (+${battle.lastAttackDamage} extra)`;
+                    doubleDamageBtn.onclick = () => this.useDoubleDamage();
                 } else {
-                    tripleDamageBtn.style.display = 'none';
+                    doubleDamageBtn.style.display = 'none';
                 }
             }
         } else if (battle.turn === 'monster') {
@@ -8249,9 +8247,9 @@ class Game {
             
             // Knife Level 1 Power: Show 2x damage button after attack if damage was dealt
             if (player.weapon.name === 'Knife' && player.weapon.powerTrackPosition >= 1 && 
-                !battle.tripleDamageUsed && playerDamage > 0) {
+                !battle.doubleDamageUsed && playerDamage > 0) {
                 battle.lastAttackDamage = playerDamage; // Store the damage for 2x calculation
-                battle.canUseTripleDamage = true;
+                battle.canUseDoubleDamage = true;
             }
             
             this.updateBattlePhase();
@@ -8537,11 +8535,11 @@ class Game {
             battle.turn = 'player_items_after_monster';
             
             // Hide Knife Lv1 2x damage button after monster attack
-            if (battle.canUseTripleDamage) {
-                battle.canUseTripleDamage = false;
-                const tripleDamageBtn = document.getElementById('battle-triple-damage-btn');
-                if (tripleDamageBtn) {
-                    tripleDamageBtn.style.display = 'none';
+            if (battle.canUseDoubleDamage) {
+                battle.canUseDoubleDamage = false;
+                const doubleDamageBtn = document.getElementById('battle-double-damage-btn');
+                if (doubleDamageBtn) {
+                    doubleDamageBtn.style.display = 'none';
                 }
             }
             
@@ -8550,8 +8548,8 @@ class Game {
         }
     }
     
-    useTripleDamage() {
-        if (!this.currentBattle || !this.currentBattle.canUseTripleDamage) return;
+    useDoubleDamage() {
+        if (!this.currentBattle || !this.currentBattle.canUseDoubleDamage) return;
         
         const battle = this.currentBattle;
         const player = this.players.find(p => p.id === battle.playerId);
@@ -8572,9 +8570,9 @@ class Game {
         }
         battle.monster.hp -= finalExtraDamage;
         
-        // Mark triple damage as used for this battle
-        battle.tripleDamageUsed = true;
-        battle.canUseTripleDamage = false;
+        // Mark double damage as used for this battle
+        battle.doubleDamageUsed = true;
+        battle.canUseDoubleDamage = false;
         
         this.logBattleAction(`${player.name} activates Knife Lv1 Power: 2x damage! ${extraDamage} extra damage dealt!`, player);
         
