@@ -4896,30 +4896,24 @@ class Game {
         // Sort by damage (highest first for efficiency)
         combatItems.sort((a, b) => b.damage - a.damage);
         
-        // Try to find exact combination that can kill
+        // Check if total item damage can kill the monster
+        const totalItemDamage = combatItems.reduce((sum, item) => sum + item.damage, 0);
+        if (totalItemDamage < targetDamage) {
+            // Cannot kill with available items - return null (save items)
+            return null;
+        }
+
+        // Find combination to kill - use largest items first, allow overkill
         const combination = [];
         let remainingDamage = targetDamage;
-        
+
         for (const item of combatItems) {
             if (remainingDamage <= 0) break;
-            
-            if (item.damage <= remainingDamage) {
-                combination.push(item);
-                remainingDamage -= item.damage;
-            } else if (remainingDamage > 0 && combination.length === 0) {
-                // If this is the first item and it overkills, use it anyway
-                combination.push(item);
-                remainingDamage = 0;
-            }
+            combination.push(item);
+            remainingDamage -= item.damage;
         }
-        
-        // Only return combination if it can kill the monster
-        if (remainingDamage <= 0) {
-            return combination;
-        }
-        
-        // Cannot kill with available items - return null (save items)
-        return null;
+
+        return combination;
     }
     
     handleBotMonsterSelection(player) {
@@ -5134,7 +5128,7 @@ class Game {
             
             console.log('Using dynamites...');
             // Use items efficiently (largest first to minimize waste)
-            while (remainingHP > 0 && dynamites > 0 && remainingHP >= 3) {
+            while (remainingHP > 0 && dynamites > 0) {
                 const dynamiteIndex = player.inventory.findIndex(item => item.name === 'Dynamite');
                 if (dynamiteIndex >= 0) {
                     player.inventory.splice(dynamiteIndex, 1);
@@ -5149,7 +5143,7 @@ class Game {
             }
             
             console.log('Using bombs...');
-            while (remainingHP > 0 && bombs > 0 && remainingHP >= 2) {
+            while (remainingHP > 0 && bombs > 0) {
                 const bombIndex = player.inventory.findIndex(item => item.name === 'Bomb');
                 if (bombIndex >= 0) {
                     player.inventory.splice(bombIndex, 1);
@@ -7435,7 +7429,10 @@ class Game {
         console.log('Player ID:', playerId);
         console.log('Monster:', monster);
         console.log('Selected pets:', selectedPets);
-        
+
+        // Clear battle log at the start of each new battle
+        document.getElementById('battle-log').innerHTML = '';
+
         this.currentBattle = {
             playerId,
             monster,
