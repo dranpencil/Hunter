@@ -5061,10 +5061,18 @@ class Game {
             console.log(`${player.name}'s apprentice in Forest - monster HP reduced by 1 (${selectedMonster.maxHp} -> ${selectedMonster.hp})`);
         }
 
+        // Register this monster's effects for subsequent battles
+        if (selectedMonster.effectId) {
+            this.currentMonsterEffect = selectedMonster.effectId;
+            this.activeMonsterEffects.push(selectedMonster.effectId);
+            this.applySelectionEffect(selectedMonster.effectId, player.id);
+            this.applyRoundEffect(selectedMonster.effectId);
+        }
+
         console.log(`Bot ${player.name} selected Level ${selectedLevel} monster:`, selectedMonster);
         console.log('Selected pets:', this.selectedPets);
         console.log('About to call startMonsterBattle...');
-        
+
         // Start battle immediately (bots skip monster selection UI)
         this.startMonsterBattle(player.id, selectedMonster, this.selectedPets);
         console.log('startMonsterBattle called for bot');
