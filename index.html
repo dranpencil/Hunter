@@ -34,10 +34,9 @@
                         <span class="button-icon">🎮</span>
                         <span>Local Play</span>
                     </button>
-                    <button class="menu-button online-play-btn" onclick="game.showOnlinePlay()" disabled>
+                    <button class="menu-button online-play-btn" onclick="game.showOnlinePlay()">
                         <span class="button-icon">🌐</span>
                         <span>Online Play</span>
-                        <span class="coming-soon">Coming Soon</span>
                     </button>
                     <button class="menu-button" onclick="game.showDataCollectionModal()">
                         <span>Data Collection Mode</span>
@@ -46,6 +45,117 @@
             </div>
         </div>
         
+        <!-- Online Lobby Screen -->
+        <div id="online-lobby" class="online-lobby" style="display: none;">
+            <div class="lobby-content">
+                <!-- Create/Join Selection -->
+                <div id="online-menu" class="online-menu">
+                    <h2>Online Play</h2>
+                    <div class="online-menu-buttons">
+                        <button class="menu-button" onclick="game.showCreateRoom()">
+                            <span class="button-icon">🏠</span>
+                            <span>Create Room</span>
+                        </button>
+                        <button class="menu-button" onclick="game.showJoinRoom()">
+                            <span class="button-icon">🚪</span>
+                            <span>Join Room</span>
+                        </button>
+                    </div>
+                    <button class="back-btn" onclick="game.backFromOnlineLobby()">Back</button>
+                </div>
+
+                <!-- Create Room View -->
+                <div id="create-room-view" class="lobby-view" style="display: none;">
+                    <h2>Create Room</h2>
+                    <div class="create-room-settings">
+                        <div class="setting-group">
+                            <label for="online-player-count">Total Players (including bots):</label>
+                            <select id="online-player-count" onchange="game.updateHumanPlayerOptions()">
+                                <option value="2">2 Players</option>
+                                <option value="3" selected>3 Players</option>
+                                <option value="4">4 Players</option>
+                            </select>
+                        </div>
+                        <div class="setting-group">
+                            <label for="online-human-count">Human Players:</label>
+                            <select id="online-human-count">
+                                <option value="2" selected>2</option>
+                                <option value="3">3</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button class="ready-btn" onclick="game.createOnlineRoom()">Create Room</button>
+                    <button class="back-btn" onclick="game.backToOnlineMenu()">Back</button>
+                </div>
+
+                <!-- Waiting Room (Host) -->
+                <div id="waiting-room-host" class="lobby-view" style="display: none;">
+                    <h2>Waiting for Players</h2>
+                    <div class="room-code-display">
+                        <p>Share this room code:</p>
+                        <div class="room-code" id="room-code-display">----</div>
+                        <button class="copy-code-btn" onclick="game.copyRoomCode()">Copy Code</button>
+                    </div>
+                    <div id="player-count-display" class="player-count-display">
+                        <div class="player-count-header">Players: <span id="human-count">1</span>/<span id="human-total">2</span> humans connected</div>
+                        <ul class="player-slot-list" id="player-slot-list"></ul>
+                        <div class="game-composition" id="game-composition"></div>
+                    </div>
+                    <div class="waiting-status">
+                        <div class="waiting-spinner"></div>
+                        <p id="waiting-status-text">Waiting for guest to join...</p>
+                    </div>
+                    <div id="host-guest-joined" style="display: none;">
+                        <p class="guest-joined-text">All players connected!</p>
+                        <button class="ready-btn" onclick="game.startOnlineGame()">Start Game</button>
+                    </div>
+                    <button class="back-btn" onclick="game.cancelOnlineRoom()">Cancel</button>
+                </div>
+
+                <!-- Join Room View -->
+                <div id="join-room-view" class="lobby-view" style="display: none;">
+                    <h2>Join Room</h2>
+                    <div class="join-room-input">
+                        <label for="room-code-input">Enter Room Code:</label>
+                        <input type="text" id="room-code-input" maxlength="4" placeholder="ABCD"
+                               oninput="this.value = this.value.toUpperCase()">
+                        <p id="join-error" class="join-error" style="display: none;"></p>
+                    </div>
+                    <button class="ready-btn" onclick="game.joinOnlineRoom()">Join</button>
+                    <button class="back-btn" onclick="game.backToOnlineMenu()">Back</button>
+                </div>
+
+                <!-- Waiting Room (Guest) -->
+                <div id="waiting-room-guest" class="lobby-view" style="display: none;">
+                    <h2>Joined Room</h2>
+                    <div class="room-code-display">
+                        <p>Room Code:</p>
+                        <div class="room-code" id="guest-room-code">----</div>
+                    </div>
+                    <div class="waiting-status">
+                        <div class="waiting-spinner"></div>
+                        <p>Waiting for host to start the game...</p>
+                    </div>
+                    <button class="back-btn" onclick="game.leaveOnlineRoom()">Leave</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Online Connection Status Bar -->
+        <div id="online-connection-bar" class="online-connection-bar" style="display: none;">
+            <span id="connection-status-text">Connected</span>
+            <span id="connection-role-text"></span>
+        </div>
+
+        <!-- Disconnect Modal -->
+        <div id="disconnect-modal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <h3>Player Disconnected</h3>
+                <p id="disconnect-message">The other player has disconnected.</p>
+                <button onclick="game.handleDisconnectAcknowledge()">Return to Menu</button>
+            </div>
+        </div>
+
         <!-- Player Count Selection Screen -->
         <div id="player-count-selection" class="player-count-selection" style="display: none;">
             <div class="selection-content">
@@ -530,6 +640,10 @@
         </div>
     </div>
 
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <script src="firebase-config.js"></script>
     <script src="game.js"></script>
 </body>
 </html>

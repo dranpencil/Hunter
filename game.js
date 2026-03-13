@@ -1091,8 +1091,9 @@ class Game {
         this.currentPlayerIndex = 0;
         this.currentRound = 1;
         this.roundPhase = 'setup'; // 'setup', 'selection', 'distribution', 'station', 'store', 'battle', 'nextround'
-        this.gameMode = null; // 'simultaneous' or 'turnbased' - determined after players are created
+        this.gameMode = null; // 'simultaneous' or 'turnbased' or 'online'
         this.playerCompletionStatus = {}; // Track which players have completed current phase
+        this.suppressAlerts = false; // Suppress alerts when processing remote player actions
         this.storePhaseCompleted = false; // Prevent duplicate store completion checks
         this.stationChoices = {}; // Store station choices for each player
         this.pendingStationPlayer = null; // Track which player needs to choose
@@ -1129,6 +1130,16 @@ class Game {
         this.automatedGamesCompleted = 0; // Games completed so far
         this.automatedPlayerCount = 2; // Player count for automated games
         
+        // Online multiplayer properties
+        this.isOnlineMode = false;
+        this.isHost = false;
+        this.localPlayerId = null; // Which player ID this client controls
+        this.onlineManager = null;
+        this.lastAppliedStateVersion = 0;
+        this.guestBattleActionQueue = []; // Queue of guest battle actions to process
+        this.waitingForGuestAction = false; // Whether host is waiting for guest input
+        this.onlineBattleState = null; // Battle state synced to Firebase
+
         // Solo play mode configuration
         this.soloModeSlots = [
             { type: 'player', active: true, color: 'random', weapon: 'random' },
@@ -1171,9 +1182,492 @@ class Game {
     }
     
     showOnlinePlay() {
-        // Placeholder for future online play functionality
-        console.log('Online play coming soon!');
-        // Could show a message or do nothing for now
+        // Hide main menu
+        const mainMenu = document.getElementById('main-menu');
+        if (mainMenu) mainMenu.style.display = 'none';
+
+        // Show online lobby
+        const lobby = document.getElementById('online-lobby');
+        if (lobby) lobby.style.display = 'flex';
+
+        // Show the online menu (create/join choice)
+        this.showOnlineMenu();
+    }
+
+    showOnlineMenu() {
+        document.getElementById('online-menu').style.display = 'block';
+        document.getElementById('create-room-view').style.display = 'none';
+        document.getElementById('join-room-view').style.display = 'none';
+        document.getElementById('waiting-room-host').style.display = 'none';
+        document.getElementById('waiting-room-guest').style.display = 'none';
+    }
+
+    backFromOnlineLobby() {
+        document.getElementById('online-lobby').style.display = 'none';
+        this.showMainMenu();
+    }
+
+    backToOnlineMenu() {
+        this.showOnlineMenu();
+    }
+
+    showCreateRoom() {
+        document.getElementById('online-menu').style.display = 'none';
+        document.getElementById('create-room-view').style.display = 'block';
+    }
+
+    showJoinRoom() {
+        document.getElementById('online-menu').style.display = 'none';
+        document.getElementById('join-room-view').style.display = 'block';
+        document.getElementById('join-error').style.display = 'none';
+    }
+
+    updateHumanPlayerOptions() {
+        const totalCount = parseInt(document.getElementById('online-player-count').value);
+        const humanSelect = document.getElementById('online-human-count');
+        const currentHuman = parseInt(humanSelect.value);
+
+        humanSelect.innerHTML = '';
+        for (let i = 2; i <= totalCount; i++) {
+            const option = document.createElement('option');
+            option.value = i;
+            option.textContent = i;
+            if (i === Math.min(currentHuman, totalCount)) option.selected = true;
+            humanSelect.appendChild(option);
+        }
+    }
+
+    async createOnlineRoom() {
+        const playerCount = parseInt(document.getElementById('online-player-count').value);
+        const humanPlayerCount = parseInt(document.getElementById('online-human-count').value);
+
+        // Initialize OnlineManager
+        this.onlineManager = new OnlineManager();
+        this.isOnlineMode = true;
+        this.isHost = true;
+        this.onlineHumanPlayerCount = humanPlayerCount;
+
+        try {
+            const roomCode = await this.onlineManager.createRoom(playerCount, humanPlayerCount);
+
+            // Show waiting room
+            document.getElementById('create-room-view').style.display = 'none';
+            document.getElementById('waiting-room-host').style.display = 'block';
+            document.getElementById('room-code-display').textContent = roomCode;
+            document.getElementById('host-guest-joined').style.display = 'none';
+            document.getElementById('waiting-status-text').textContent =
+                humanPlayerCount > 2 ? 'Waiting for players to join...' : 'Waiting for guest to join...';
+
+            // Update player count display
+            const botCount = playerCount - humanPlayerCount;
+            document.getElementById('human-count').textContent = '1';
+            document.getElementById('human-total').textContent = humanPlayerCount;
+            const compositionText = botCount > 0
+                ? `${humanPlayerCount} humans + ${botCount} bot${botCount > 1 ? 's' : ''} = ${playerCount} players`
+                : `${humanPlayerCount} humans = ${playerCount} players`;
+            document.getElementById('game-composition').textContent = compositionText;
+
+            // Build dynamic player slot list
+            this.buildWaitingRoomSlots(humanPlayerCount);
+
+            // Listen for players to join
+            this.onlineManager.listenForPlayers((players) => {
+                const connectedCount = Object.keys(players).length;
+                console.log(`Players connected: ${connectedCount}/${humanPlayerCount}`);
+
+                document.getElementById('human-count').textContent = connectedCount;
+
+                // Update slot statuses
+                const slotList = document.getElementById('player-slot-list');
+                const slots = slotList.querySelectorAll('.player-slot');
+                let slotIndex = 0;
+                for (const [playerId, data] of Object.entries(players).sort((a, b) => a[1].joinOrder - b[1].joinOrder)) {
+                    if (slotIndex < slots.length) {
+                        slots[slotIndex].className = 'player-slot connected';
+                        const label = slotIndex === 0 ? 'Host (you)' : `Player ${slotIndex + 1}`;
+                        slots[slotIndex].innerHTML = `${label} <span class="slot-status">&#x2705;</span>`;
+                    }
+                    slotIndex++;
+                }
+
+                // Check if all humans have joined
+                if (connectedCount >= humanPlayerCount) {
+                    document.getElementById('waiting-status-text').textContent = 'All players connected!';
+                    document.getElementById('host-guest-joined').style.display = 'block';
+                    document.querySelector('#waiting-room-host .waiting-status').style.display = 'none';
+                } else {
+                    const remaining = humanPlayerCount - connectedCount;
+                    document.getElementById('waiting-status-text').textContent =
+                        `Waiting for ${remaining} more player${remaining > 1 ? 's' : ''} to join...`;
+                    document.getElementById('host-guest-joined').style.display = 'none';
+                    document.querySelector('#waiting-room-host .waiting-status').style.display = 'flex';
+                }
+            });
+
+            // Set up disconnect handlers
+            this.setupOnlineDisconnectHandlers();
+
+        } catch (error) {
+            console.error('Error creating room:', error);
+            alert('Failed to create room. Check your Firebase configuration.');
+            this.isOnlineMode = false;
+            this.onlineManager = null;
+        }
+    }
+
+    buildWaitingRoomSlots(humanPlayerCount) {
+        const slotList = document.getElementById('player-slot-list');
+        slotList.innerHTML = '';
+        for (let i = 0; i < humanPlayerCount; i++) {
+            const li = document.createElement('li');
+            li.className = i === 0 ? 'player-slot connected' : 'player-slot pending';
+            const label = i === 0 ? 'Host (you)' : `Player ${i + 1}`;
+            const icon = i === 0 ? '&#x2705;' : '&#x23F3;';
+            li.innerHTML = `${label} <span class="slot-status">${icon}</span>`;
+            slotList.appendChild(li);
+        }
+    }
+
+    copyRoomCode() {
+        const code = document.getElementById('room-code-display').textContent;
+        navigator.clipboard.writeText(code).then(() => {
+            const btn = document.querySelector('.copy-code-btn');
+            btn.textContent = 'Copied!';
+            setTimeout(() => { btn.textContent = 'Copy Code'; }, 2000);
+        });
+    }
+
+    async joinOnlineRoom() {
+        const codeInput = document.getElementById('room-code-input');
+        const code = codeInput.value.trim().toUpperCase();
+        const errorEl = document.getElementById('join-error');
+
+        if (code.length !== 4) {
+            errorEl.textContent = 'Please enter a 4-character room code.';
+            errorEl.style.display = 'block';
+            return;
+        }
+
+        // Initialize OnlineManager
+        this.onlineManager = new OnlineManager();
+        this.isOnlineMode = true;
+        this.isHost = false;
+
+        try {
+            const room = await this.onlineManager.joinRoom(code);
+
+            // Show guest waiting room
+            document.getElementById('join-room-view').style.display = 'none';
+            document.getElementById('waiting-room-guest').style.display = 'block';
+            document.getElementById('guest-room-code').textContent = code;
+
+            // Listen for game start
+            this.onlineManager.listenForGameStart(() => {
+                console.log('Game started by host!');
+                // Listen for config first, then game state
+                this.onlineManager.listenForConfig((config) => {
+                    if (config && config.weapons) {
+                        this.initOnlineGameAsGuest(config);
+                    }
+                });
+            });
+
+            // Set up disconnect handlers
+            this.setupOnlineDisconnectHandlers();
+
+        } catch (error) {
+            console.error('Error joining room:', error);
+            errorEl.textContent = error.message || 'Failed to join room.';
+            errorEl.style.display = 'block';
+            this.isOnlineMode = false;
+            this.onlineManager = null;
+        }
+    }
+
+    async cancelOnlineRoom() {
+        if (this.onlineManager) {
+            await this.onlineManager.deleteRoom();
+            this.onlineManager = null;
+        }
+        this.isOnlineMode = false;
+        this.isHost = false;
+        this.showOnlineMenu();
+    }
+
+    async leaveOnlineRoom() {
+        if (this.onlineManager) {
+            this.onlineManager.cleanup();
+            // Remove self from room's player list
+            if (this.onlineManager.roomRef) {
+                await this.onlineManager.roomRef.child(`players/${this.onlineManager.localId}`).remove();
+            }
+            this.onlineManager = null;
+        }
+        this.isOnlineMode = false;
+        this.showOnlineMenu();
+    }
+
+    setupOnlineDisconnectHandlers() {
+        if (!this.onlineManager) return;
+
+        this.onlineManager.onConnectionWarning = (playerId) => {
+            const bar = document.getElementById('online-connection-bar');
+            if (bar) {
+                bar.className = 'online-connection-bar warning';
+                document.getElementById('connection-status-text').textContent =
+                    `Warning: A player may be disconnecting...`;
+            }
+        };
+
+        this.onlineManager.onPlayerDisconnected = (playerId) => {
+            const modal = document.getElementById('disconnect-modal');
+            if (modal) {
+                document.getElementById('disconnect-message').textContent =
+                    `A player has disconnected. The game cannot continue.`;
+                modal.style.display = 'flex';
+            }
+        };
+    }
+
+    handleDisconnectAcknowledge() {
+        document.getElementById('disconnect-modal').style.display = 'none';
+        document.getElementById('online-connection-bar').style.display = 'none';
+        if (this.onlineManager) {
+            this.onlineManager.cleanup();
+            this.onlineManager = null;
+        }
+        this.isOnlineMode = false;
+        this.isHost = false;
+
+        // Reset and go back to main menu
+        this.exitToMainMenu();
+    }
+
+    showOnlineConnectionBar() {
+        const bar = document.getElementById('online-connection-bar');
+        if (bar) {
+            bar.style.display = 'flex';
+            bar.className = 'online-connection-bar';
+            document.getElementById('connection-status-text').textContent = 'Connected';
+            document.getElementById('connection-role-text').textContent =
+                this.isHost ? 'Host' : 'Guest';
+        }
+    }
+
+    // ==================== ONLINE GAME INITIALIZATION ====================
+
+    async startOnlineGame() {
+        // Host starts the game - configure weapons, slots, etc.
+        const playerCount = parseInt(document.getElementById('online-player-count').value);
+        const humanPlayerCount = this.onlineHumanPlayerCount || 2;
+
+        const assignedWeapons = this.getRandomWeapons(playerCount);
+        this.playerColors = this.getRandomPlayerColors(playerCount);
+
+        // Get connected players and assign slots by join order
+        const snapshot = await this.onlineManager.roomRef.child('players').once('value');
+        const players = snapshot.val();
+        const sortedPlayers = Object.entries(players).sort((a, b) => a[1].joinOrder - b[1].joinOrder);
+
+        const humanSlots = {};
+        sortedPlayers.forEach(([playerId, data], index) => {
+            humanSlots[playerId] = index;
+        });
+
+        // Build config to share with all players
+        const config = {
+            humanSlots: humanSlots,
+            playerCount: playerCount,
+            humanPlayerCount: humanPlayerCount,
+            weapons: assignedWeapons.map(w => this.weapons.findIndex(ww => ww.name === w.name)),
+            colors: this.playerColors
+        };
+
+        await this.onlineManager.setConfig(config);
+        await this.onlineManager.startGame();
+
+        // Initialize game locally as host
+        this.initOnlineGameAsHost(config, assignedWeapons);
+    }
+
+    initOnlineGameAsHost(config, assignedWeapons) {
+        this.localPlayerId = config.humanSlots[this.onlineManager.localId];
+        this.currentPlayerIndex = this.localPlayerId;
+
+        // Hide lobby, show game
+        document.getElementById('online-lobby').style.display = 'none';
+        this.showOnlineConnectionBar();
+
+        // Initialize game
+        this.playerCount = config.playerCount;
+        this.showGameLog();
+        this.addLogEntry(`🌐 <strong>Online Game Started</strong> - ${config.playerCount} players`, 'round-start');
+        this.addLogEntry(`🔄 <strong>Round ${this.currentRound || 1} Started</strong>`, 'round-start');
+
+        this.updateLocationRewards();
+        this.setupDummyTokens(config.playerCount);
+
+        // Create players: human slots from config, rest are bots
+        const humanSlotSet = new Set(Object.values(config.humanSlots));
+        const slotTypes = [];
+        for (let i = 0; i < config.playerCount; i++) {
+            slotTypes.push(humanSlotSet.has(i) ? 'player' : 'bot');
+        }
+
+        const botConfiguration = {
+            humanPlayers: config.humanPlayerCount,
+            botCount: config.playerCount - config.humanPlayerCount,
+            slotTypes: slotTypes
+        };
+
+        this.createPlayers(config.playerCount, assignedWeapons, botConfiguration);
+
+        // Override names for online human players
+        for (const [playerId, slot] of Object.entries(config.humanSlots)) {
+            if (playerId === this.onlineManager.localId) {
+                this.players[slot].name = 'Host';
+            } else {
+                this.players[slot].name = `Player ${slot + 1}`;
+            }
+        }
+
+        // Set game mode to 'online'
+        this.gameMode = 'online';
+
+        // Show game UI
+        const playerBoards = document.getElementById('player-boards-container');
+        const gameBoard = document.querySelector('.game-board');
+        const playerArea = document.querySelector('.player-area');
+        const gameStatus = document.querySelector('.game-status');
+
+        if (playerBoards) playerBoards.style.display = 'grid';
+        if (gameBoard) gameBoard.style.display = 'grid';
+        if (playerArea) playerArea.style.display = 'block';
+        if (gameStatus) gameStatus.style.display = 'block';
+
+        this.createPlayerBoards();
+        const playerBoardsContainer = document.getElementById('player-boards-container');
+        playerBoardsContainer.className = `player-boards players-${config.playerCount}`;
+
+        this.roundPhase = 'selection';
+        this.pendingSelectionLogs = [];
+        this.playerCompletionStatus = {};
+        this.players.forEach(player => {
+            this.playerCompletionStatus[player.id] = false;
+        });
+
+        this.init();
+        this.updateLocationDisplays();
+
+        // Listen for guest actions
+        this.onlineManager.listenForActions((action) => {
+            this.handleGuestAction(action);
+        });
+
+        // Start selection phase - host sees cards, bots select instantly
+        this.startOnlineSelectionPhase();
+    }
+
+    initOnlineGameAsGuest(config) {
+        this.localPlayerId = config.humanSlots[this.onlineManager.localId];
+        this.currentPlayerIndex = this.localPlayerId;
+
+        // Hide lobby, show game
+        document.getElementById('online-lobby').style.display = 'none';
+        document.getElementById('waiting-room-guest').style.display = 'none';
+        this.showOnlineConnectionBar();
+
+        // Reconstruct weapons from indices
+        const assignedWeapons = config.weapons.map(idx => this.weapons[idx]);
+        this.playerColors = config.colors;
+
+        // Initialize game
+        this.playerCount = config.playerCount;
+        this.showGameLog();
+        this.addLogEntry(`🌐 <strong>Online Game Started</strong> - ${config.playerCount} players`, 'round-start');
+        this.addLogEntry(`🔄 <strong>Round 1 Started</strong>`, 'round-start');
+
+        this.updateLocationRewards();
+        this.setupDummyTokens(config.playerCount);
+
+        // Create players same as host
+        const humanSlotSet = new Set(Object.values(config.humanSlots));
+        const slotTypes = [];
+        for (let i = 0; i < config.playerCount; i++) {
+            slotTypes.push(humanSlotSet.has(i) ? 'player' : 'bot');
+        }
+
+        const botConfiguration = {
+            humanPlayers: config.humanPlayerCount,
+            botCount: config.playerCount - config.humanPlayerCount,
+            slotTypes: slotTypes
+        };
+
+        this.createPlayers(config.playerCount, assignedWeapons, botConfiguration);
+
+        // Override names for online human players
+        for (const [playerId, slot] of Object.entries(config.humanSlots)) {
+            if (playerId === this.onlineManager.localId) {
+                this.players[slot].name = 'You';
+            } else if (slot === 0) {
+                this.players[slot].name = 'Host';
+            } else {
+                this.players[slot].name = `Player ${slot + 1}`;
+            }
+        }
+
+        this.gameMode = 'online';
+
+        // Show game UI
+        const playerBoards = document.getElementById('player-boards-container');
+        const gameBoard = document.querySelector('.game-board');
+        const playerArea = document.querySelector('.player-area');
+        const gameStatus = document.querySelector('.game-status');
+
+        if (playerBoards) playerBoards.style.display = 'grid';
+        if (gameBoard) gameBoard.style.display = 'grid';
+        if (playerArea) playerArea.style.display = 'block';
+        if (gameStatus) gameStatus.style.display = 'block';
+
+        this.createPlayerBoards();
+        const playerBoardsContainer = document.getElementById('player-boards-container');
+        playerBoardsContainer.className = `player-boards players-${config.playerCount}`;
+
+        this.roundPhase = 'selection';
+        this.pendingSelectionLogs = [];
+        this.playerCompletionStatus = {};
+        this.players.forEach(player => {
+            this.playerCompletionStatus[player.id] = false;
+        });
+
+        this.initGuestUI();
+
+        // Listen for game state updates from host
+        this.onlineManager.listenForGameState((state) => {
+            this.applyRemoteGameState(state);
+        });
+    }
+
+    initGuestUI() {
+        // Initialize UI elements but guest waits for host state
+        this.initializePlayerStatusIndicators();
+        this.initializeLocationCards();
+        this.setupEventListeners();
+        this.updateResourceDisplay();
+        this.updateLocationCardStates();
+        this.updateDummyTokenDisplay();
+        this.applyPlayerNameColors();
+
+        this.players.forEach(player => {
+            this.updatePopularityTrackDisplay(player.id);
+        });
+
+        this.updateStatusMessage();
+        this.disableBotPlayerButtons();
+
+        // Guest shows selection cards for their own selections
+        this.createLocationCards();
+        document.getElementById('status-message').textContent = 'Select locations for your Hunter and Apprentice';
     }
 
     showRulebook() {
@@ -1837,10 +2331,12 @@ class Game {
     // Initialize game UI after player creation
     init() {
         try {
-            // Determine game mode based on number of human players
-            const humanCount = this.players.filter(p => !p.isBot).length;
-            this.gameMode = humanCount === 1 ? 'simultaneous' : 'turnbased';
-            console.log(`Game mode set to: ${this.gameMode} (${humanCount} human player${humanCount !== 1 ? 's' : ''})`);
+            // Determine game mode based on number of human players (skip if online)
+            if (this.gameMode !== 'online') {
+                const humanCount = this.players.filter(p => !p.isBot).length;
+                this.gameMode = humanCount === 1 ? 'simultaneous' : 'turnbased';
+            }
+            console.log(`Game mode set to: ${this.gameMode}`);
 
             // Initialize player completion status (all start as not complete)
             this.players.forEach(player => {
@@ -2145,7 +2641,9 @@ class Game {
     
     updateCurrentPlayer() {
         // Branch based on game mode
-        if (this.gameMode === 'simultaneous') {
+        if (this.gameMode === 'online') {
+            return; // Online mode handles its own phase flow
+        } else if (this.gameMode === 'simultaneous') {
             this.updateCurrentPlayerSimultaneous();
         } else {
             this.updateCurrentPlayerTurnBased();
@@ -3228,16 +3726,25 @@ class Game {
         const player = this.players.find(p => p.id === playerId);
         if (!player) return;
 
+        // Online non-host: send action to host
+        if (this.gameMode === 'online' && !this.isHost) {
+            this.onlineManager.pushAction({
+                type: 'player_board_action',
+                playerId: playerId,
+                data: { action: 'restoreHP' }
+            });
+        }
+
         // Check if HP is already full
         if (player.resources.hp >= player.maxResources.hp) {
-            alert('HP is already full!');
+            if (!this.suppressAlerts && (this.isHost || this.gameMode !== 'online')) alert('HP is already full!');
             return;
         }
 
         // Check if player has blood bag
         const bloodBagIndex = player.inventory.findIndex(item => item.name === 'Blood Bag');
         if (bloodBagIndex === -1) {
-            alert('No blood bag available to restore HP!');
+            if (!this.suppressAlerts && (this.isHost || this.gameMode !== 'online')) alert('No blood bag available to restore HP!');
             return;
         }
 
@@ -3257,11 +3764,16 @@ class Game {
 
         // Refresh store display if in store phase to update capacity warnings
         if (this.roundPhase === 'store') {
-            if (this.gameMode === 'simultaneous') {
+            if (this.gameMode === 'simultaneous' || this.gameMode === 'online') {
                 this.showStoreForPlayer(player);
             } else {
                 this.showStore();
             }
+        }
+
+        // Online host: push state so all players see the update
+        if (this.gameMode === 'online' && this.isHost) {
+            this.pushOnlineBoardUpdate();
         }
     }
 
@@ -3269,16 +3781,25 @@ class Game {
         const player = this.players.find(p => p.id === playerId);
         if (!player) return;
 
+        // Online non-host: send action to host
+        if (this.gameMode === 'online' && !this.isHost) {
+            this.onlineManager.pushAction({
+                type: 'player_board_action',
+                playerId: playerId,
+                data: { action: 'restoreEP' }
+            });
+        }
+
         // Check if EP is already full
         if (player.resources.ep >= player.maxResources.ep) {
-            alert('EP is already full!');
+            if (!this.suppressAlerts && (this.isHost || this.gameMode !== 'online')) alert('EP is already full!');
             return;
         }
 
         // Check if player has beer
         const beerIndex = player.inventory.findIndex(item => item.name === 'Beer');
         if (beerIndex === -1) {
-            alert('No beer available to restore EP!');
+            if (!this.suppressAlerts && (this.isHost || this.gameMode !== 'online')) alert('No beer available to restore EP!');
             return;
         }
 
@@ -3298,11 +3819,16 @@ class Game {
 
         // Refresh store display if in store phase to update capacity warnings
         if (this.roundPhase === 'store') {
-            if (this.gameMode === 'simultaneous') {
+            if (this.gameMode === 'simultaneous' || this.gameMode === 'online') {
                 this.showStoreForPlayer(player);
             } else {
                 this.showStore();
             }
+        }
+
+        // Online host: push state so all players see the update
+        if (this.gameMode === 'online' && this.isHost) {
+            this.pushOnlineBoardUpdate();
         }
     }
 
@@ -3913,7 +4439,9 @@ class Game {
     
     confirmSelection() {
         // Branch based on game mode
-        if (this.gameMode === 'simultaneous') {
+        if (this.gameMode === 'online') {
+            this.confirmSelectionOnline();
+        } else if (this.gameMode === 'simultaneous') {
             this.confirmSelectionSimultaneous();
         } else {
             this.confirmSelectionTurnBased();
@@ -4412,6 +4940,11 @@ class Game {
         // In simultaneous mode, human players are always enabled
         if (this.gameMode === 'simultaneous') return false;
 
+        // In online mode, only enable the local player's buttons
+        if (this.gameMode === 'online') {
+            return playerId !== this.localPlayerId;
+        }
+
         // In turn-based mode, only enable current player's buttons
         if (this.gameMode === 'turnbased') {
             if (this.roundPhase === 'selection') {
@@ -4731,12 +5264,18 @@ class Game {
     }
     
     handleForestEncounters(forestHunters) {
+        // Route to online version if in online mode
+        if (this.gameMode === 'online' && this.isHost) {
+            this.handleForestEncountersOnline(forestHunters);
+            return;
+        }
+
         // In the new flow, this function handles battles during battle phase
         if (forestHunters.length === 0) {
             this.endRound();
             return;
         }
-        
+
         // Handle one hunter at a time
         this.currentMonsterPlayer = forestHunters[0];
         this.remainingForestHunters = forestHunters.slice(1);
@@ -5082,9 +5621,14 @@ class Game {
         console.log('=== handleBotBattle called ===');
         console.log('Player:', player.name);
         console.log('Battle:', battle);
-        
-        // Hide battle UI for bot
+
+        // Hide battle UI for bot (host only sees status message)
         document.getElementById('monster-battle').style.display = 'none';
+
+        // Push bot battle state so all online players see the battle starting
+        if (this.gameMode === 'online' && this.isHost) {
+            this.pushBattleStateToGuest();
+        }
         
         // Show status message
         const statusElement = document.getElementById('status-message');
@@ -5221,15 +5765,24 @@ class Game {
             
             // Continue to next battle or end battle phase
             setTimeout(() => {
-                if (this.remainingForestHunters && this.remainingForestHunters.length > 0) {
-                    this.handleForestEncounters(this.remainingForestHunters);
+                if (this.gameMode === 'online' && this.isHost) {
+                    this.pushBattleStateToGuest();
+                    if (this.remainingForestHunters && this.remainingForestHunters.length > 0) {
+                        this.handleForestEncountersOnline(this.remainingForestHunters);
+                    } else {
+                        this.playerShownMonsters = {};
+                        this.endRoundOnline();
+                    }
                 } else {
-                    // Clean up shown monsters data (all forest battles complete)
-                    this.playerShownMonsters = {};
-                    this.endRound();
+                    if (this.remainingForestHunters && this.remainingForestHunters.length > 0) {
+                        this.handleForestEncounters(this.remainingForestHunters);
+                    } else {
+                        this.playerShownMonsters = {};
+                        this.endRound();
+                    }
                 }
             }, this.getDelay(2000));
-            
+
             console.log('Ending executeBotBattle with instant kill.');
             return;
         }
@@ -5584,12 +6137,21 @@ class Game {
         
         // Continue to next battle or end battle phase
         setTimeout(() => {
-            if (this.remainingForestHunters && this.remainingForestHunters.length > 0) {
-                this.handleForestEncounters(this.remainingForestHunters);
+            if (this.gameMode === 'online' && this.isHost) {
+                this.pushBattleStateToGuest();
+                if (this.remainingForestHunters && this.remainingForestHunters.length > 0) {
+                    this.handleForestEncountersOnline(this.remainingForestHunters);
+                } else {
+                    this.playerShownMonsters = {};
+                    this.endRoundOnline();
+                }
             } else {
-                // Clean up shown monsters data (all forest battles complete)
-                this.playerShownMonsters = {};
-                this.endRound();
+                if (this.remainingForestHunters && this.remainingForestHunters.length > 0) {
+                    this.handleForestEncounters(this.remainingForestHunters);
+                } else {
+                    this.playerShownMonsters = {};
+                    this.endRound();
+                }
             }
         }, this.getDelay(2000));
     }
@@ -5849,15 +6411,30 @@ class Game {
     
     selectStationResource(resourceType) {
         if (this.pendingStationPlayer === null) return;
-        
+
+        if (this.gameMode === 'online' && !this.isHost) {
+            this.selectStationResourceOnline(resourceType);
+            return;
+        }
+
         this.stationChoices[this.pendingStationPlayer] = resourceType;
         document.getElementById('station-modal').style.display = 'none';
-        
+
         // Remove this player from pending list
         this.pendingStationPlayers.shift();
-        
-        // Show modal for next player or complete distribution
-        this.showStationModal();
+
+        if (this.gameMode === 'online') {
+            // Online host: continue processing station
+            if (this.pendingStationPlayers.length === 0) {
+                this.distributeStationResources();
+                this.enterStorePhaseOnline();
+            } else {
+                this.processOnlineStationPhase();
+            }
+        } else {
+            // Show modal for next player or complete distribution
+            this.showStationModal();
+        }
     }
     
     handleBotStationSelection(player) {
@@ -5903,10 +6480,19 @@ class Game {
         
         // Remove this player from pending list
         this.pendingStationPlayers.shift();
-        
+
         // Continue to next player or complete distribution
         setTimeout(() => {
-            this.showStationModal();
+            if (this.gameMode === 'online') {
+                if (this.pendingStationPlayers.length === 0) {
+                    this.distributeStationResources();
+                    this.enterStorePhaseOnline();
+                } else {
+                    this.processOnlineStationPhase();
+                }
+            } else {
+                this.showStationModal();
+            }
         }, this.getDelay(500));
     }
     
@@ -6339,9 +6925,18 @@ class Game {
         const player = this.players.find(p => p.id === playerId);
         if (!player) return;
 
+        // Online non-host: send action to host
+        if (this.gameMode === 'online' && !this.isHost) {
+            this.onlineManager.pushAction({
+                type: 'player_board_action',
+                playerId: playerId,
+                data: { action: 'addToUpgrade', upgradeType: upgradeType }
+            });
+        }
+
         // Check if already at maximum
         if (player.maxResources[upgradeType] >= 10) {
-            alert(`Cannot upgrade ${upgradeType.toUpperCase()} - already at maximum (10)`);
+            if (!this.suppressAlerts && (this.isHost || this.gameMode !== 'online')) alert(`Cannot upgrade ${upgradeType.toUpperCase()} - already at maximum (10)`);
             return;
         }
 
@@ -6354,14 +6949,14 @@ class Game {
             // Remove item from inventory
             player.inventory.splice(itemIndex, 1);
             player.upgradeProgress[upgradeType]++;
-            
+
             // Check if upgrade is complete
             if (player.upgradeProgress[upgradeType] === requiredAmount) {
                 this.levelUpMaxResource(playerId, upgradeType, 1);
                 player.upgradeProgress[upgradeType] = 0;
-                alert(`Player ${playerId}'s max ${upgradeType.toUpperCase()} increased!`);
+                if (!this.suppressAlerts && (this.isHost || this.gameMode !== 'online')) alert(`Player ${playerId}'s max ${upgradeType.toUpperCase()} increased!`);
             }
-            
+
             // Update all displays
             this.updateInventoryDisplayOld();
             this.players.forEach(player => {
@@ -6376,7 +6971,7 @@ class Game {
 
             // Refresh store display if in store phase to update capacity warnings
             if (this.roundPhase === 'store') {
-                if (this.gameMode === 'simultaneous') {
+                if (this.gameMode === 'simultaneous' || this.gameMode === 'online') {
                     this.showStoreForPlayer(player);
                 } else {
                     this.showStore();
@@ -6386,6 +6981,11 @@ class Game {
             // Update location card states if in selection phase and EP was upgraded
             if (this.roundPhase === 'selection' && upgradeType === 'ep' && player.id === this.currentPlayer.id) {
                 this.updateLocationCardStates();
+            }
+
+            // Online host: push state so all players see the update
+            if (this.gameMode === 'online' && this.isHost) {
+                this.pushOnlineBoardUpdate();
             }
         }
     }
@@ -6525,11 +7125,22 @@ class Game {
     upgradeWeapon(playerId, upgradeType) {
         const player = this.players.find(p => p.id === playerId);
         if (!player) return false;
-        
+
+        // Online non-host: send action to host
+        if (this.gameMode === 'online' && !this.isHost) {
+            this.onlineManager.pushAction({
+                type: 'player_board_action',
+                playerId: playerId,
+                data: { action: 'upgradeWeapon', upgradeType: upgradeType }
+            });
+        }
+
+        let upgraded = false;
+
         if (upgradeType === 'attack') {
             // Check if already at max attack dice (7)
             if (player.weapon.currentAttackDice >= 7) {
-                alert(`${player.name}'s attack dice is already at maximum (7)!`);
+                if (!this.suppressAlerts && (this.isHost || this.gameMode !== 'online')) alert(`${player.name}'s attack dice is already at maximum (7)!`);
                 return false;
             }
 
@@ -6543,13 +7154,13 @@ class Game {
                 this.players.forEach(player => {
                     this.updateInventoryDisplay(player.id);
                 }); // Update weapon display immediately
-                return true;
+                upgraded = true;
             }
             // Insufficient EXP - silently fail (button should be disabled)
         } else if (upgradeType === 'defense') {
             // Check if already at max defense dice (6)
             if (player.weapon.currentDefenseDice >= 6) {
-                alert(`${player.name}'s defense dice is already at maximum (6)!`);
+                if (!this.suppressAlerts && (this.isHost || this.gameMode !== 'online')) alert(`${player.name}'s defense dice is already at maximum (6)!`);
                 return false;
             }
 
@@ -6563,12 +7174,17 @@ class Game {
                 this.players.forEach(player => {
                     this.updateInventoryDisplay(player.id);
                 }); // Update weapon display immediately
-                return true;
+                upgraded = true;
             }
             // Insufficient EXP - silently fail (button should be disabled)
         }
-        
-        return false;
+
+        // Online host: push state so all players see the update
+        if (upgraded && this.gameMode === 'online' && this.isHost) {
+            this.pushOnlineBoardUpdate();
+        }
+
+        return upgraded;
     }
     
     loadMonsters() {
@@ -7048,6 +7664,15 @@ class Game {
     }
 
     changeMonster() {
+        // Online guest: send action to host
+        if (this.gameMode === 'online' && !this.isHost) {
+            this.onlineManager.pushAction({
+                type: 'battle_change_monster',
+                playerId: this.localPlayerId
+            });
+            return;
+        }
+
         const playerId = this.currentMonsterPlayer;
         const player = this.players.find(p => p.id === playerId);
 
@@ -7235,7 +7860,17 @@ class Game {
     confirmMonsterSelection() {
         // Hide the monster selection modal
         document.getElementById('monster-selection-modal').style.display = 'none';
-        
+
+        // Online guest: send fight action to host
+        if (this.gameMode === 'online' && !this.isHost) {
+            this.onlineManager.pushAction({
+                type: 'battle_fight',
+                playerId: this.localPlayerId
+            });
+            document.getElementById('status-message').textContent = 'Starting battle...';
+            return;
+        }
+
         // Continue with battle using the selected monster
         const playerId = this.currentMonsterPlayer;
         const player = this.players.find(p => p.id === playerId);
@@ -7330,14 +7965,30 @@ class Game {
         const playerId = this.currentMonsterPlayer;
         const player = this.players.find(p => p.id === playerId);
         if (!player) return;
-        
+
         const monsterLevel = this.selectedMonsterLevel - 1; // Convert back to 0-based
         const totalEPCost = parseInt(document.getElementById('total-ep-cost').textContent);
-        
+
         if (player.resources.ep < totalEPCost) {
             if (!this.isAutomatedMode) {
                 alert(`${player.name} needs ${totalEPCost} EP for this battle!`);
             }
+            return;
+        }
+
+        // Online guest: send battle selection to host
+        if (this.gameMode === 'online' && !this.isHost) {
+            this.onlineManager.pushAction({
+                type: 'battle_confirm',
+                playerId: this.localPlayerId,
+                data: {
+                    level: this.selectedMonsterLevel,
+                    pets: { ...this.selectedPets },
+                    beerConsumption: this.selectedBeerConsumption
+                }
+            });
+            document.getElementById('monster-modal').style.display = 'none';
+            document.getElementById('status-message').textContent = 'Waiting for battle to start...';
             return;
         }
 
@@ -7539,7 +8190,17 @@ class Game {
             this.handleBotBattle(player, battle);
             return;
         }
-        
+
+        // In online mode, if this is a remote player's battle, show spectator view on host
+        if (this.gameMode === 'online' && this.isHost && player.id !== this.localPlayerId) {
+            console.log('Remote player battle - showing spectator view on host');
+            const battleState = this.serializeBattleState();
+            if (battleState) {
+                this.showBattleSpectator(battleState);
+            }
+            return;
+        }
+
         console.log('Player is human, showing battle UI');
         
         document.getElementById('monster-battle').style.display = 'block';
@@ -7624,6 +8285,11 @@ class Game {
         document.getElementById('battle-attack-btn').onclick = () => this.playerAttackMonster();
         document.getElementById('battle-defense-btn').onclick = () => this.playerDefense();
         document.getElementById('battle-tame-btn').onclick = () => this.tameMonster();
+
+        // Push initial battle state so online spectators can see the battle
+        if (this.gameMode === 'online' && this.isHost) {
+            this.pushBattleStateToGuest();
+        }
     }
     
     updateMonsterRewards(monster) {
@@ -7860,8 +8526,13 @@ class Game {
                 defenseBtn.style.display = 'none';
             }
         }
+
+        // Push battle state to guest in online mode
+        if (this.gameMode === 'online' && this.isHost) {
+            this.pushBattleStateToGuest();
+        }
     }
-    
+
     handleBotTacticalItemUsage(player, battle) {
         console.log(`Bot ${player.name} evaluating tactical item usage...`);
 
@@ -8263,6 +8934,11 @@ class Game {
         
         // Update monster display
         this.updateMonsterDisplay();
+
+        // Push battle state for online spectators (only if battle still active — monsterDefeated handles its own push)
+        if (this.gameMode === 'online' && this.isHost && this.currentBattle) {
+            this.pushBattleStateToGuest();
+        }
     }
 
     getCurrentMonsterAttack() {
@@ -8405,18 +9081,28 @@ class Game {
             this.updateBattleItemButtons();
             this.updateResourceDisplay();
             this.updateBattlePhase(); // Update to show tame button if applicable
+
+            // Push battle state for online spectators
+            if (this.gameMode === 'online' && this.isHost && this.currentBattle) {
+                this.pushBattleStateToGuest();
+            }
         }
     }
-    
+
     playerDefense() {
         if (!this.currentBattle || this.currentBattle.turn !== 'player_items') return;
-        
+
         const battle = this.currentBattle;
-        
+
         // Move to monster turn
         battle.turn = 'monster';
         this.updateBattlePhase();
-        
+
+        // Push state so spectators see "Monster is attacking..."
+        if (this.gameMode === 'online' && this.isHost && this.currentBattle) {
+            this.pushBattleStateToGuest();
+        }
+
         // Execute monster attack after a delay
         setTimeout(() => this.monsterAttackPlayer(), 1000);
     }
@@ -8538,7 +9224,7 @@ class Game {
             }
             // Allow item usage before player's next attack
             battle.turn = 'player_items_after_monster';
-            
+
             // Hide Knife Lv1 2x damage button after monster attack
             if (battle.canUseDoubleDamage) {
                 battle.canUseDoubleDamage = false;
@@ -8547,9 +9233,19 @@ class Game {
                     doubleDamageBtn.style.display = 'none';
                 }
             }
-            
+
             this.updateBattlePhase();
             this.updateBattleItemButtons();
+
+            // Push battle state after monster attack resolves
+            if (this.gameMode === 'online' && this.isHost) {
+                // Update host spectator view if watching remote player's battle
+                const player = this.players.find(p => p.id === battle.playerId);
+                if (player && player.id !== this.localPlayerId) {
+                    this.updateHostSpectatorView();
+                }
+                this.pushBattleStateToGuest();
+            }
         }
     }
     
@@ -8743,22 +9439,45 @@ class Game {
     }
     
     endMonsterBattle(victory) {
+        // Push final battle state before clearing (so guest sees result)
+        if (this.gameMode === 'online' && this.isHost) {
+            this.pushBattleStateToGuest();
+        }
+
         this.currentBattle = null;
-        
+
         setTimeout(() => {
             document.getElementById('monster-battle').style.display = 'none';
             document.getElementById('battle-log').innerHTML = '';
-            
-            // Continue with remaining forest hunters or end battle phase
-            if (this.remainingForestHunters && this.remainingForestHunters.length > 0) {
-                this.handleForestEncounters(this.remainingForestHunters);
+
+            if (this.gameMode === 'online' && this.isHost) {
+                // Push ended state so guest hides battle UI
+                const state = this.serializeGameState();
+                state.roundPhase = 'battle';
+                state.guestBattle = false;
+                state.battlePhase = 'ended';
+                state.battleState = null;
+                this.onlineManager.pushGameState(state);
+
+                // Continue with remaining forest hunters or end battle phase
+                if (this.remainingForestHunters && this.remainingForestHunters.length > 0) {
+                    this.handleForestEncountersOnline(this.remainingForestHunters);
+                } else {
+                    this.playerShownMonsters = {};
+                    this.endRoundOnline();
+                }
             } else {
-                // Clean up shown monsters data (all forest battles complete)
-                this.playerShownMonsters = {};
-                this.endRound();
+                // Continue with remaining forest hunters or end battle phase
+                if (this.remainingForestHunters && this.remainingForestHunters.length > 0) {
+                    this.handleForestEncounters(this.remainingForestHunters);
+                } else {
+                    // Clean up shown monsters data (all forest battles complete)
+                    this.playerShownMonsters = {};
+                    this.endRound();
+                }
             }
         }, 3000);
-        
+
         this.updateResourceDisplay();
         this.updateInventoryDisplayOld();
         this.players.forEach(player => {
@@ -9061,7 +9780,9 @@ class Game {
         }
 
         // Branch based on game mode
-        if (this.gameMode === 'simultaneous') {
+        if (this.gameMode === 'online' && this.isHost) {
+            this.enterStorePhaseOnline();
+        } else if (this.gameMode === 'simultaneous') {
             this.enterStorePhaseSimultaneous();
         } else {
             this.enterStorePhaseTurnBased();
@@ -9343,7 +10064,7 @@ class Game {
         if (!this.isAutomatedMode) {
             // Only hide UI elements in turn-based mode
             // In simultaneous mode, bots shop in background while human uses the store UI
-            if (this.gameMode !== 'simultaneous') {
+            if (this.gameMode !== 'simultaneous' && this.gameMode !== 'online') {
                 // Hide store UI for bot turns
                 const cardSelection = document.querySelector('.card-selection');
                 const storeArea = document.getElementById('store-area');
@@ -9667,8 +10388,8 @@ class Game {
 
             // Handle completion based on game mode
             setTimeout(() => {
-                if (this.gameMode === 'simultaneous') {
-                    // In simultaneous mode, mark bot as complete
+                if (this.gameMode === 'simultaneous' || this.gameMode === 'online') {
+                    // In simultaneous/online mode, mark bot as complete
                     this.updatePlayerStatus(player.id, true);
 
                     // Trigger centralized completion check
@@ -9818,10 +10539,20 @@ class Game {
     }
     
     buyStoreItem(itemName, price, size) {
-        // In simultaneous mode, the human player is the one buying
+        // In online mode as guest, send purchase action to host
+        if (this.gameMode === 'online' && !this.isHost) {
+            this.onlineManager.pushAction({
+                type: 'purchase',
+                playerId: this.localPlayerId,
+                data: { itemName }
+            });
+            return;
+        }
+
+        // In simultaneous/online-host mode, the human player is the one buying
         // In turn-based mode, use currentStorePlayer
-        const player = this.gameMode === 'simultaneous'
-            ? this.players.find(p => !p.isBot)
+        const player = (this.gameMode === 'simultaneous' || this.gameMode === 'online')
+            ? this.players.find(p => p.id === this.localPlayerId) || this.players.find(p => !p.isBot)
             : this.players[this.currentStorePlayer];
         
         if (player.resources.money < price) {
@@ -9866,7 +10597,7 @@ class Game {
         player.inventory.push(item);
         
         // Update display
-        if (this.gameMode === 'simultaneous') {
+        if (this.gameMode === 'simultaneous' || this.gameMode === 'online') {
             this.showStoreForPlayer(player);
         } else {
             this.showStore();
@@ -9901,17 +10632,22 @@ class Game {
         );
 
         // Refresh the store display to update capacity warnings and money
-        if (this.gameMode === 'simultaneous') {
+        if (this.gameMode === 'simultaneous' || this.gameMode === 'online') {
             this.showStoreForPlayer(player);
         } else {
             this.showStore();
         }
 
-        // alert(`${player.name} bought ${itemName}!`); // Removed popup as requested
+        // Online host: push updated state so all players see the purchase
+        if (this.gameMode === 'online' && this.isHost) {
+            this.pushOnlineBoardUpdate();
+        }
     }
     
     finishShopping() {
-        if (this.gameMode === 'simultaneous') {
+        if (this.gameMode === 'online') {
+            this.finishShoppingOnline();
+        } else if (this.gameMode === 'simultaneous') {
             this.finishShoppingSimultaneous();
         } else {
             this.finishShoppingTurnBased();
@@ -9945,11 +10681,15 @@ class Game {
             // Set flag to prevent duplicate execution
             this.storePhaseCompleted = true;
 
-            console.log('All players completed shopping (simultaneous mode)');
+            console.log('All players completed shopping');
             this.hidePlayerStatusIndicators();
 
-            // Proceed to capacity overflow check
-            this.checkCapacityOverflow();
+            if (this.gameMode === 'online' && this.isHost) {
+                this.onlineStoreComplete();
+            } else {
+                // Proceed to capacity overflow check
+                this.checkCapacityOverflow();
+            }
         }
     }
 
@@ -10334,10 +11074,17 @@ class Game {
 
         // Move to next hunter
         this.forestReadinessQueue.shift();
+
+        // In online mode, after all forest readiness checks, proceed to battle
         this.checkNextForestHunter();
     }
 
     startBattlePhase() {
+        if (this.gameMode === 'online' && this.isHost) {
+            this.startBattlePhaseOnline();
+            return;
+        }
+
         this.roundPhase = 'battle';
 
         if (this.isAutomatedMode) {
@@ -10389,6 +11136,12 @@ class Game {
     }
     
     endRound() {
+        // Route to online version if in online mode
+        if (this.gameMode === 'online' && this.isHost) {
+            this.endRoundOnline();
+            return;
+        }
+
         if (this.isAutomatedMode) {
             console.log(`[${new Date().toISOString()}] Ending round ${this.currentRound}, checking win condition`);
         }
@@ -11139,20 +11892,20 @@ class Game {
         
         // Reset for next round
         this.roundPhase = 'selection';
-        this.currentPlayerIndex = 0;
+        this.currentPlayerIndex = (this.gameMode === 'online') ? this.localPlayerId : 0;
         this.pendingSelectionLogs = []; // Clear any pending logs
-        
+
         // Clear selections and station choices
         this.stationChoices = {};
         this.players.forEach(player => {
             player.selectedCards.hunter = null;
             player.selectedCards.apprentice = null;
         });
-        
+
         // Update UI for next round
         document.getElementById('confirm-selection').style.display = 'block';
         document.getElementById('next-player').style.display = 'none';
-        document.getElementById('status-message').textContent = 
+        document.getElementById('status-message').textContent =
             `New Round Started! ${this.currentPlayer.name}: Select locations for your Hunter and Apprentice`;
         document.querySelector('.card-selection').style.display = 'grid';
         
@@ -11234,6 +11987,16 @@ class Game {
     }
     
     removeItem(playerId, itemIndex) {
+        if (this.gameMode === 'online' && !this.isHost) {
+            this.onlineManager.pushAction({
+                type: 'capacity_overflow_choice',
+                playerId: this.localPlayerId,
+                data: { actionType: 'discard', itemIndex }
+            });
+            document.getElementById('capacity-modal').style.display = 'none';
+            return;
+        }
+
         const player = this.players.find(p => p.id === playerId);
         player.inventory.splice(itemIndex, 1);
 
@@ -11252,16 +12015,26 @@ class Game {
     }
     
     useItemFromOverflow(playerId, itemIndex) {
+        if (this.gameMode === 'online' && !this.isHost) {
+            this.onlineManager.pushAction({
+                type: 'capacity_overflow_choice',
+                playerId: this.localPlayerId,
+                data: { actionType: 'use', itemIndex }
+            });
+            document.getElementById('capacity-modal').style.display = 'none';
+            return;
+        }
+
         const player = this.players.find(p => p.id === playerId);
         const item = player.inventory[itemIndex];
-        
+
         if (!item) return;
-        
+
         // Use the same logic as useInventoryItem
         if (item.name === 'Beer') {
             if (player.resources.ep >= player.maxResources.ep) return;
             player.resources.ep = Math.min(player.resources.ep + 1, player.maxResources.ep);
-            
+
             // Update Forest button status if this is the current player
             if (player.id === this.currentPlayer?.id) {
                 this.updateForestButtonStatus();
@@ -11270,7 +12043,7 @@ class Game {
             if (player.resources.hp >= player.maxResources.hp) return;
             player.resources.hp = Math.min(player.resources.hp + 1, player.maxResources.hp);
         }
-        
+
         // Remove item from inventory
         player.inventory.splice(itemIndex, 1);
 
@@ -11290,22 +12063,32 @@ class Game {
     }
     
     addToUpgradeFromOverflow(playerId, itemIndex) {
+        if (this.gameMode === 'online' && !this.isHost) {
+            this.onlineManager.pushAction({
+                type: 'capacity_overflow_choice',
+                playerId: this.localPlayerId,
+                data: { actionType: 'upgrade', itemIndex }
+            });
+            document.getElementById('capacity-modal').style.display = 'none';
+            return;
+        }
+
         const player = this.players.find(p => p.id === playerId);
         const item = player.inventory[itemIndex];
-        
+
         if (!item) return;
-        
+
         const upgradeType = item.name === 'Beer' ? 'ep' : 'hp';
         const requiredAmount = upgradeType === 'ep' ? 4 : 3;
-        
+
         // Check if can upgrade (not at max and not at upgrade limit)
         if (player.maxResources[upgradeType] >= 10) return;
         if (player.upgradeProgress[upgradeType] >= requiredAmount) return;
-        
+
         // Remove item from inventory and add to upgrade progress
         player.inventory.splice(itemIndex, 1);
         player.upgradeProgress[upgradeType]++;
-        
+
         // Check if upgrade is complete
         if (player.upgradeProgress[upgradeType] === requiredAmount) {
             this.levelUpMaxResource(playerId, upgradeType, 1);
@@ -11722,7 +12505,27 @@ class Game {
     showBatPowerChoice(playerId) {
         const player = this.players.find(p => p.id === playerId);
         if (!player) return;
-        
+
+        // In online mode, if this is the guest player and we're the host,
+        // auto-choose using bot logic (simplification to avoid async wait)
+        if (this.gameMode === 'online' && this.isHost && playerId !== this.localPlayerId && !player.isBot) {
+            const maxHp = player.maxHP || 10;
+            const maxEp = player.maxEP || 10;
+            const hpFull = player.resources.hp >= maxHp;
+            const epFull = player.resources.ep >= maxEp;
+            if (hpFull && epFull) return;
+            if (hpFull) {
+                this.modifyResource(playerId, 'ep', 1);
+                this.addLogEntry(`🦇 ${player.name} receives +1 EP from Bat Lv2 Power`, 'power', player);
+            } else {
+                this.modifyResource(playerId, 'hp', 1);
+                this.addLogEntry(`🦇 ${player.name} receives +1 HP from Bat Lv2 Power`, 'power', player);
+            }
+            this.updateResourceDisplay();
+            this.updateInventoryDisplay(playerId);
+            return;
+        }
+
         const maxHp = player.maxHP || 10;
         const maxEp = player.maxEP || 10;
         const hpFull = player.resources.hp >= maxHp;
@@ -11830,6 +12633,1611 @@ class Game {
             setTimeout(() => {
                 document.getElementById('bat-choose-hp')?.click();
             }, 100);
+        }
+    }
+
+    // ==================== ONLINE: STATE SERIALIZATION ====================
+
+    serializeGameState() {
+        // Serialize the full game state for pushing to Firebase
+        return {
+            roundPhase: this.roundPhase,
+            currentRound: this.currentRound,
+            currentPlayerIndex: this.currentPlayerIndex,
+            players: this.players.map(p => ({
+                id: p.id,
+                name: p.name,
+                isBot: p.isBot,
+                tokens: { ...p.tokens },
+                selectedCards: { ...p.selectedCards },
+                resources: { ...p.resources },
+                upgradeProgress: { ...p.upgradeProgress },
+                milestones: { ...p.milestones },
+                score: p.score,
+                scoreFromMonsters: p.scoreFromMonsters,
+                scoreFromMilestones: p.scoreFromMilestones,
+                scoreFromPopularity: p.scoreFromPopularity,
+                scoreFromPlaza: p.scoreFromPlaza,
+                scoreFromFakeBlood: p.scoreFromFakeBlood,
+                scoreFromOther: p.scoreFromOther,
+                maxResources: { ...p.maxResources },
+                weapon: {
+                    name: p.weapon.name,
+                    currentAttackDice: p.weapon.currentAttackDice,
+                    currentDefenseDice: p.weapon.currentDefenseDice,
+                    attackLevel: p.weapon.attackLevel,
+                    defenseLevel: p.weapon.defenseLevel,
+                    powerTrackPosition: p.weapon.powerTrackPosition,
+                    damage: [...p.weapon.damage],
+                    capacity: p.weapon.capacity,
+                    priority: p.weapon.priority
+                },
+                maxInventoryCapacity: p.maxInventoryCapacity,
+                inventory: p.inventory.map(item => {
+                    const serialized = {};
+                    for (const [k, v] of Object.entries(item)) {
+                        if (v !== undefined) serialized[k] = v;
+                    }
+                    return serialized;
+                }),
+                popularityTrack: {
+                    pointToken: p.popularityTrack.pointToken,
+                    rewardToken: p.popularityTrack.rewardToken,
+                    levelReached: [...p.popularityTrack.levelReached]
+                },
+                pets: { ...p.pets },
+                monstersDefeated: { ...p.monstersDefeated },
+                hunterAloneCount: p.hunterAloneCount,
+                apprenticeWithHuntersCount: p.apprenticeWithHuntersCount
+            })),
+            dummyTokens: [...this.dummyTokens],
+            playerCompletionStatus: { ...this.playerCompletionStatus },
+            battleLog: this.getBattleLogEntries(),
+            stateVersion: 0 // Will be set by pushGameState
+        };
+    }
+
+    getBattleLogEntries() {
+        const logEl = document.getElementById('game-log');
+        if (!logEl) return [];
+        const entries = logEl.querySelectorAll('.log-entry');
+        const result = [];
+        entries.forEach(e => {
+            result.push({
+                html: e.innerHTML,
+                className: e.className,
+                borderColor: e.style.getPropertyValue('border-left-color') || ''
+            });
+        });
+        // Only return last 20 entries to save bandwidth
+        return result.slice(-20);
+    }
+
+    serializeBattleState() {
+        if (!this.currentBattle) return null;
+        const battle = this.currentBattle;
+        const player = this.players.find(p => p.id === battle.playerId);
+
+        return {
+            playerId: battle.playerId,
+            playerName: player ? player.name : 'Unknown',
+            playerHP: player ? player.resources.hp : 0,
+            playerMaxHP: player ? player.maxResources.hp : 0,
+            playerEP: player ? player.resources.ep : 0,
+            playerMaxEP: player ? player.maxResources.ep : 0,
+            playerInventory: player ? player.inventory.map(i => ({ name: i.name, icon: i.icon, size: i.size })) : [],
+            monster: battle.monster ? {
+                name: battle.monster.name,
+                level: battle.monster.level,
+                hp: battle.monster.hp,
+                maxHp: battle.monster.maxHp,
+                attack: battle.monster.attack,
+                effect: battle.monster.effect,
+                effectId: battle.monster.effectId,
+                rewards: battle.monster.rewards
+            } : null,
+            turn: battle.turn,
+            bonusPts: battle.bonusPts,
+            petsUsed: battle.petsUsed,
+            hasAttacked: battle.hasAttacked,
+            doubleDamageUsed: battle.doubleDamageUsed,
+            canUseDoubleDamage: battle.canUseDoubleDamage,
+            lastAttackDamage: battle.lastAttackDamage || 0,
+            glovesPowerLevel: battle.glovesPowerLevel,
+            ammunitionConsumed: battle.ammunitionConsumed,
+            battleLogHTML: document.getElementById('battle-log')?.innerHTML || '',
+            isActive: battle.monster ? battle.monster.hp > 0 && (player ? player.resources.hp > 0 : true) : false
+        };
+    }
+
+    applyRemoteGameState(state) {
+        // Guest applies state received from host
+        if (!state || !state.stateVersion) return;
+        if (state.stateVersion <= this.lastAppliedStateVersion) return;
+        this.lastAppliedStateVersion = state.stateVersion;
+
+        console.log(`Applying remote state v${state.stateVersion}, phase: ${state.roundPhase}`);
+
+        // Update round info
+        this.currentRound = state.currentRound;
+
+        // Update players
+        if (state.players) {
+            state.players.forEach(remotePlayer => {
+                const localPlayer = this.players.find(p => p.id === remotePlayer.id);
+                if (!localPlayer) return;
+
+                // Update resources
+                Object.assign(localPlayer.resources, remotePlayer.resources);
+                Object.assign(localPlayer.maxResources, remotePlayer.maxResources);
+                Object.assign(localPlayer.upgradeProgress, remotePlayer.upgradeProgress);
+                Object.assign(localPlayer.milestones, remotePlayer.milestones);
+                Object.assign(localPlayer.tokens, remotePlayer.tokens);
+                Object.assign(localPlayer.selectedCards, remotePlayer.selectedCards);
+                Object.assign(localPlayer.pets, remotePlayer.pets);
+                Object.assign(localPlayer.monstersDefeated, remotePlayer.monstersDefeated);
+                localPlayer.popularityTrack.pointToken = remotePlayer.popularityTrack.pointToken;
+                localPlayer.popularityTrack.rewardToken = remotePlayer.popularityTrack.rewardToken;
+                localPlayer.popularityTrack.levelReached = [...remotePlayer.popularityTrack.levelReached];
+                localPlayer.score = remotePlayer.score;
+                localPlayer.scoreFromMonsters = remotePlayer.scoreFromMonsters;
+                localPlayer.scoreFromMilestones = remotePlayer.scoreFromMilestones;
+                localPlayer.scoreFromPopularity = remotePlayer.scoreFromPopularity;
+                localPlayer.scoreFromPlaza = remotePlayer.scoreFromPlaza;
+                localPlayer.scoreFromFakeBlood = remotePlayer.scoreFromFakeBlood;
+                localPlayer.scoreFromOther = remotePlayer.scoreFromOther;
+                localPlayer.maxInventoryCapacity = remotePlayer.maxInventoryCapacity;
+                localPlayer.hunterAloneCount = remotePlayer.hunterAloneCount;
+                localPlayer.apprenticeWithHuntersCount = remotePlayer.apprenticeWithHuntersCount;
+
+                // Update weapon stats
+                if (remotePlayer.weapon) {
+                    localPlayer.weapon.currentAttackDice = remotePlayer.weapon.currentAttackDice;
+                    localPlayer.weapon.currentDefenseDice = remotePlayer.weapon.currentDefenseDice;
+                    localPlayer.weapon.attackLevel = remotePlayer.weapon.attackLevel;
+                    localPlayer.weapon.defenseLevel = remotePlayer.weapon.defenseLevel;
+                    localPlayer.weapon.powerTrackPosition = remotePlayer.weapon.powerTrackPosition;
+                    if (remotePlayer.weapon.damage) localPlayer.weapon.damage = [...remotePlayer.weapon.damage];
+                    if (remotePlayer.weapon.capacity !== undefined) localPlayer.weapon.capacity = remotePlayer.weapon.capacity;
+                    if (remotePlayer.weapon.priority !== undefined) localPlayer.weapon.priority = remotePlayer.weapon.priority;
+                }
+
+                // Update inventory
+                localPlayer.inventory = (remotePlayer.inventory || []).map(item => {
+                    // Re-resolve from store items to get full item data
+                    const storeItem = this.storeItems.find(si => si.name === item.name);
+                    return storeItem ? { ...storeItem } : { ...item };
+                });
+            });
+        }
+
+        // Update dummy tokens
+        if (state.dummyTokens) {
+            this.dummyTokens = [...state.dummyTokens];
+        }
+
+        // Update player completion status
+        if (state.playerCompletionStatus) {
+            this.playerCompletionStatus = { ...state.playerCompletionStatus };
+            // Update the status indicator UI for each player
+            for (const [playerId, isComplete] of Object.entries(state.playerCompletionStatus)) {
+                this.updatePlayerStatus(parseInt(playerId), isComplete);
+            }
+        }
+
+        // Handle phase transitions for guest
+        const prevPhase = this.roundPhase;
+        this.roundPhase = state.roundPhase;
+
+        // Update all displays
+        this.updateResourceDisplay();
+        this.players.forEach(p => this.updateInventoryDisplay(p.id));
+        this.updateDummyTokenDisplay();
+        this.players.forEach(p => this.updatePopularityTrackDisplay(p.id));
+        this.applyPlayerNameColors();
+
+        // Update game log from host
+        if (state.battleLog && state.battleLog.length > 0) {
+            const logEl = document.getElementById('game-log');
+            if (logEl) {
+                logEl.innerHTML = '';
+                state.battleLog.forEach(entry => {
+                    const div = document.createElement('div');
+                    if (typeof entry === 'object') {
+                        div.className = entry.className || 'log-entry';
+                        div.innerHTML = entry.html || '';
+                        if (entry.borderColor) {
+                            div.style.setProperty('border-left-color', entry.borderColor, 'important');
+                        }
+                    } else {
+                        // Backwards compat: old string format
+                        div.className = 'log-entry';
+                        div.innerHTML = entry;
+                    }
+                    logEl.appendChild(div);
+                });
+                logEl.scrollTop = logEl.scrollHeight;
+            }
+        }
+
+        // Handle phase-specific guest UI updates
+        this.handleGuestPhaseUpdate(state, prevPhase);
+    }
+
+    handleGuestPhaseUpdate(state, prevPhase) {
+        const phase = state.roundPhase;
+
+        if (phase === 'selection' && prevPhase !== 'selection') {
+            // New selection round — hide store UI from previous phase
+            const storeArea = document.getElementById('store-area');
+            if (storeArea) storeArea.style.display = 'none';
+
+            // Clear all player tokens from the board
+            document.querySelectorAll('.token:not(.dummy-token)').forEach(token => token.remove());
+            // Update dummy token positions
+            this.updateDummyTokenDisplay();
+
+            this.addLogEntry(`🔄 <strong>Round ${this.currentRound} Started</strong>`, 'round-start');
+            this.createLocationCards();
+            this.updateLocationCardStates();
+            document.getElementById('status-message').textContent = 'Select locations for your Hunter and Apprentice';
+            // Show player status indicators
+            this.initializePlayerStatusIndicators();
+            this.showPlayerStatusIndicators();
+            // Enable confirm button
+            const confirmBtn = document.getElementById('confirm-selection');
+            if (confirmBtn) {
+                confirmBtn.disabled = true;
+                confirmBtn.style.display = 'inline-block';
+            }
+            // Show card selection UI
+            const cardSelection = document.querySelector('.card-selection');
+            if (cardSelection) cardSelection.style.display = 'grid';
+            // Reset selections
+            const localPlayer = this.players[this.localPlayerId];
+            if (localPlayer) {
+                localPlayer.selectedCards = { hunter: null, apprentice: null };
+            }
+        }
+
+        // Keep status indicators visible and updated during selection/store phases
+        if (phase === 'selection' || phase === 'store') {
+            this.showPlayerStatusIndicators();
+        }
+
+        if (phase === 'distribution') {
+            // Show tokens on board
+            document.querySelectorAll('.token:not(.dummy-token)').forEach(token => token.remove());
+            this.players.forEach(player => {
+                if (player.selectedCards.hunter) this.placeToken(player.id, 'hunter', player.selectedCards.hunter);
+                if (player.selectedCards.apprentice) this.placeToken(player.id, 'apprentice', player.selectedCards.apprentice);
+            });
+            // Hide selection UI
+            document.querySelector('.card-selection').style.display = 'none';
+            document.getElementById('confirm-selection').style.display = 'none';
+        }
+
+        if (phase === 'station' && state.guestStationChoice) {
+            // Only show station modal if THIS player needs to choose
+            const pendingIds = state.pendingStationPlayerIds || [];
+            if (pendingIds.includes(this.localPlayerId)) {
+                this.showStationModalForGuest(state);
+            }
+        }
+
+        if (phase === 'store') {
+            if (state.guestStorePhase) {
+                // Show/refresh store for guest player
+                const guestPlayer = this.players[this.localPlayerId];
+                if (guestPlayer) {
+                    this.showStoreForPlayer(guestPlayer);
+                }
+            }
+        }
+
+        if (phase === 'battle') {
+            this.handleGuestBattleStateUpdate(state);
+        }
+
+        if (phase === 'gameover' && state.winner !== undefined) {
+            const winner = this.players.find(p => p.id === state.winner);
+            if (winner) {
+                this.endGameOnline(winner);
+            }
+        }
+
+        if (phase === 'capacityOverflow' && state.guestOverflow) {
+            // Guest needs to resolve capacity overflow
+            const guestPlayer = this.players[this.localPlayerId];
+            if (guestPlayer && this.getInventorySize(guestPlayer) > guestPlayer.maxInventoryCapacity) {
+                this.handleCapacityOverflow([this.localPlayerId]);
+            }
+        }
+    }
+
+    // ==================== ONLINE: SELECTION PHASE ====================
+
+    startOnlineSelectionPhase() {
+        // Host: show selection UI, run bots instantly, wait for both humans
+        this.roundPhase = 'selection';
+        this.resetPlayerCompletionStatus();
+        this.showPlayerStatusIndicators();
+
+        // Run bot selections immediately
+        const botPlayers = this.players.filter(p => p.isBot);
+        botPlayers.forEach((player, i) => {
+            setTimeout(() => {
+                this.handleBotLocationSelection(player.id);
+                this.updatePlayerStatus(player.id, true);
+
+                // After last bot completes, push state so guest sees bot statuses
+                if (i === botPlayers.length - 1) {
+                    const state = this.serializeGameState();
+                    state.roundPhase = 'selection';
+                    this.onlineManager.pushGameState(state);
+                }
+            }, 50 * (i + 1));
+        });
+
+        // Show selection cards for host
+        this.createLocationCards();
+        this.updateLocationCardStates();
+        document.getElementById('status-message').textContent = 'Select locations for your Hunter and Apprentice';
+
+        // Push initial state so guest can see selection phase started
+        const state = this.serializeGameState();
+        state.roundPhase = 'selection';
+        this.onlineManager.pushGameState(state);
+    }
+
+    confirmSelectionOnline() {
+        // Called when the local player (host or guest) confirms their selection
+        const localPlayer = this.players[this.localPlayerId];
+        if (!localPlayer) return;
+
+        if (localPlayer.selectedCards.hunter === null || localPlayer.selectedCards.apprentice === null) {
+            return;
+        }
+
+        if (this.isHost) {
+            // Host confirms directly - same forest warning logic
+            if (localPlayer.selectedCards.hunter === 7) {
+                let warningMessages = [];
+                if (localPlayer.resources.ep < 2) {
+                    warningMessages.push('• You need at least 2 EP to enter the Forest (you have ' + localPlayer.resources.ep + ' EP)');
+                }
+                if (!this.hasRequiredAmmunition(localPlayer)) {
+                    if (localPlayer.weapon.name === 'Rifle') {
+                        const bullets = localPlayer.inventory.filter(i => i.name === 'Bullet').length;
+                        warningMessages.push('• Rifle needs bullets for combat (you have ' + bullets + ' bullets)');
+                    } else if (localPlayer.weapon.name === 'Plasma') {
+                        const batteries = localPlayer.inventory.filter(i => i.name === 'Battery').length;
+                        warningMessages.push('• Plasma needs batteries for combat (you have ' + batteries + ' batteries)');
+                    }
+                }
+                if (warningMessages.length > 0) {
+                    let msg = '⚠️ Forest Entry Warning\n\n' + warningMessages.join('\n') + '\n\nProceed?';
+                    if (!confirm(msg)) return;
+                }
+            }
+
+            // Track selection
+            const hunterLoc = localPlayer.selectedCards.hunter;
+            const apprenticeLoc = localPlayer.selectedCards.apprentice;
+            localPlayer.locationSelections[hunterLoc].hunter++;
+            localPlayer.locationSelections[apprenticeLoc].apprentice++;
+
+            this.pendingSelectionLogs.push({
+                message: `📍 <strong>${localPlayer.name}</strong> selected: Hunter → ${this.getLocationName(hunterLoc)}, Apprentice → ${this.getLocationName(apprenticeLoc)}`,
+                type: 'selection',
+                player: localPlayer
+            });
+
+            this.updatePlayerStatus(localPlayer.id, true);
+
+            // Push state so other players see host's status update
+            const hostState = this.serializeGameState();
+            hostState.roundPhase = 'selection';
+            this.onlineManager.pushGameState(hostState);
+
+            // Disable further selection UI while waiting for other players
+            document.getElementById('confirm-selection').disabled = true;
+            document.getElementById('status-message').textContent = 'Waiting for other players...';
+            document.querySelector('.card-selection').style.display = 'none';
+
+            // Check if all done
+            if (this.checkAllPlayersComplete()) {
+                this.onlineSelectionComplete();
+            }
+        } else {
+            // Guest sends selection to host via Firebase
+            this.onlineManager.pushAction({
+                type: 'selection',
+                playerId: this.localPlayerId,
+                data: {
+                    hunter: localPlayer.selectedCards.hunter,
+                    apprentice: localPlayer.selectedCards.apprentice
+                }
+            });
+
+            // Disable further selection UI
+            document.getElementById('confirm-selection').disabled = true;
+            document.getElementById('status-message').textContent = 'Waiting for other players...';
+            document.querySelector('.card-selection').style.display = 'none';
+        }
+    }
+
+    onlineSelectionComplete() {
+        // Host: all players have selected, proceed
+        console.log('Online: All players completed selections');
+
+        for (const logEntry of this.pendingSelectionLogs) {
+            this.addLogEntry(logEntry.message, logEntry.type, logEntry.player);
+        }
+        this.pendingSelectionLogs = [];
+        this.hidePlayerStatusIndicators();
+
+        // Run distribution
+        this.startResourceDistribution();
+
+        // Push distribution state so guests can see tokens on the board
+        const distState = this.serializeGameState();
+        distState.roundPhase = 'distribution';
+        this.onlineManager.pushGameState(distState);
+
+        // After a delay, proceed to station/store
+        setTimeout(() => {
+            this.pushStateAfterDistribution();
+        }, 1000);
+    }
+
+    pushOnlineBoardUpdate() {
+        // Push current game state so all players see board changes
+        if (!this.isHost || !this.onlineManager) return;
+        const state = this.serializeGameState();
+        state.roundPhase = this.roundPhase;
+        // Preserve store phase flag so guests keep their store UI
+        if (this.roundPhase === 'store') {
+            state.guestStorePhase = true;
+        }
+        this.onlineManager.pushGameState(state);
+    }
+
+    pushStateAfterDistribution() {
+        // Check if station choices are needed
+        if (this.pendingStationPlayers && this.pendingStationPlayers.length > 0) {
+            // Check if any non-host human needs to make a station choice
+            const remoteHumansNeedStation = this.pendingStationPlayers.some(pid => {
+                const p = this.players.find(pl => pl.id === pid);
+                return p && !p.isBot && pid !== this.localPlayerId;
+            });
+            const state = this.serializeGameState();
+            state.roundPhase = 'station';
+            if (remoteHumansNeedStation) {
+                state.guestStationChoice = true;
+                state.stationTotalCount = this.stationTotalCount;
+                state.pendingStationPlayerIds = [...this.pendingStationPlayers];
+            }
+            this.onlineManager.pushGameState(state);
+            // Process station for host/bots, wait for remote humans if needed
+            this.processOnlineStationPhase();
+        } else {
+            // No station needed, go to store
+            this.enterStorePhaseOnline();
+        }
+    }
+
+    // ==================== ONLINE: STATION PHASE ====================
+
+    processOnlineStationPhase() {
+        // Host processes station choices for bots and self
+        if (!this.pendingStationPlayers || this.pendingStationPlayers.length === 0) {
+            this.distributeStationResources();
+            this.enterStorePhaseOnline();
+            return;
+        }
+
+        const playerId = this.pendingStationPlayers[0];
+        const player = this.players.find(p => p.id === playerId);
+
+        if (player.isBot) {
+            this.handleBotStationSelection(player);
+            // Bot selection removes from pending and calls showStationModal
+            // Override showStationModal to use our online version
+            return;
+        }
+
+        if (playerId === this.localPlayerId) {
+            // Host makes station choice via normal UI
+            this.showStationModal();
+        } else {
+            // Guest needs to make choice - wait for action
+            this.waitingForGuestAction = true;
+        }
+    }
+
+    selectStationResourceOnline(resourceType) {
+        if (this.isHost) {
+            // Host selected - process normally
+            this.selectStationResource(resourceType);
+            // Check if we need to continue
+            if (this.pendingStationPlayers.length === 0) {
+                this.distributeStationResources();
+                this.enterStorePhaseOnline();
+            }
+        } else {
+            // Guest sends action
+            this.onlineManager.pushAction({
+                type: 'station_choice',
+                playerId: this.localPlayerId,
+                data: { resource: resourceType }
+            });
+            document.getElementById('station-modal').style.display = 'none';
+        }
+    }
+
+    showStationModalForGuest(state) {
+        // Guest needs to choose station resource
+        const player = this.players[this.localPlayerId];
+        if (!player) return;
+
+        this.stationTotalCount = state.stationTotalCount || 3;
+
+        const workSite = this.locations.find(l => l.id === 1);
+        const bar = this.locations.find(l => l.id === 2);
+        const hospital = this.locations.find(l => l.id === 4);
+        const dojo = this.locations.find(l => l.id === 5);
+
+        document.getElementById('money-amount').textContent = this.getRewardAmount(workSite, this.stationTotalCount);
+        document.getElementById('beer-amount').textContent = this.getRewardAmount(bar, this.stationTotalCount);
+        document.getElementById('bloodBag-amount').textContent = this.getRewardAmount(hospital, this.stationTotalCount);
+        document.getElementById('exp-amount').textContent = this.getRewardAmount(dojo, this.stationTotalCount);
+
+        document.getElementById('station-modal-title').textContent = `${player.name}: Choose Station Resource`;
+        document.getElementById('station-modal').style.display = 'flex';
+        this.pendingStationPlayer = this.localPlayerId;
+    }
+
+    // ==================== ONLINE: STORE PHASE ====================
+
+    enterStorePhaseOnline() {
+        this.roundPhase = 'store';
+        this.currentStorePlayer = 0;
+        this.storePhaseCompleted = false;
+        this.resetPlayerCompletionStatus();
+        this.showPlayerStatusIndicators();
+
+        // Bots shop immediately
+        this.players.forEach((player) => {
+            if (player.isBot) {
+                this.handleBotShopping(player);
+                this.updatePlayerStatus(player.id, true);
+            }
+        });
+
+        // Show store for host
+        const hostPlayer = this.players[this.localPlayerId];
+        if (hostPlayer && !hostPlayer.isBot) {
+            this.showStoreForPlayer(hostPlayer);
+        }
+
+        // Push state so guest can see store
+        const state = this.serializeGameState();
+        state.roundPhase = 'store';
+        state.guestStorePhase = true;
+        this.onlineManager.pushGameState(state);
+    }
+
+    finishShoppingOnline() {
+        if (this.isHost) {
+            // Host finished shopping
+            this.updatePlayerStatus(this.localPlayerId, true);
+            document.getElementById('store-area').style.display = 'none';
+
+            // Push state so other players see host's status update
+            const hostState = this.serializeGameState();
+            hostState.roundPhase = 'store';
+            hostState.guestStorePhase = true;
+            this.onlineManager.pushGameState(hostState);
+
+            // Check if all done (guest may still be shopping)
+            if (this.checkAllPlayersComplete()) {
+                this.onlineStoreComplete();
+            }
+        } else {
+            // Guest sends finish signal
+            this.onlineManager.pushAction({
+                type: 'finish_shopping',
+                playerId: this.localPlayerId
+            });
+            document.getElementById('store-area').style.display = 'none';
+            document.getElementById('status-message').textContent = 'Waiting for other players...';
+        }
+    }
+
+    onlineStoreComplete() {
+        this.storePhaseCompleted = true;
+        this.hidePlayerStatusIndicators();
+
+        // Check capacity overflow
+        let hostOverflow = false;
+        let guestOverflow = false;
+
+        this.players.forEach(player => {
+            if (this.getInventorySize(player) > player.maxInventoryCapacity) {
+                if (player.isBot) {
+                    const botPlayer = new BotPlayer(player.id, player.weapon);
+                    botPlayer.handleBotCapacityOverflow(player, this);
+                    this.updateResourceDisplay();
+                    this.updateInventoryDisplay(player.id);
+                } else if (player.id === this.localPlayerId) {
+                    hostOverflow = true;
+                } else {
+                    guestOverflow = true;
+                }
+            }
+        });
+
+        if (hostOverflow) {
+            this.handleCapacityOverflow([this.localPlayerId]);
+            // After overflow resolved, check if guest needs overflow too
+            return;
+        }
+
+        if (guestOverflow) {
+            // Push state telling guest to resolve overflow
+            const state = this.serializeGameState();
+            state.roundPhase = 'capacityOverflow';
+            state.guestOverflow = true;
+            this.onlineManager.pushGameState(state);
+            return;
+        }
+
+        this.proceedAfterStore();
+    }
+
+    proceedAfterStore() {
+        // Check forest readiness and start battle
+        this.checkForestReadiness();
+
+        // After forest checks complete, push state and start battles
+        setTimeout(() => {
+            this.startBattlePhaseOnline();
+        }, 500);
+    }
+
+    // ==================== ONLINE: BATTLE PHASE ====================
+
+    startBattlePhaseOnline() {
+        this.roundPhase = 'battle';
+
+        this.forestPlayersThisRound = new Set();
+        this.players.forEach(player => {
+            if (player.tokens.hunter === 7) {
+                this.forestPlayersThisRound.add(player.id);
+            }
+        });
+
+        let forestHunters = [];
+        this.players.forEach(player => {
+            if (player.tokens.hunter === 7 && !(this.failedForestPlayers || []).includes(player.id)) {
+                forestHunters.push(player.id);
+            }
+        });
+
+        if (forestHunters.length > 0) {
+            forestHunters.sort((a, b) => {
+                const playerA = this.players.find(p => p.id === a);
+                const playerB = this.players.find(p => p.id === b);
+                if (playerA.score !== playerB.score) return playerA.score - playerB.score;
+                return playerA.weapon.priority - playerB.weapon.priority;
+            });
+
+            this.handleForestEncountersOnline(forestHunters);
+        } else {
+            this.endRoundOnline();
+        }
+    }
+
+    handleForestEncountersOnline(forestHunters) {
+        if (forestHunters.length === 0) {
+            this.endRoundOnline();
+            return;
+        }
+
+        this.currentMonsterPlayer = forestHunters[0];
+        this.remainingForestHunters = forestHunters.slice(1);
+        this.playerShownMonsters[this.currentMonsterPlayer] = new Set();
+
+        const player = this.players.find(p => p.id === this.currentMonsterPlayer);
+
+        if (player.isBot) {
+            // Bot battles run on host
+            this.handleBotMonsterSelection(player);
+            return;
+        }
+
+        if (player.id === this.localPlayerId && this.isHost) {
+            // Host's battle - show monster modal normally
+            this.selectedMonsterLevel = null;
+            this.selectedPets = { level1: 0, level2: 0, level3: 0 };
+            this.selectedBeerConsumption = 0;
+            this.overflowEP = 0;
+
+            document.querySelectorAll('.monster-choice').forEach(btn => btn.classList.remove('selected'));
+            this.updatePetSelectionUI();
+            document.getElementById('monster-modal-title').textContent = `${player.name}: Choose Monster to Fight`;
+            document.getElementById('monster-modal').style.display = 'flex';
+        } else {
+            // Guest's battle - push state telling guest to select monster
+            const state = this.serializeGameState();
+            state.roundPhase = 'battle';
+            state.guestBattle = true;
+            state.battlePhase = 'monster_select';
+            state.currentBattlePlayerId = player.id;
+            this.onlineManager.pushGameState(state);
+            this.waitingForGuestAction = true;
+        }
+    }
+
+    handleGuestBattleStateUpdate(state) {
+        if (!state.guestBattle) {
+            // Spectating mode - show battle read-only, or hide if no battle
+            if (state.battleState) {
+                this.showBattleSpectator(state.battleState);
+            } else {
+                document.getElementById('monster-battle').style.display = 'none';
+            }
+            return;
+        }
+
+        if (state.currentBattlePlayerId !== this.localPlayerId) {
+            // Spectating someone else's battle
+            if (state.battleState) {
+                this.showBattleSpectator(state.battleState);
+            }
+            return;
+        }
+
+        // Guest's own battle
+        if (state.battlePhase === 'monster_select') {
+            // Guest needs to select monster level
+            const player = this.players[this.localPlayerId];
+            this.currentMonsterPlayer = this.localPlayerId; // Set for confirmBattleSelection
+            this.selectedMonsterLevel = null;
+            this.selectedPets = { level1: 0, level2: 0, level3: 0 };
+            this.selectedBeerConsumption = 0;
+            this.overflowEP = 0;
+
+            document.querySelectorAll('.monster-choice').forEach(btn => btn.classList.remove('selected'));
+            this.updatePetSelectionUI();
+            document.getElementById('monster-modal-title').textContent = `${player.name}: Choose Monster to Fight`;
+            document.getElementById('monster-modal').style.display = 'flex';
+        }
+
+        if (state.battlePhase === 'monster_preview' && state.monsterPreview) {
+            // Hide monster level modal, show monster preview with Change/Fight buttons
+            document.getElementById('monster-modal').style.display = 'none';
+            this.showMonsterPreviewForGuest(state.monsterPreview);
+        }
+
+        if (state.battlePhase === 'active' && state.battleState) {
+            // Hide monster selection modals if still showing
+            document.getElementById('monster-modal').style.display = 'none';
+            document.getElementById('monster-selection-modal').style.display = 'none';
+            // Active battle - guest sees battle UI with controls
+            this.showBattleUIForGuest(state.battleState);
+        }
+
+        if (state.battlePhase === 'ended') {
+            // Battle ended
+            document.getElementById('monster-battle').style.display = 'none';
+        }
+    }
+
+    showBattleSpectator(battleState) {
+        if (!battleState || !battleState.isActive) {
+            document.getElementById('monster-battle').style.display = 'none';
+            return;
+        }
+
+        // Show battle UI in read-only mode
+        document.getElementById('monster-battle').style.display = 'block';
+        document.getElementById('battle-player-name').textContent = battleState.playerName;
+        document.getElementById('battle-player-hp').textContent = `${battleState.playerHP}/${battleState.playerMaxHP}`;
+        document.getElementById('battle-player-ep').textContent = `${battleState.playerEP}/${battleState.playerMaxEP}`;
+
+        if (battleState.monster) {
+            document.getElementById('battle-monster-level').textContent = battleState.monster.level;
+            document.getElementById('battle-monster-hp').textContent = `${battleState.monster.hp}/${battleState.monster.maxHp}`;
+            document.getElementById('battle-monster-att').textContent = battleState.monster.attack;
+        }
+
+        // Disable all buttons for spectator
+        document.getElementById('battle-attack-btn').style.display = 'none';
+        document.getElementById('battle-tame-btn').style.display = 'none';
+        document.getElementById('battle-defense-btn').style.display = 'none';
+        document.getElementById('battle-double-damage-btn').style.display = 'none';
+        document.getElementById('battle-item-buttons').innerHTML = '';
+
+        // Show battle log
+        if (battleState.battleLogHTML) {
+            document.getElementById('battle-log').innerHTML = battleState.battleLogHTML;
+        }
+
+        document.getElementById('battle-turn').textContent = `Watching ${battleState.playerName}'s battle...`;
+    }
+
+    showBattleUIForGuest(battleState) {
+        // Show full battle UI with controls for the guest
+        document.getElementById('monster-battle').style.display = 'block';
+        document.getElementById('battle-player-name').textContent = battleState.playerName;
+        document.getElementById('battle-player-hp').textContent = `${battleState.playerHP}/${battleState.playerMaxHP}`;
+        document.getElementById('battle-player-ep').textContent = `${battleState.playerEP}/${battleState.playerMaxEP}`;
+
+        if (battleState.monster) {
+            document.getElementById('battle-monster-level').textContent = battleState.monster.level;
+            document.getElementById('battle-monster-hp').textContent = `${battleState.monster.hp}/${battleState.monster.maxHp}`;
+            document.getElementById('battle-monster-att').textContent = battleState.monster.attack;
+        }
+
+        // Show battle log
+        if (battleState.battleLogHTML) {
+            document.getElementById('battle-log').innerHTML = battleState.battleLogHTML;
+        }
+
+        const attackBtn = document.getElementById('battle-attack-btn');
+        const defenseBtn = document.getElementById('battle-defense-btn');
+        const tameBtn = document.getElementById('battle-tame-btn');
+        const doubleDamageBtn = document.getElementById('battle-double-damage-btn');
+        const turnText = document.getElementById('battle-turn');
+        const itemBtns = document.getElementById('battle-item-buttons');
+
+        const turn = battleState.turn;
+        const hasAttacked = battleState.hasAttacked || false;
+
+        // Reset all buttons
+        attackBtn.style.display = 'none';
+        defenseBtn.style.display = 'none';
+        tameBtn.style.display = 'none';
+        doubleDamageBtn.style.display = 'none';
+        itemBtns.innerHTML = '';
+
+        if (turn === 'monster' || turn === 'monster_attack_first') {
+            // Monster's turn — no controls
+            turnText.textContent = 'Monster is attacking...';
+        } else if (turn === 'player_items' && hasAttacked) {
+            // After attacking — show Defense button, items, and possibly double damage
+            turnText.textContent = 'You can use items or proceed to defense!';
+            defenseBtn.style.display = 'inline-block';
+            defenseBtn.disabled = false;
+            defenseBtn.onclick = () => {
+                this.onlineManager.pushAction({ type: 'battle_defense', playerId: this.localPlayerId });
+                defenseBtn.disabled = true;
+            };
+
+            // Show double damage button if applicable (Knife Lv1)
+            if (battleState.canUseDoubleDamage && !battleState.doubleDamageUsed) {
+                doubleDamageBtn.style.display = 'inline-block';
+                doubleDamageBtn.textContent = `2x Damage (+${battleState.lastAttackDamage || 0} extra)`;
+                doubleDamageBtn.onclick = () => {
+                    this.onlineManager.pushAction({ type: 'battle_use_double_damage', playerId: this.localPlayerId });
+                    doubleDamageBtn.disabled = true;
+                };
+            }
+
+            // Show usable items
+            this.showGuestBattleItems(battleState, itemBtns);
+        } else if (turn === 'player_items' || turn === 'player_items_after_monster' || turn === 'player') {
+            // Player can attack — show Attack button and items
+            turnText.textContent = 'Your turn to attack!';
+            attackBtn.style.display = 'inline-block';
+            attackBtn.disabled = false;
+            attackBtn.onclick = () => {
+                this.onlineManager.pushAction({ type: 'battle_attack', playerId: this.localPlayerId });
+                attackBtn.disabled = true;
+            };
+
+            // Show tame button if applicable
+            if (battleState.canTame) {
+                tameBtn.style.display = 'inline-block';
+                tameBtn.onclick = () => {
+                    this.onlineManager.pushAction({ type: 'battle_tame', playerId: this.localPlayerId });
+                    tameBtn.disabled = true;
+                };
+            }
+
+            // Show usable items
+            this.showGuestBattleItems(battleState, itemBtns);
+        } else {
+            turnText.textContent = 'Waiting...';
+        }
+    }
+
+    showMonsterPreviewForGuest(monsterData) {
+        const player = this.players[this.localPlayerId];
+
+        // Populate the existing monster-selection-modal with received monster data
+        document.getElementById('monster-level-display').textContent = monsterData.level;
+
+        const hpDisplay = document.getElementById('monster-hp-display');
+        const originalHp = monsterData.maxHp || monsterData.hp;
+        const battleHp = monsterData.hp;
+        if (player && player.tokens.apprentice === 7 && originalHp !== battleHp) {
+            hpDisplay.innerHTML = `${originalHp} → ${battleHp}`;
+            hpDisplay.classList.add('hp-bonus');
+        } else {
+            hpDisplay.textContent = monsterData.hp;
+            hpDisplay.classList.remove('hp-bonus');
+        }
+
+        document.getElementById('monster-att-display').textContent = monsterData.att;
+        document.getElementById('monster-money-display').textContent = monsterData.money;
+        document.getElementById('monster-energy-display').textContent = monsterData.energy;
+        document.getElementById('monster-blood-display').textContent = monsterData.blood;
+        document.getElementById('monster-pts-display').textContent = monsterData.pts;
+        document.getElementById('monster-effect-display').textContent = monsterData.effect;
+
+        // Hide beer section (beer was already consumed in level selection)
+        const beerSection = document.getElementById('monster-select-beer-section');
+        if (beerSection) beerSection.style.display = 'none';
+
+        // Update Change button state
+        this.updateChangeButtonState(this.localPlayerId, monsterData.level);
+
+        // Show the modal
+        document.getElementById('monster-selection-modal').style.display = 'flex';
+    }
+
+    showGuestBattleItems(battleState, itemBtns) {
+        if (!battleState.playerInventory) return;
+        const itemCounts = {};
+        battleState.playerInventory.forEach(item => {
+            if (['Grenade', 'Bomb', 'Dynamite', 'Fake Blood', 'Beer', 'Blood Bag'].includes(item.name)) {
+                itemCounts[item.name] = (itemCounts[item.name] || 0) + 1;
+            }
+        });
+        Object.entries(itemCounts).forEach(([name, count]) => {
+            const btn = document.createElement('button');
+            btn.className = 'battle-item-btn';
+            btn.textContent = `${name} (${count})`;
+            btn.onclick = () => {
+                this.onlineManager.pushAction({ type: 'battle_use_item', playerId: this.localPlayerId, data: { itemName: name } });
+                btn.disabled = true;
+            };
+            itemBtns.appendChild(btn);
+        });
+    }
+
+    // ==================== ONLINE: GUEST ACTION HANDLING (HOST) ====================
+
+    handleGuestAction(action) {
+        if (!this.isHost) return;
+        console.log('Host received guest action:', action.type, action);
+
+        switch (action.type) {
+            case 'selection':
+                this.handleGuestSelection(action);
+                break;
+            case 'station_choice':
+                this.handleGuestStationChoice(action);
+                break;
+            case 'purchase':
+                this.handleGuestPurchase(action);
+                break;
+            case 'finish_shopping':
+                this.handleGuestFinishShopping(action);
+                break;
+            case 'capacity_overflow_choice':
+                this.handleGuestCapacityChoice(action);
+                break;
+            case 'monster_select':
+                this.handleGuestMonsterSelect(action);
+                break;
+            case 'battle_attack':
+                this.handleGuestBattleAttack(action);
+                break;
+            case 'battle_use_item':
+                this.handleGuestBattleItem(action);
+                break;
+            case 'battle_tame':
+                this.handleGuestBattleTame(action);
+                break;
+            case 'battle_use_double_damage':
+                this.handleGuestBattleDoubleDamage(action);
+                break;
+            case 'battle_defense':
+                this.handleGuestBattleDefense(action);
+                break;
+            case 'battle_select_pets':
+                this.handleGuestBattlePets(action);
+                break;
+            case 'battle_change_monster':
+                this.handleGuestChangeMonster(action);
+                break;
+            case 'battle_confirm':
+                this.handleGuestBattleConfirm(action);
+                break;
+            case 'battle_fight':
+                this.handleGuestFightMonster(action);
+                break;
+            case 'bat_power_choice':
+                this.handleGuestBatPowerChoice(action);
+                break;
+            case 'player_board_action':
+                this.handleGuestBoardAction(action);
+                break;
+            default:
+                console.warn('Unknown guest action:', action.type);
+        }
+    }
+
+    handleGuestBoardAction(action) {
+        const { action: boardAction, upgradeType } = action.data;
+        const playerId = action.playerId;
+
+        // Suppress alerts on host when processing remote player actions
+        this.suppressAlerts = true;
+        switch (boardAction) {
+            case 'restoreHP':
+                this.restoreHP(playerId);
+                break;
+            case 'restoreEP':
+                this.restoreEP(playerId);
+                break;
+            case 'upgradeWeapon':
+                this.upgradeWeapon(playerId, upgradeType);
+                break;
+            case 'addToUpgrade':
+                this.addToUpgrade(playerId, upgradeType);
+                break;
+        }
+        this.suppressAlerts = false;
+    }
+
+    handleGuestSelection(action) {
+        const guestPlayer = this.players.find(p => p.id === action.playerId);
+        if (!guestPlayer) return;
+
+        guestPlayer.selectedCards.hunter = action.data.hunter;
+        guestPlayer.selectedCards.apprentice = action.data.apprentice;
+
+        // Track location selections
+        guestPlayer.locationSelections[action.data.hunter].hunter++;
+        guestPlayer.locationSelections[action.data.apprentice].apprentice++;
+
+        this.pendingSelectionLogs.push({
+            message: `📍 <strong>${guestPlayer.name}</strong> selected: Hunter → ${this.getLocationName(action.data.hunter)}, Apprentice → ${this.getLocationName(action.data.apprentice)}`,
+            type: 'selection',
+            player: guestPlayer
+        });
+
+        this.updatePlayerStatus(guestPlayer.id, true);
+
+        // Push state so all players see updated status
+        const state = this.serializeGameState();
+        state.roundPhase = 'selection';
+        this.onlineManager.pushGameState(state);
+
+        if (this.checkAllPlayersComplete()) {
+            this.onlineSelectionComplete();
+        }
+    }
+
+    handleGuestStationChoice(action) {
+        const guestPlayer = this.players.find(p => p.id === action.playerId);
+        if (!guestPlayer) return;
+
+        this.stationChoices[action.playerId] = action.data.resource;
+
+        // Remove from pending list
+        const idx = this.pendingStationPlayers.indexOf(action.playerId);
+        if (idx >= 0) this.pendingStationPlayers.splice(idx, 1);
+
+        this.addLogEntry(
+            `💰 <strong>${guestPlayer.name}</strong> chose ${action.data.resource} at Station`,
+            'resource-gain', guestPlayer
+        );
+
+        this.waitingForGuestAction = false;
+
+        // Continue processing station
+        if (this.pendingStationPlayers.length === 0) {
+            this.distributeStationResources();
+            this.enterStorePhaseOnline();
+        } else {
+            this.processOnlineStationPhase();
+        }
+    }
+
+    handleGuestPurchase(action) {
+        const guestPlayer = this.players.find(p => p.id === action.playerId);
+        if (!guestPlayer) return;
+
+        const itemName = action.data.itemName;
+
+        // Look up item — check storeItems first, then handle special ammo items
+        let item = this.storeItems.find(i => i.name === itemName);
+        if (!item) {
+            // Bullets and Batteries are dynamically added for Rifle/Plasma players
+            if (itemName === 'Bullet') {
+                item = { name: 'Bullet', size: 0, price: 2, effect: 'rifle_ammo', icon: '🔫' };
+            } else if (itemName === 'Battery') {
+                item = { name: 'Battery', size: 1, price: 2, effect: 'plasma_power', icon: '🔋' };
+            } else {
+                return;
+            }
+        }
+
+        // Validate max ammo
+        if (itemName === 'Bullet' && guestPlayer.inventory.filter(i => i.name === 'Bullet').length >= 6) return;
+        if (itemName === 'Battery' && guestPlayer.inventory.filter(i => i.name === 'Battery').length >= 6) return;
+
+        // Validate purchase
+        let price = item.price;
+        // Rifle Lv3 discount
+        if (guestPlayer.weapon.name === 'Rifle' && guestPlayer.weapon.powerTrackPosition >= 7) {
+            price = Math.max(1, price - 1);
+        }
+
+        if (guestPlayer.resources.money >= price) {
+            guestPlayer.resources.money -= price;
+            guestPlayer.inventory.push({ ...item, price });
+            this.addLogEntry(
+                `🛒 <strong>${guestPlayer.name}</strong> bought ${itemName} for $${price}`,
+                'store', guestPlayer
+            );
+        }
+
+        // Push updated state to guest
+        const state = this.serializeGameState();
+        state.roundPhase = 'store';
+        state.guestStorePhase = true;
+        this.onlineManager.pushGameState(state);
+    }
+
+    handleGuestFinishShopping(action) {
+        this.updatePlayerStatus(action.playerId, true);
+
+        // Push state so all players see updated status
+        const state = this.serializeGameState();
+        state.roundPhase = 'store';
+        this.onlineManager.pushGameState(state);
+
+        // Check if all done
+        if (this.checkAllPlayersComplete()) {
+            this.onlineStoreComplete();
+        }
+    }
+
+    handleGuestCapacityChoice(action) {
+        const guestPlayer = this.players.find(p => p.id === action.playerId);
+        if (!guestPlayer) return;
+
+        const { actionType, itemIndex } = action.data;
+
+        if (actionType === 'discard') {
+            guestPlayer.inventory.splice(itemIndex, 1);
+        } else if (actionType === 'use') {
+            const item = guestPlayer.inventory[itemIndex];
+            if (item) {
+                if (item.name === 'Beer') {
+                    guestPlayer.resources.ep = Math.min(guestPlayer.resources.ep + 1, guestPlayer.maxResources.ep);
+                } else if (item.name === 'Blood Bag') {
+                    guestPlayer.resources.hp = Math.min(guestPlayer.resources.hp + 1, guestPlayer.maxResources.hp);
+                }
+                guestPlayer.inventory.splice(itemIndex, 1);
+            }
+        } else if (actionType === 'upgrade') {
+            const item = guestPlayer.inventory[itemIndex];
+            if (item) {
+                const upgradeType = item.name === 'Beer' ? 'ep' : 'hp';
+                const required = upgradeType === 'ep' ? 4 : 3;
+                guestPlayer.inventory.splice(itemIndex, 1);
+                guestPlayer.upgradeProgress[upgradeType]++;
+                if (guestPlayer.upgradeProgress[upgradeType] === required) {
+                    this.levelUpMaxResource(guestPlayer.id, upgradeType, 1);
+                    guestPlayer.upgradeProgress[upgradeType] = 0;
+                }
+            }
+        }
+
+        // Check if overflow resolved
+        if (this.getInventorySize(guestPlayer) <= guestPlayer.maxInventoryCapacity) {
+            // Overflow resolved, push state and proceed
+            const state = this.serializeGameState();
+            state.roundPhase = 'store'; // Back to normal flow
+            this.onlineManager.pushGameState(state);
+            this.proceedAfterStore();
+        } else {
+            // Still overflowing, push state so guest can continue resolving
+            const state = this.serializeGameState();
+            state.roundPhase = 'capacityOverflow';
+            state.guestOverflow = true;
+            this.onlineManager.pushGameState(state);
+        }
+    }
+
+    handleGuestMonsterSelect(action) {
+        const guestPlayer = this.players.find(p => p.id === action.playerId);
+        if (!guestPlayer) return;
+
+        const { level, pets, beerConsumption } = action.data;
+
+        // Apply beer consumption
+        if (beerConsumption && beerConsumption > 0) {
+            for (let i = 0; i < beerConsumption; i++) {
+                const beerIdx = guestPlayer.inventory.findIndex(item => item.name === 'Beer');
+                if (beerIdx >= 0) {
+                    guestPlayer.inventory.splice(beerIdx, 1);
+                    guestPlayer.resources.ep = Math.min(guestPlayer.resources.ep + 1, guestPlayer.maxResources.ep);
+                }
+            }
+        }
+
+        // Deduct EP cost
+        const epCost = level;
+        let petCost = 0;
+        if (pets) {
+            petCost = (pets.level1 || 0) * 2 + (pets.level2 || 0) * 3 + (pets.level3 || 0) * 4;
+        }
+        // Apply taming cost reduction for Whip
+        let totalEPCost = epCost + petCost;
+        if (guestPlayer.weapon.name === 'Whip') {
+            if (guestPlayer.weapon.powerTrackPosition >= 7) {
+                totalEPCost = 0; // Lv3: Free taming
+            } else if (guestPlayer.weapon.powerTrackPosition >= 1) {
+                totalEPCost = Math.max(0, totalEPCost - 1); // Lv1: -1 EP
+            }
+        }
+        guestPlayer.resources.ep -= totalEPCost;
+
+        // Store pets for later battle start
+        this.guestSelectedPets = pets || { level1: 0, level2: 0, level3: 0 };
+
+        // Get monster (level is 1-based, monsters are keyed 1-based)
+        const monster = this.selectRandomAvailableMonster(level, guestPlayer.id);
+        if (!monster) {
+            console.warn(`No available monsters at level ${level} for guest`);
+            return;
+        }
+        monster.maxHp = monster.hp;
+
+        // Apply other monsters HP bonus if active (effects 8, 16, 33)
+        const hpBonus = this.activeMonsterEffects.find(effect => effect.type === 'otherMonstersHPBonus');
+        if (hpBonus) {
+            monster.hp += hpBonus.value;
+            monster.maxHp += hpBonus.value;
+        }
+
+        // Check if player's apprentice is in Forest for -1 HP bonus
+        if (guestPlayer.tokens.apprentice === 7) {
+            monster.hp = Math.max(1, monster.hp - 1);
+        }
+
+        // Track shown monster
+        if (!this.playerShownMonsters[guestPlayer.id]) {
+            this.playerShownMonsters[guestPlayer.id] = new Set();
+        }
+        this.playerShownMonsters[guestPlayer.id].add(monster.index);
+
+        // Store the monster for later (change monster / fight)
+        this.currentSelectedMonster = monster;
+        this.currentMonsterPlayer = guestPlayer.id;
+        this.monsterSelectionEPSpent = 0;
+
+        // Push monster preview to guest (NOT starting battle yet)
+        this.pushMonsterPreviewToGuest(guestPlayer.id, monster);
+    }
+
+    handleGuestBattleAttack(action) {
+        // Execute attack on host using existing logic
+        this.playerAttackMonster();
+
+        // Update host spectator view and push to other players
+        this.updateHostSpectatorView();
+        if (this.currentBattle) {
+            setTimeout(() => {
+                if (this.currentBattle) {
+                    this.pushBattleStateToGuest();
+                }
+            }, 100);
+        }
+    }
+
+    handleGuestBattleItem(action) {
+        this.useBattleItem(action.data.itemName);
+
+        this.updateHostSpectatorView();
+        if (this.currentBattle) {
+            setTimeout(() => {
+                if (this.currentBattle) {
+                    this.pushBattleStateToGuest();
+                }
+            }, 100);
+        }
+    }
+
+    handleGuestBattleTame(action) {
+        this.tameMonster();
+
+        this.updateHostSpectatorView();
+        // Taming calls monsterDefeated which handles its own push
+        if (this.currentBattle) {
+            setTimeout(() => {
+                if (this.currentBattle) {
+                    this.pushBattleStateToGuest();
+                }
+            }, 100);
+        }
+    }
+
+    handleGuestBattleDefense(action) {
+        // Guest proceeds to defense — trigger monster attack
+        this.playerDefense();
+
+        this.updateHostSpectatorView();
+        // Push immediate state so guest sees "Monster is attacking..."
+        // monsterAttackPlayer (after 1000ms) will push again with the result
+        if (this.currentBattle) {
+            this.pushBattleStateToGuest();
+        }
+    }
+
+    handleGuestBattleDoubleDamage(action) {
+        this.useDoubleDamage();
+
+        this.updateHostSpectatorView();
+        if (this.currentBattle) {
+            setTimeout(() => {
+                if (this.currentBattle) {
+                    this.pushBattleStateToGuest();
+                }
+            }, 100);
+        }
+    }
+
+    handleGuestBattlePets(action) {
+        this.selectedPets = action.data;
+    }
+
+    updateHostSpectatorView() {
+        // Refresh the host's spectator view of a remote player's battle
+        if (!this.currentBattle) {
+            document.getElementById('monster-battle').style.display = 'none';
+            return;
+        }
+        const battleState = this.serializeBattleState();
+        if (battleState) {
+            this.showBattleSpectator(battleState);
+        }
+    }
+
+    handleGuestChangeMonster(action) {
+        // Guest wants to change monster - spend EP
+        const player = this.players.find(p => p.id === action.playerId);
+        if (!player || player.resources.ep <= 0) return;
+
+        player.resources.ep--;
+        this.monsterSelectionEPSpent++;
+
+        // Select new random monster of the same level
+        const currentLevel = this.currentSelectedMonster.level;
+        const newMonster = this.selectRandomAvailableMonster(currentLevel, player.id);
+
+        if (newMonster) {
+            if (!this.playerShownMonsters[player.id]) {
+                this.playerShownMonsters[player.id] = new Set();
+            }
+            this.playerShownMonsters[player.id].add(newMonster.index);
+
+            newMonster.maxHp = newMonster.hp;
+
+            // Apply HP bonuses
+            const hpBonus = this.activeMonsterEffects.find(effect => effect.type === 'otherMonstersHPBonus');
+            if (hpBonus) {
+                newMonster.hp += hpBonus.value;
+                newMonster.maxHp += hpBonus.value;
+            }
+            if (player.tokens.apprentice === 7) {
+                newMonster.hp = Math.max(1, newMonster.hp - 1);
+            }
+
+            this.currentSelectedMonster = newMonster;
+
+            this.addLogEntry(`${player.name} spent 1 EP to change monster`, 'system', player);
+            this.pushMonsterPreviewToGuest(player.id, newMonster);
+        } else {
+            // No more monsters — refund EP
+            player.resources.ep++;
+            this.monsterSelectionEPSpent--;
+            // Push updated state so guest sees no change
+            this.pushMonsterPreviewToGuest(player.id, this.currentSelectedMonster);
+        }
+    }
+
+    handleGuestBattleConfirm(action) {
+        // Guest confirmed monster selection with level, pets, beer
+        this.handleGuestMonsterSelect(action);
+    }
+
+    handleGuestFightMonster(action) {
+        // Guest clicked "Fight!" — start the battle
+        const player = this.players.find(p => p.id === action.playerId);
+        if (!player || !this.currentSelectedMonster) return;
+
+        const monster = this.currentSelectedMonster;
+
+        // Check if monster requires extra EP (effects 6, 14, 30)
+        const extraEPCost = this.getExtraEPCost(monster.effectId);
+        if (extraEPCost > 0) {
+            if (player.resources.ep >= extraEPCost) {
+                this.modifyResource(player.id, 'ep', -extraEPCost);
+            } else {
+                // Can't afford — push state back so guest can change monster
+                this.pushMonsterPreviewToGuest(player.id, monster);
+                return;
+            }
+        }
+
+        // Apply monster effects when confirmed
+        if (monster.effectId) {
+            this.currentMonsterEffect = monster.effectId;
+            this.activeMonsterEffects.push(monster.effectId);
+            this.applySelectionEffect(monster.effectId, player.id);
+            this.applyRoundEffect(monster.effectId);
+        }
+
+        const selectedPets = this.guestSelectedPets || { level1: 0, level2: 0, level3: 0 };
+
+        // Start battle on host
+        this.startMonsterBattle(player.id, monster, selectedPets);
+
+        // Push battle state to all players
+        this.waitingForGuestAction = false;
+        this.pushBattleStateToGuest();
+    }
+
+    pushMonsterPreviewToGuest(playerId, monster) {
+        const state = this.serializeGameState();
+        state.roundPhase = 'battle';
+        state.guestBattle = true;
+        state.battlePhase = 'monster_preview';
+        state.currentBattlePlayerId = playerId;
+        state.monsterPreview = {
+            name: monster.name,
+            level: monster.level,
+            hp: monster.hp,
+            maxHp: monster.maxHp,
+            att: monster.att,
+            attack: monster.att,
+            money: monster.money,
+            energy: monster.energy,
+            blood: monster.blood,
+            pts: monster.pts,
+            effect: monster.effect,
+            effectId: monster.effectId
+        };
+        this.onlineManager.pushGameState(state);
+        this.waitingForGuestAction = true;
+    }
+
+    handleGuestBatPowerChoice(action) {
+        const player = this.players.find(p => p.id === action.playerId);
+        if (!player) return;
+
+        if (action.data.choice === 'hp') {
+            this.modifyResource(action.playerId, 'hp', 1);
+            this.addLogEntry(`🦇 ${player.name} chooses +1 HP from Bat Lv2 Power`, 'power', player);
+        } else {
+            this.modifyResource(action.playerId, 'ep', 1);
+            this.addLogEntry(`🦇 ${player.name} chooses +1 EP from Bat Lv2 Power`, 'power', player);
+        }
+
+        this.updateResourceDisplay();
+        this.updateInventoryDisplay(action.playerId);
+
+        // Push state update
+        const state = this.serializeGameState();
+        this.onlineManager.pushGameState(state);
+    }
+
+    pushBattleStateToGuest() {
+        if (!this.isHost || !this.onlineManager) return;
+
+        const battleState = this.serializeBattleState();
+        const state = this.serializeGameState();
+        state.roundPhase = 'battle';
+        state.battleState = battleState;
+
+        if (battleState) {
+            state.currentBattlePlayerId = battleState.playerId;
+            state.battlePhase = battleState.isActive ? 'active' : 'ended';
+
+            // Mark as guestBattle=true so the fighting remote player gets interactive controls
+            const battlePlayer = this.players.find(p => p.id === battleState.playerId);
+            const isRemoteHumanBattle = battlePlayer && !battlePlayer.isBot && battleState.playerId !== this.localPlayerId;
+            state.guestBattle = isRemoteHumanBattle;
+
+            // Add tame availability info for the fighting player
+            if (this.currentBattle && this.currentBattle.monster && battlePlayer) {
+                state.battleState.canTame = this.canTameMonster(battlePlayer, this.currentBattle.monster);
+            }
+        } else {
+            state.guestBattle = false;
+            state.battlePhase = 'ended';
+        }
+
+        this.onlineManager.pushGameState(state);
+    }
+
+    canTameMonster(player, monster) {
+        if (!player || !monster) return false;
+        const weaponName = player.weapon.name;
+        if (weaponName !== 'Chain' && weaponName !== 'Whip') return false;
+
+        const tameThreshold = weaponName === 'Chain' ? 3 : 3;
+        return monster.hp <= tameThreshold;
+    }
+
+    // ==================== ONLINE: END ROUND ====================
+
+    endRoundOnline() {
+        // Check win condition
+        const hasWinner = this.checkWinCondition();
+        if (hasWinner) {
+            const winner = this.determineWinner();
+            const state = this.serializeGameState();
+            state.roundPhase = 'gameover';
+            state.winner = winner.id;
+            this.onlineManager.pushGameState(state);
+            this.endGameOnline(winner);
+            return;
+        }
+
+        // Start next round
+        this.startNextRoundPhase();
+
+        // After next round phase processes, start new selection phase
+        setTimeout(() => {
+            const state = this.serializeGameState();
+            state.roundPhase = 'selection';
+            this.onlineManager.pushGameState(state);
+            this.startOnlineSelectionPhase();
+        }, 1000);
+    }
+
+    endGameOnline(winner) {
+        this.roundPhase = 'gameover';
+        document.getElementById('status-message').textContent =
+            `🎉 Game Over! ${winner.name} wins with ${winner.score} points! 🎉`;
+
+        document.getElementById('confirm-selection').style.display = 'none';
+        document.getElementById('next-player').style.display = 'none';
+
+        const controls = document.querySelector('.controls');
+        controls.innerHTML = '';
+
+        const statsButton = document.createElement('button');
+        statsButton.textContent = 'View Game Stats';
+        statsButton.className = 'control-button';
+        statsButton.onclick = () => this.toggleGameStats();
+        controls.appendChild(statsButton);
+
+        const exitButton = document.createElement('button');
+        exitButton.textContent = 'Exit to Main Menu';
+        exitButton.className = 'control-button';
+        exitButton.onclick = () => {
+            if (this.onlineManager) {
+                this.onlineManager.scheduleRoomDeletion(5000);
+            }
+            this.exitToMainMenu();
+        };
+        controls.appendChild(exitButton);
+
+        // Cleanup online connection after delay
+        if (this.isHost && this.onlineManager) {
+            this.onlineManager.scheduleRoomDeletion(60000);
         }
     }
 }

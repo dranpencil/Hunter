@@ -5,7 +5,8 @@
       "Bash(node:*)",
       "Bash(grep:*)",
       "Bash(python:*)",
-      "Bash(timeout:*)"
+      "Bash(timeout:*)",
+      "WebSearch"
     ],
     "deny": []
   }
