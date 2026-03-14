@@ -1239,43 +1239,39 @@ class Game {
 
     async createOnlineRoom() {
         const playerCount = parseInt(document.getElementById('online-player-count').value);
-        const humanPlayerCount = parseInt(document.getElementById('online-human-count').value);
+        const maxHumans = playerCount; // All slots open for human players
 
         // Initialize OnlineManager
         this.onlineManager = new OnlineManager();
         this.isOnlineMode = true;
         this.isHost = true;
-        this.onlineHumanPlayerCount = humanPlayerCount;
+        this.onlinePlayerCount = playerCount;
 
         try {
-            const roomCode = await this.onlineManager.createRoom(playerCount, humanPlayerCount);
+            const roomCode = await this.onlineManager.createRoom(playerCount, maxHumans);
 
             // Show waiting room
             document.getElementById('create-room-view').style.display = 'none';
             document.getElementById('waiting-room-host').style.display = 'block';
             document.getElementById('room-code-display').textContent = roomCode;
             document.getElementById('host-guest-joined').style.display = 'none';
-            document.getElementById('waiting-status-text').textContent =
-                humanPlayerCount > 2 ? 'Waiting for players to join...' : 'Waiting for guest to join...';
+            document.getElementById('waiting-status-text').textContent = 'Waiting for players to join...';
 
             // Update player count display
-            const botCount = playerCount - humanPlayerCount;
             document.getElementById('human-count').textContent = '1';
-            document.getElementById('human-total').textContent = humanPlayerCount;
-            const compositionText = botCount > 0
-                ? `${humanPlayerCount} humans + ${botCount} bot${botCount > 1 ? 's' : ''} = ${playerCount} players`
-                : `${humanPlayerCount} humans = ${playerCount} players`;
-            document.getElementById('game-composition').textContent = compositionText;
+            document.getElementById('human-total').textContent = playerCount;
+            this.updateWaitingRoomComposition(1, playerCount);
 
-            // Build dynamic player slot list
-            this.buildWaitingRoomSlots(humanPlayerCount);
+            // Build dynamic player slot list (all slots open)
+            this.buildWaitingRoomSlots(playerCount);
 
             // Listen for players to join
             this.onlineManager.listenForPlayers((players) => {
                 const connectedCount = Object.keys(players).length;
-                console.log(`Players connected: ${connectedCount}/${humanPlayerCount}`);
+                console.log(`Players connected: ${connectedCount}/${playerCount}`);
 
                 document.getElementById('human-count').textContent = connectedCount;
+                this.updateWaitingRoomComposition(connectedCount, playerCount);
 
                 // Update slot statuses
                 const slotList = document.getElementById('player-slot-list');
@@ -1290,15 +1286,22 @@ class Game {
                     slotIndex++;
                 }
 
-                // Check if all humans have joined
-                if (connectedCount >= humanPlayerCount) {
-                    document.getElementById('waiting-status-text').textContent = 'All players connected!';
+                // Show Start button once at least 1 guest has joined
+                if (connectedCount >= 2) {
+                    if (connectedCount >= playerCount) {
+                        document.getElementById('waiting-status-text').textContent = 'All players connected!';
+                        document.getElementById('guest-joined-text').textContent = 'All players connected!';
+                        document.querySelector('#waiting-room-host .waiting-status').style.display = 'none';
+                    } else {
+                        const remaining = playerCount - connectedCount;
+                        document.getElementById('waiting-status-text').textContent =
+                            `Waiting for more players... (${remaining} open slot${remaining > 1 ? 's' : ''})`;
+                        document.getElementById('guest-joined-text').textContent =
+                            `${connectedCount} humans connected — empty slots will be filled by bots`;
+                    }
                     document.getElementById('host-guest-joined').style.display = 'block';
-                    document.querySelector('#waiting-room-host .waiting-status').style.display = 'none';
                 } else {
-                    const remaining = humanPlayerCount - connectedCount;
-                    document.getElementById('waiting-status-text').textContent =
-                        `Waiting for ${remaining} more player${remaining > 1 ? 's' : ''} to join...`;
+                    document.getElementById('waiting-status-text').textContent = 'Waiting for players to join...';
                     document.getElementById('host-guest-joined').style.display = 'none';
                     document.querySelector('#waiting-room-host .waiting-status').style.display = 'flex';
                 }
@@ -1315,17 +1318,28 @@ class Game {
         }
     }
 
-    buildWaitingRoomSlots(humanPlayerCount) {
+    buildWaitingRoomSlots(playerCount) {
         const slotList = document.getElementById('player-slot-list');
         slotList.innerHTML = '';
-        for (let i = 0; i < humanPlayerCount; i++) {
+        for (let i = 0; i < playerCount; i++) {
             const li = document.createElement('li');
             li.className = i === 0 ? 'player-slot connected' : 'player-slot pending';
-            const label = i === 0 ? 'Host (you)' : `Player ${i + 1}`;
+            const label = i === 0 ? 'Host (you)' : `Slot ${i + 1} (open)`;
             const icon = i === 0 ? '&#x2705;' : '&#x23F3;';
             li.innerHTML = `${label} <span class="slot-status">${icon}</span>`;
             slotList.appendChild(li);
         }
+    }
+
+    updateWaitingRoomComposition(connectedCount, playerCount) {
+        const botCount = playerCount - connectedCount;
+        let text;
+        if (botCount > 0) {
+            text = `${connectedCount} human${connectedCount > 1 ? 's' : ''} + ${botCount} bot${botCount > 1 ? 's' : ''} = ${playerCount} players`;
+        } else {
+            text = `${connectedCount} humans = ${playerCount} players`;
+        }
+        document.getElementById('game-composition').textContent = text;
     }
 
     copyRoomCode() {
@@ -1458,8 +1472,7 @@ class Game {
 
     async startOnlineGame() {
         // Host starts the game - configure weapons, slots, etc.
-        const playerCount = parseInt(document.getElementById('online-player-count').value);
-        const humanPlayerCount = this.onlineHumanPlayerCount || 2;
+        const playerCount = this.onlinePlayerCount || parseInt(document.getElementById('online-player-count').value);
 
         const assignedWeapons = this.getRandomWeapons(playerCount);
         this.playerColors = this.getRandomPlayerColors(playerCount);
@@ -1468,6 +1481,7 @@ class Game {
         const snapshot = await this.onlineManager.roomRef.child('players').once('value');
         const players = snapshot.val();
         const sortedPlayers = Object.entries(players).sort((a, b) => a[1].joinOrder - b[1].joinOrder);
+        const humanPlayerCount = sortedPlayers.length;
 
         const humanSlots = {};
         sortedPlayers.forEach(([playerId, data], index) => {
@@ -2869,14 +2883,36 @@ class Game {
         }
 
         // Update upgrade progress buttons
+        const buttonsDisabled = this.shouldDisablePlayerButtons(player.id);
+        const hpMaxed = player.maxResources.hp >= 10;
+        const epMaxed = player.maxResources.ep >= 10;
+
         const hpUpgradeBtn = collapsedBoard.querySelector('.collapsed-hp-section .upgrade-btn');
         if (hpUpgradeBtn) {
             hpUpgradeBtn.textContent = `Upgrade: ${player.upgradeProgress.hp}/3`;
+            hpUpgradeBtn.disabled = buttonsDisabled || hpMaxed || !player.inventory.some(item => item.name === 'Blood Bag');
         }
 
         const epUpgradeBtn = collapsedBoard.querySelector('.collapsed-ep-section .upgrade-btn');
         if (epUpgradeBtn) {
             epUpgradeBtn.textContent = `Upgrade: ${player.upgradeProgress.ep}/4`;
+            epUpgradeBtn.disabled = buttonsDisabled || epMaxed || !player.inventory.some(item => item.name === 'Beer');
+        }
+
+        // Update weapon upgrade buttons
+        const attackMaxed = player.weapon.currentAttackDice >= 7;
+        const defenseMaxed = player.weapon.currentDefenseDice >= 6;
+        const canUpgradeAttack = !buttonsDisabled && player.resources.exp >= player.weapon.reqExpAttack && !attackMaxed;
+        const canUpgradeDefense = !buttonsDisabled && player.resources.exp >= (player.weapon.reqExpDefense || 3) && !defenseMaxed;
+
+        const attackUpgradeBtn = collapsedBoard.querySelector(`button[onclick*="upgradeWeapon(${player.id}, 'attack')"]`);
+        if (attackUpgradeBtn) {
+            attackUpgradeBtn.disabled = !canUpgradeAttack;
+        }
+
+        const defenseUpgradeBtn = collapsedBoard.querySelector(`button[onclick*="upgradeWeapon(${player.id}, 'defense')"]`);
+        if (defenseUpgradeBtn) {
+            defenseUpgradeBtn.disabled = !canUpgradeDefense;
         }
 
         // Update inventory counters
@@ -2895,6 +2931,7 @@ class Game {
     }
 
     updateRestoreButtons(player, collapsedBoard) {
+        const buttonsDisabled = this.shouldDisablePlayerButtons(player.id);
         const hasBloodBag = player.inventory.some(item => item.name === 'Blood Bag');
         const hasBeer = player.inventory.some(item => item.name === 'Beer');
         const hpFull = player.resources.hp >= player.maxResources.hp;
@@ -2903,7 +2940,7 @@ class Game {
         // Update HP restore button
         const hpRestoreBtn = collapsedBoard.querySelector('.hp-restore');
         if (hpRestoreBtn) {
-            hpRestoreBtn.disabled = !hasBloodBag || hpFull;
+            hpRestoreBtn.disabled = buttonsDisabled || !hasBloodBag || hpFull;
             if (!hasBloodBag) {
                 hpRestoreBtn.title = 'No Blood Bag available';
             } else if (hpFull) {
@@ -2916,7 +2953,7 @@ class Game {
         // Update EP restore button
         const epRestoreBtn = collapsedBoard.querySelector('.ep-restore');
         if (epRestoreBtn) {
-            epRestoreBtn.disabled = !hasBeer || epFull;
+            epRestoreBtn.disabled = buttonsDisabled || !hasBeer || epFull;
             if (!hasBeer) {
                 epRestoreBtn.title = 'No Beer available';
             } else if (epFull) {
@@ -2934,6 +2971,7 @@ class Game {
         const player = this.players.find(p => p.id === playerId);
         if (!player) return;
 
+        const buttonsDisabled = this.shouldDisablePlayerButtons(playerId);
         const hasBloodBag = player.inventory.some(item => item.name === 'Blood Bag');
         const hasBeer = player.inventory.some(item => item.name === 'Beer');
         const hpFull = player.resources.hp >= player.maxResources.hp;
@@ -2942,7 +2980,7 @@ class Game {
         // Update HP restore button
         const hpRestoreBtn = document.getElementById(`p${playerId}-hp-restore-btn`);
         if (hpRestoreBtn) {
-            hpRestoreBtn.disabled = !hasBloodBag || hpFull;
+            hpRestoreBtn.disabled = buttonsDisabled || !hasBloodBag || hpFull;
             if (!hasBloodBag) {
                 hpRestoreBtn.title = 'No Blood Bag available';
             } else if (hpFull) {
@@ -2955,7 +2993,7 @@ class Game {
         // Update EP restore button
         const epRestoreBtn = document.getElementById(`p${playerId}-ep-restore-btn`);
         if (epRestoreBtn) {
-            epRestoreBtn.disabled = !hasBeer || epFull;
+            epRestoreBtn.disabled = buttonsDisabled || !hasBeer || epFull;
             if (!hasBeer) {
                 epRestoreBtn.title = 'No Beer available';
             } else if (epFull) {
@@ -3386,16 +3424,30 @@ class Game {
         const disabledAttr = buttonsDisabled ? ' disabled' : '';
         const disabledTitle = buttonsDisabled ? ' title="Cannot interact with this player board"' : '';
 
-        // Check if upgrade buttons should be disabled due to max reached
-        const hpUpgradeDisabled = buttonsDisabled || player.maxResources.hp >= 10;
+        // Check if upgrade buttons should be disabled (max reached or no items)
+        const hpUpgradeDisabled = buttonsDisabled || player.maxResources.hp >= 10 || !player.inventory.some(item => item.name === 'Blood Bag');
         const hpUpgradeAttr = hpUpgradeDisabled ? ' disabled' : '';
         const hpUpgradeTitle = hpUpgradeDisabled ?
             (player.maxResources.hp >= 10 ? ' title="HP is at maximum (10)"' : ' title="Cannot interact with this player board"') : '';
 
-        const epUpgradeDisabled = buttonsDisabled || player.maxResources.ep >= 10;
+        const epUpgradeDisabled = buttonsDisabled || player.maxResources.ep >= 10 || !player.inventory.some(item => item.name === 'Beer');
         const epUpgradeAttr = epUpgradeDisabled ? ' disabled' : '';
         const epUpgradeTitle = epUpgradeDisabled ?
             (player.maxResources.ep >= 10 ? ' title="EP is at maximum (10)"' : ' title="Cannot interact with this player board"') : '';
+
+        // Check if restore buttons should be disabled (no items or already full)
+        const hpRestoreDisabled = buttonsDisabled || player.resources.hp >= player.maxResources.hp || !player.inventory.some(item => item.name === 'Blood Bag');
+        const hpRestoreAttr = hpRestoreDisabled ? ' disabled' : '';
+        const epRestoreDisabled = buttonsDisabled || player.resources.ep >= player.maxResources.ep || !player.inventory.some(item => item.name === 'Beer');
+        const epRestoreAttr = epRestoreDisabled ? ' disabled' : '';
+
+        // Check if weapon upgrade buttons should be disabled (not enough EXP or maxed)
+        const attackMaxed = player.weapon.currentAttackDice >= 7;
+        const defenseMaxed = player.weapon.currentDefenseDice >= 6;
+        const attackUpgradeDisabled = buttonsDisabled || attackMaxed || player.resources.exp < player.weapon.reqExpAttack;
+        const attackUpgradeAttr = attackUpgradeDisabled ? ' disabled' : '';
+        const defenseUpgradeDisabled = buttonsDisabled || defenseMaxed || player.resources.exp < (player.weapon.reqExpDefense || 3);
+        const defenseUpgradeAttr = defenseUpgradeDisabled ? ' disabled' : '';
 
         board.innerHTML = `
             <!-- Left Column: HP and EP sections -->
@@ -3406,7 +3458,7 @@ class Game {
                         <span class="stat-label">HP</span>
                         <span class="stat-value" id="p${player.id}-hp">${player.resources.hp}</span>
                         <span class="stat-max">/${player.maxResources.hp}</span>
-                        <button class="small-btn" onclick="game.restoreHP(${player.id})"${disabledAttr} id="p${player.id}-hp-restore-btn">+🩸</button>
+                        <button class="small-btn" onclick="game.restoreHP(${player.id})"${hpRestoreAttr} id="p${player.id}-hp-restore-btn">+🩸</button>
                     </div>
                     <div class="upgrade-section">
                         <div class="upgrade-bar">
@@ -3428,7 +3480,7 @@ class Game {
                         <span class="stat-label">EP</span>
                         <span class="stat-value" id="p${player.id}-ep">${player.resources.ep}</span>
                         <span class="stat-max">/${player.maxResources.ep}</span>
-                        <button class="small-btn" onclick="game.restoreEP(${player.id})"${disabledAttr} id="p${player.id}-ep-restore-btn">+🍺</button>
+                        <button class="small-btn" onclick="game.restoreEP(${player.id})"${epRestoreAttr} id="p${player.id}-ep-restore-btn">+🍺</button>
                     </div>
                     <div class="upgrade-section">
                         <div class="upgrade-bar">
@@ -3488,13 +3540,13 @@ class Game {
                     <div class="dice-stat">
                         <span>Attack Dice</span>
                         <span id="p${player.id}-attack-dice">${player.weapon.currentAttackDice}</span>
-                        <button class="small-btn" onclick="game.upgradeWeapon(${player.id}, 'attack')"${disabledAttr}${disabledTitle}>⚔️</button>
+                        <button class="small-btn" onclick="game.upgradeWeapon(${player.id}, 'attack')"${attackUpgradeAttr}${disabledTitle}>⚔️</button>
                         <span class="cost">(<span id="p${player.id}-req-exp-attack">${player.weapon.reqExpAttack}</span>EXP)</span>
                     </div>
                     <div class="dice-stat">
                         <span>Defense Dice</span>
                         <span id="p${player.id}-defense-dice">${player.weapon.currentDefenseDice}</span>
-                        <button class="small-btn" onclick="game.upgradeWeapon(${player.id}, 'defense')"${disabledAttr}${disabledTitle}>🛡️</button>
+                        <button class="small-btn" onclick="game.upgradeWeapon(${player.id}, 'defense')"${defenseUpgradeAttr}${disabledTitle}>🛡️</button>
                         <span class="cost">(<span id="p${player.id}-req-exp-defense">3</span>EXP)</span>
                     </div>
                 </div>
@@ -3599,13 +3651,13 @@ class Game {
         const disabledAttr = buttonsDisabled ? ' disabled' : '';
         const disabledTitle = buttonsDisabled ? ' title="Cannot interact with this player board"' : '';
 
-        // Check if upgrade buttons should be disabled due to max reached
-        const hpUpgradeDisabled = buttonsDisabled || player.maxResources.hp >= 10;
+        // Check if upgrade buttons should be disabled (max reached or no items)
+        const hpUpgradeDisabled = buttonsDisabled || player.maxResources.hp >= 10 || !player.inventory.some(item => item.name === 'Blood Bag');
         const hpUpgradeAttr = hpUpgradeDisabled ? ' disabled' : '';
         const hpUpgradeTitle = hpUpgradeDisabled ?
             (player.maxResources.hp >= 10 ? ' title="HP is at maximum (10)"' : ' title="Cannot interact with this player board"') : '';
 
-        const epUpgradeDisabled = buttonsDisabled || player.maxResources.ep >= 10;
+        const epUpgradeDisabled = buttonsDisabled || player.maxResources.ep >= 10 || !player.inventory.some(item => item.name === 'Beer');
         const epUpgradeAttr = epUpgradeDisabled ? ' disabled' : '';
         const epUpgradeTitle = epUpgradeDisabled ?
             (player.maxResources.ep >= 10 ? ' title="EP is at maximum (10)"' : ' title="Cannot interact with this player board"') : '';
@@ -3620,6 +3672,14 @@ class Game {
         const epRestoreAttr = epRestoreDisabled ? ' disabled' : '';
         const epRestoreTitle = epRestoreDisabled ?
             (player.resources.ep >= player.maxResources.ep ? ' title="EP is already full"' : !player.inventory.some(item => item.name === 'Beer') ? ' title="No beer available"' : ' title="Cannot interact with this player board"') : ' title="Use beer to restore 1 EP"';
+
+        // Check if weapon upgrade buttons should be disabled (not enough EXP or maxed)
+        const attackMaxed = player.weapon.currentAttackDice >= 7;
+        const defenseMaxed = player.weapon.currentDefenseDice >= 6;
+        const attackUpgradeDisabled = buttonsDisabled || attackMaxed || player.resources.exp < player.weapon.reqExpAttack;
+        const attackUpgradeAttr = attackUpgradeDisabled ? ' disabled' : '';
+        const defenseUpgradeDisabled = buttonsDisabled || defenseMaxed || player.resources.exp < (player.weapon.reqExpDefense || 3);
+        const defenseUpgradeAttr = defenseUpgradeDisabled ? ' disabled' : '';
 
         // Calculate current inventory size for capacity display
         const currentInventorySize = this.getInventorySize(player);
@@ -3697,13 +3757,13 @@ class Game {
                     <div class="collapsed-dice-row">
                         <span class="dice-icon">⚔️</span>
                         <span class="dice-value" id="p${player.id}-attack-dice">${player.weapon.currentAttackDice}</span>
-                        <button class="collapsed-btn upgrade-btn" onclick="game.upgradeWeapon(${player.id}, 'attack')"${disabledAttr}${disabledTitle}>Upgrade (<span id="p${player.id}-req-exp-attack">${player.weapon.reqExpAttack}</span>)</button>
+                        <button class="collapsed-btn upgrade-btn" onclick="game.upgradeWeapon(${player.id}, 'attack')"${attackUpgradeAttr}${disabledTitle}>Upgrade (<span id="p${player.id}-req-exp-attack">${player.weapon.reqExpAttack}</span>)</button>
                     </div>
                     <!-- Defense Dice -->
                     <div class="collapsed-dice-row">
                         <span class="dice-icon">🛡️</span>
                         <span class="dice-value" id="p${player.id}-defense-dice">${player.weapon.currentDefenseDice}</span>
-                        <button class="collapsed-btn upgrade-btn" onclick="game.upgradeWeapon(${player.id}, 'defense')"${disabledAttr}${disabledTitle}>Upgrade (<span id="p${player.id}-req-exp-defense">3</span>)</button>
+                        <button class="collapsed-btn upgrade-btn" onclick="game.upgradeWeapon(${player.id}, 'defense')"${defenseUpgradeAttr}${disabledTitle}>Upgrade (<span id="p${player.id}-req-exp-defense">${player.weapon.reqExpDefense || 3}</span>)</button>
                     </div>
                 </div>
 
@@ -3731,6 +3791,9 @@ class Game {
     restoreHP(playerId) {
         const player = this.players.find(p => p.id === playerId);
         if (!player) return;
+
+        // Only allow interacting with own player in online mode
+        if (this.gameMode === 'online' && playerId !== this.localPlayerId) return;
 
         // Online non-host: send action to host
         if (this.gameMode === 'online' && !this.isHost) {
@@ -3791,6 +3854,9 @@ class Game {
     restoreEP(playerId) {
         const player = this.players.find(p => p.id === playerId);
         if (!player) return;
+
+        // Only allow interacting with own player in online mode
+        if (this.gameMode === 'online' && playerId !== this.localPlayerId) return;
 
         // Online non-host: send action to host
         if (this.gameMode === 'online' && !this.isHost) {
@@ -4980,24 +5046,60 @@ class Game {
             const shouldDisable = this.shouldDisablePlayerButtons(player.id);
             const disabledTitle = shouldDisable ? 'Cannot interact with this player board' : '';
 
-            // Update expanded board buttons
-            const expandedBoard = document.getElementById(`player-${player.id}-board`);
-            if (expandedBoard) {
-                expandedBoard.querySelectorAll('button').forEach(btn => {
-                    btn.disabled = shouldDisable;
-                    btn.title = disabledTitle || btn.getAttribute('data-original-title') || '';
-                });
-            }
-
-            // Update collapsed board buttons
-            const collapsedBoard = document.getElementById(`collapsed-player-${player.id}`);
-            if (collapsedBoard) {
-                collapsedBoard.querySelectorAll('button').forEach(btn => {
-                    btn.disabled = shouldDisable;
-                    btn.title = disabledTitle || btn.getAttribute('data-original-title') || '';
-                });
+            if (shouldDisable) {
+                // Disable ALL buttons for bots / non-local players
+                const board = document.getElementById(`player-${player.id}-board`);
+                if (board) {
+                    board.querySelectorAll('button').forEach(btn => {
+                        btn.disabled = true;
+                        btn.title = disabledTitle;
+                    });
+                }
+            } else {
+                // For the local/active player, apply resource-based button states
+                this.updatePlayerButtonStates(player);
             }
         });
+    }
+
+    updatePlayerButtonStates(player) {
+        const playerId = player.id;
+        const hasBloodBag = player.inventory.some(item => item.name === 'Blood Bag');
+        const hasBeer = player.inventory.some(item => item.name === 'Beer');
+        const hpFull = player.resources.hp >= player.maxResources.hp;
+        const epFull = player.resources.ep >= player.maxResources.ep;
+        const hpMaxed = player.maxResources.hp >= 10;
+        const epMaxed = player.maxResources.ep >= 10;
+        const attackMaxed = player.weapon.currentAttackDice >= 7;
+        const defenseMaxed = player.weapon.currentDefenseDice >= 6;
+        const canUpgradeAttack = player.resources.exp >= player.weapon.reqExpAttack && !attackMaxed;
+        const canUpgradeDefense = player.resources.exp >= (player.weapon.reqExpDefense || 3) && !defenseMaxed;
+
+        // Update expanded board restore buttons
+        this.updateExpandedRestoreButtons(playerId);
+
+        // Update expanded board upgrade HP/EP buttons
+        const board = document.getElementById(`player-${playerId}-board`);
+        if (board) {
+            // HP upgrade button (requires blood bag and not maxed)
+            const hpUpgradeBtns = board.querySelectorAll(`button[onclick*="addToUpgrade(${playerId}, 'hp')"]`);
+            hpUpgradeBtns.forEach(btn => { btn.disabled = hpMaxed || !hasBloodBag; });
+
+            // EP upgrade button (requires beer and not maxed)
+            const epUpgradeBtns = board.querySelectorAll(`button[onclick*="addToUpgrade(${playerId}, 'ep')"]`);
+            epUpgradeBtns.forEach(btn => { btn.disabled = epMaxed || !hasBeer; });
+
+            // Attack dice upgrade button
+            const attackBtns = board.querySelectorAll(`button[onclick*="upgradeWeapon(${playerId}, 'attack')"]`);
+            attackBtns.forEach(btn => { btn.disabled = !canUpgradeAttack; });
+
+            // Defense dice upgrade button
+            const defenseBtns = board.querySelectorAll(`button[onclick*="upgradeWeapon(${playerId}, 'defense')"]`);
+            defenseBtns.forEach(btn => { btn.disabled = !canUpgradeDefense; });
+        }
+
+        // Update collapsed board
+        this.updateCollapsedBoardDisplay(player);
     }
 
     disableAllPlayerButtons() {
@@ -6363,10 +6465,10 @@ class Game {
     
     canTameMonster(player, monster) {
         // Chain weapon can tame monsters with HP <= 3
-        if (player.weapon.name === 'Chain') {
+        if (player.weapon.name === 'Chain' && player.weapon.powerTrackPosition >= 1) {
             return monster.hp <= 3;
         }
-        
+
         // Whip weapon can tame monsters based on power level
         if (player.weapon.name === 'Whip') {
             if (player.weapon.powerTrackPosition >= 7) {
@@ -6377,8 +6479,9 @@ class Game {
                 return monster.hp <= 2; // Level 1: Can tame monsters with HP <= 2
             }
         }
-        
-        return false;
+
+        // Standard taming: any weapon can tame at monster HP = 1
+        return monster.hp <= 1;
     }
     
     showStationModal() {
@@ -13599,14 +13702,23 @@ class Game {
             // Monster's turn — no controls
             turnText.textContent = 'Monster is attacking...';
         } else if (turn === 'player_items' && hasAttacked) {
-            // After attacking — show Defense button, items, and possibly double damage
-            turnText.textContent = 'You can use items or proceed to defense!';
+            // After attacking — show Defense button, items, and possibly double damage/tame
+            turnText.textContent = battleState.canTame ? 'Use items, defend, or tame the monster!' : 'You can use items or proceed to defense!';
             defenseBtn.style.display = 'inline-block';
             defenseBtn.disabled = false;
             defenseBtn.onclick = () => {
                 this.onlineManager.pushAction({ type: 'battle_defense', playerId: this.localPlayerId });
                 defenseBtn.disabled = true;
             };
+
+            // Show tame button if applicable
+            if (battleState.canTame) {
+                tameBtn.style.display = 'inline-block';
+                tameBtn.onclick = () => {
+                    this.onlineManager.pushAction({ type: 'battle_tame', playerId: this.localPlayerId });
+                    tameBtn.disabled = true;
+                };
+            }
 
             // Show double damage button if applicable (Knife Lv1)
             if (battleState.canUseDoubleDamage && !battleState.doubleDamageUsed) {

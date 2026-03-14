@@ -653,8 +653,14 @@ h1 {
     transition: background-color 0.3s ease;
 }
 
-.small-btn:hover {
+.small-btn:hover:not(:disabled) {
     background-color: #2980b9;
+}
+
+.small-btn:disabled {
+    background-color: #7f8c8d;
+    cursor: not-allowed;
+    opacity: 0.5;
 }
 
 .katana-convert {
@@ -2603,7 +2609,9 @@ button {
     background-color: #2980b9;
 }
 
-.collapsed-btn.restore-btn:disabled {
+.collapsed-btn.restore-btn:disabled,
+.collapsed-btn.restore-btn.hp-restore:disabled,
+.collapsed-btn.restore-btn.ep-restore:disabled {
     background-color: #7f8c8d;
     cursor: not-allowed;
     opacity: 0.5;

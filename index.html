@@ -69,18 +69,11 @@
                     <h2>Create Room</h2>
                     <div class="create-room-settings">
                         <div class="setting-group">
-                            <label for="online-player-count">Total Players (including bots):</label>
-                            <select id="online-player-count" onchange="game.updateHumanPlayerOptions()">
+                            <label for="online-player-count">Total Players:</label>
+                            <select id="online-player-count">
                                 <option value="2">2 Players</option>
                                 <option value="3" selected>3 Players</option>
                                 <option value="4">4 Players</option>
-                            </select>
-                        </div>
-                        <div class="setting-group">
-                            <label for="online-human-count">Human Players:</label>
-                            <select id="online-human-count">
-                                <option value="2" selected>2</option>
-                                <option value="3">3</option>
                             </select>
                         </div>
                     </div>
@@ -97,16 +90,16 @@
                         <button class="copy-code-btn" onclick="game.copyRoomCode()">Copy Code</button>
                     </div>
                     <div id="player-count-display" class="player-count-display">
-                        <div class="player-count-header">Players: <span id="human-count">1</span>/<span id="human-total">2</span> humans connected</div>
+                        <div class="player-count-header">Players: <span id="human-count">1</span>/<span id="human-total">2</span> connected</div>
                         <ul class="player-slot-list" id="player-slot-list"></ul>
                         <div class="game-composition" id="game-composition"></div>
                     </div>
                     <div class="waiting-status">
                         <div class="waiting-spinner"></div>
-                        <p id="waiting-status-text">Waiting for guest to join...</p>
+                        <p id="waiting-status-text">Waiting for players to join...</p>
                     </div>
                     <div id="host-guest-joined" style="display: none;">
-                        <p class="guest-joined-text">All players connected!</p>
+                        <p class="guest-joined-text" id="guest-joined-text">Ready to start!</p>
                         <button class="ready-btn" onclick="game.startOnlineGame()">Start Game</button>
                     </div>
                     <button class="back-btn" onclick="game.cancelOnlineRoom()">Cancel</button>
