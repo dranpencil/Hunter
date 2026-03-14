@@ -5990,7 +5990,11 @@ class Game {
                 let expGained = 0;
                 if (finalDamage > 0) {
                     if (player.weapon.name === 'Axe' && player.weapon.powerTrackPosition >= 1) {
-                        battleActions.push(`Monster attacks first for ${monsterDamage} damage. ${player.name} defends: [${defenseRolls.join(', ')}] = ${defense} defense. Final damage: ${finalDamage} (no EXP from Axe)`);
+                        expGained = Math.max(0, finalDamage - 1);
+                        if (expGained > 0) {
+                            player.resources.exp = Math.min(player.maxResources.exp, player.resources.exp + expGained);
+                        }
+                        battleActions.push(`Monster attacks first for ${monsterDamage} damage. ${player.name} defends: [${defenseRolls.join(', ')}] = ${defense} defense. Final damage: ${finalDamage} (+${expGained} EXP, Axe -1)`);
                     } else {
                     const damageEffect = this.applyBattleEffect(monster, 'playerDamaged', player);
                     if (damageEffect && damageEffect.noEXP) {
@@ -6159,7 +6163,11 @@ class Game {
             let expGained = 0;
             if (finalDamage > 0) {
                 if (player.weapon.name === 'Axe' && player.weapon.powerTrackPosition >= 1) {
-                    battleActions.push(`Monster attacks for ${monsterDamage} damage. ${player.name} defends: [${defenseRolls.join(', ')}] = ${defense} defense. Final damage: ${finalDamage} (no EXP from Axe)`);
+                    expGained = Math.max(0, finalDamage - 1);
+                    if (expGained > 0) {
+                        player.resources.exp = Math.min(player.maxResources.exp, player.resources.exp + expGained);
+                    }
+                    battleActions.push(`Monster attacks for ${monsterDamage} damage. ${player.name} defends: [${defenseRolls.join(', ')}] = ${defense} defense. Final damage: ${finalDamage} (+${expGained} EXP, Axe -1)`);
                 } else {
                 const damageEffect = this.applyBattleEffect(monster, 'playerDamaged', player);
                 if (damageEffect && damageEffect.noEXP) {
@@ -9277,7 +9285,11 @@ class Game {
 
             // Player gains EXP equal to damage received (unless Axe or monster effect prevents it)
             if (player.weapon.name === 'Axe' && player.weapon.powerTrackPosition >= 1) {
-                this.logBattleAction(`${player.name} gains no EXP (no EXP from Axe)!`, player);
+                const axeEXP = Math.max(0, finalDamage - 1);
+                if (axeEXP > 0) {
+                    this.modifyResource(battle.playerId, 'exp', axeEXP);
+                }
+                this.logBattleAction(`${player.name} gains ${axeEXP} EXP from taking damage (Axe: -1 EXP)!`, player);
             } else {
                 const damageEffect = this.applyBattleEffect(battle.monster, 'playerDamaged', player);
                 if (damageEffect && damageEffect.noEXP) {

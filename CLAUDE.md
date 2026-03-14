@@ -231,7 +231,7 @@ Each weapon features:
 - Lv3: Pet damage x2
 
 **Axe**
-- Lv1: Deal 1 damage when taking damage (no EXP from monster damage)
+- Lv1: Deal 1 damage when taking damage (1 less EXP when damaged)
 - Lv2: +1 blood bag at round start
 - Lv3: Deal equal damage when taking damage
 
