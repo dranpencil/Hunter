@@ -1752,6 +1752,15 @@ h1 {
     flex-wrap: wrap;
 }
 
+#phase-title {
+    width: 100%;
+    text-align: center;
+    font-weight: bold;
+    font-size: 18px;
+    color: #ecf0f1;
+    margin-bottom: 5px;
+}
+
 .player-status {
     display: flex;
     flex-direction: row;

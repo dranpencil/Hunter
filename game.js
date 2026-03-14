@@ -1664,6 +1664,9 @@ class Game {
 
     initGuestUI() {
         // Initialize UI elements but guest waits for host state
+        // Hide "Current Player" text — not needed in online mode
+        document.querySelector('.current-player').style.display = 'none';
+
         this.initializePlayerStatusIndicators();
         this.initializeLocationCards();
         this.setupEventListeners();
@@ -2379,6 +2382,11 @@ class Game {
             }
         }
 
+        // Hide "Current Player" text in simultaneous/online modes
+        if (this.gameMode !== 'turnbased') {
+            document.querySelector('.current-player').style.display = 'none';
+        }
+
         // Initialize player status indicators
         this.initializePlayerStatusIndicators();
 
@@ -2422,8 +2430,15 @@ class Game {
         const panel = document.getElementById('player-status-panel');
         if (!panel) return;
 
-        // Clear existing content
-        panel.innerHTML = '';
+        // Clear existing player status indicators (preserve phase-title)
+        panel.querySelectorAll('.player-status').forEach(el => el.remove());
+
+        // Ensure phase-title element exists
+        if (!document.getElementById('phase-title')) {
+            const titleDiv = document.createElement('div');
+            titleDiv.id = 'phase-title';
+            panel.prepend(titleDiv);
+        }
 
         // Create status indicator for each player
         this.players.forEach(player => {
@@ -2448,11 +2463,23 @@ class Game {
         });
     }
 
-    showPlayerStatusIndicators() {
+    setPhaseTitle(text) {
+        const titleEl = document.getElementById('phase-title');
+        if (titleEl) {
+            titleEl.textContent = text;
+        }
+    }
+
+    showPlayerStatusIndicators(titleOnly = false) {
         if (this.isAutomatedMode) return;
         const panel = document.getElementById('player-status-panel');
         if (panel) {
             panel.style.display = 'flex';
+            // Show/hide individual player status divs based on titleOnly
+            const statusDivs = panel.querySelectorAll('.player-status');
+            statusDivs.forEach(div => {
+                div.style.display = titleOnly ? 'none' : 'flex';
+            });
         }
     }
 
@@ -2676,6 +2703,7 @@ class Game {
 
         // Show status indicators
         this.showPlayerStatusIndicators();
+        this.setPhaseTitle('Location Selection Phase');
 
         // Reset completion status
         this.resetPlayerCompletionStatus();
@@ -2711,6 +2739,7 @@ class Game {
         // Show status indicators (for first player only)
         if (this.currentPlayerIndex === 0 && this.roundPhase === 'selection') {
             this.showPlayerStatusIndicators();
+            this.setPhaseTitle('Location Selection Phase');
             this.resetPlayerCompletionStatus();
         }
 
@@ -5402,6 +5431,13 @@ class Game {
         // Handle one hunter at a time
         this.currentMonsterPlayer = forestHunters[0];
         this.remainingForestHunters = forestHunters.slice(1);
+
+        // Show battle phase title (no red/green indicators)
+        const battlePlayer = this.players.find(p => p.id === this.currentMonsterPlayer);
+        if (battlePlayer && !this.isAutomatedMode) {
+            this.showPlayerStatusIndicators(true);
+            this.setPhaseTitle(`Battle Phase: ${battlePlayer.name}`);
+        }
 
         // Reset shown monsters pool for this player (fresh start for each player)
         this.playerShownMonsters[this.currentMonsterPlayer] = new Set();
@@ -8329,7 +8365,7 @@ class Game {
 
         console.log('Player is human, showing battle UI');
         
-        document.getElementById('monster-battle').style.display = 'block';
+        document.getElementById('monster-battle').style.display = 'flex';
         document.getElementById('battle-player-name').textContent = player.name;
         document.getElementById('battle-player-hp').textContent = `${player.resources.hp}/${player.maxResources.hp}`;
         document.getElementById('battle-player-ep').textContent = `${player.resources.ep}/${player.maxResources.ep}`;
@@ -9936,6 +9972,7 @@ class Game {
 
         // Show status indicators and reset completion status
         this.showPlayerStatusIndicators();
+        this.setPhaseTitle('Store Phase');
         this.resetPlayerCompletionStatus();
 
         // Trigger all bots to shop immediately
@@ -9963,6 +10000,7 @@ class Game {
 
         // Show status indicators
         this.showPlayerStatusIndicators();
+        this.setPhaseTitle('Store Phase');
         this.resetPlayerCompletionStatus();
 
         // Show store for first player (turn-based)
@@ -11296,6 +11334,11 @@ class Game {
         });
 
         if (forestHunters.length > 0) {
+            // Show battle phase panel
+            if (!this.isAutomatedMode) {
+                this.showPlayerStatusIndicators(true);
+            }
+
             // Sort forest hunters by score (lowest first), then by weapon priority (lowest first)
             forestHunters.sort((a, b) => {
                 const playerA = this.players.find(p => p.id === a);
@@ -11324,6 +11367,9 @@ class Game {
     }
     
     endRound() {
+        // Hide battle phase panel
+        this.hidePlayerStatusIndicators();
+
         // Route to online version if in online mode
         if (this.gameMode === 'online' && this.isHost) {
             this.endRoundOnline();
@@ -12082,8 +12128,10 @@ class Game {
             `New Round Started! ${this.currentPlayer.name}: Select locations for your Hunter and Apprentice`;
         document.querySelector('.card-selection').style.display = 'grid';
         
-        // Show current player text again for the new round
-        document.querySelector('.current-player').style.display = 'block';
+        // Show current player text again for the new round (only in turn-based local mode)
+        if (this.gameMode === 'turnbased') {
+            document.querySelector('.current-player').style.display = 'block';
+        }
         
         this.createLocationCards();
         this.updateUI();
@@ -12093,13 +12141,18 @@ class Game {
     
     handleCapacityOverflow(overflowPlayers) {
         if (overflowPlayers.length === 0) {
+            this.hidePlayerStatusIndicators();
             this.checkForestReadiness();
             return;
         }
-        
+
         const playerId = overflowPlayers[0];
         const player = this.players.find(p => p.id === playerId);
-        
+
+        // Show phase title only (no red/green indicators)
+        this.showPlayerStatusIndicators(true);
+        this.setPhaseTitle(`Capacity Overflow: ${player.name}`);
+
         // Show capacity management UI
         document.getElementById('capacity-player-name').textContent = player.name;
         document.getElementById('capacity-current').textContent = this.getInventorySize(player);
@@ -13050,6 +13103,9 @@ class Game {
             if (storeArea) storeArea.style.display = 'none';
             document.getElementById('monster-battle').style.display = 'none';
 
+            // Hide "Current Player" text — not needed in online mode
+            document.querySelector('.current-player').style.display = 'none';
+
             // Clear all player tokens from the board
             document.querySelectorAll('.token:not(.dummy-token)').forEach(token => token.remove());
             // Update dummy token positions
@@ -13062,6 +13118,7 @@ class Game {
             // Show player status indicators
             this.initializePlayerStatusIndicators();
             this.showPlayerStatusIndicators();
+            this.setPhaseTitle('Location Selection Phase');
             // Enable confirm button
             const confirmBtn = document.getElementById('confirm-selection');
             if (confirmBtn) {
@@ -13082,6 +13139,8 @@ class Game {
         // Keep status indicators visible and updated during selection/store phases
         if (phase === 'selection' || phase === 'store') {
             this.showPlayerStatusIndicators();
+            if (phase === 'selection') this.setPhaseTitle('Location Selection Phase');
+            if (phase === 'store') this.setPhaseTitle('Store Phase');
         }
 
         if (phase === 'distribution') {
@@ -13120,6 +13179,15 @@ class Game {
                 document.getElementById('forest-failure-message').textContent = state.forestFailure.message;
                 document.getElementById('forest-failure-modal').style.display = 'flex';
             }
+            // Show battle phase title for guest
+            const battlePlayerId = state.currentBattlePlayerId !== undefined ? state.currentBattlePlayerId : (state.battleState ? state.battleState.playerId : undefined);
+            if (battlePlayerId !== undefined) {
+                const battlePlayer = this.players.find(p => p.id === battlePlayerId);
+                if (battlePlayer) {
+                    this.showPlayerStatusIndicators(true);
+                    this.setPhaseTitle(`Battle Phase: ${battlePlayer.name}`);
+                }
+            }
             this.handleGuestBattleStateUpdate(state);
         }
 
@@ -13146,6 +13214,10 @@ class Game {
         this.roundPhase = 'selection';
         this.resetPlayerCompletionStatus();
         this.showPlayerStatusIndicators();
+        this.setPhaseTitle('Location Selection Phase');
+
+        // Hide "Current Player" text — not needed in online mode
+        document.querySelector('.current-player').style.display = 'none';
 
         // Ensure store/battle UIs are hidden from previous phase
         const storeArea = document.getElementById('store-area');
@@ -13403,6 +13475,7 @@ class Game {
         this.storePhaseCompleted = false;
         this.resetPlayerCompletionStatus();
         this.showPlayerStatusIndicators();
+        this.setPhaseTitle('Store Phase');
 
         // Bots shop immediately
         this.players.forEach((player) => {
@@ -13542,6 +13615,13 @@ class Game {
         this.remainingForestHunters = forestHunters.slice(1);
         this.playerShownMonsters[this.currentMonsterPlayer] = new Set();
 
+        // Show battle phase title (no red/green indicators)
+        const battlePlayer = this.players.find(p => p.id === this.currentMonsterPlayer);
+        if (battlePlayer) {
+            this.showPlayerStatusIndicators(true);
+            this.setPhaseTitle(`Battle Phase: ${battlePlayer.name}`);
+        }
+
         const player = this.players.find(p => p.id === this.currentMonsterPlayer);
 
         if (player.isBot) {
@@ -13639,7 +13719,7 @@ class Game {
         }
 
         // Show battle UI in read-only mode
-        document.getElementById('monster-battle').style.display = 'block';
+        document.getElementById('monster-battle').style.display = 'flex';
         document.getElementById('battle-player-name').textContent = battleState.playerName;
         document.getElementById('battle-player-hp').textContent = `${battleState.playerHP}/${battleState.playerMaxHP}`;
         document.getElementById('battle-player-ep').textContent = `${battleState.playerEP}/${battleState.playerMaxEP}`;
@@ -13672,7 +13752,7 @@ class Game {
 
     showBattleUIForGuest(battleState) {
         // Show full battle UI with controls for the guest
-        document.getElementById('monster-battle').style.display = 'block';
+        document.getElementById('monster-battle').style.display = 'flex';
         document.getElementById('battle-player-name').textContent = battleState.playerName;
         document.getElementById('battle-player-hp').textContent = `${battleState.playerHP}/${battleState.playerMaxHP}`;
         document.getElementById('battle-player-ep').textContent = `${battleState.playerEP}/${battleState.playerMaxEP}`;
@@ -14409,6 +14489,9 @@ class Game {
     // ==================== ONLINE: END ROUND ====================
 
     endRoundOnline() {
+        // Hide battle phase panel
+        this.hidePlayerStatusIndicators();
+
         // Check win condition
         const hasWinner = this.checkWinCondition();
         if (hasWinner) {
