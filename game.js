@@ -1654,6 +1654,7 @@ class Game {
         this.initializeLocationCards();
         this.setupEventListeners();
         this.updateResourceDisplay();
+        this.updateLocationDisplays();
         this.updateLocationCardStates();
         this.updateDummyTokenDisplay();
         this.applyPlayerNameColors();
@@ -1668,6 +1669,8 @@ class Game {
         // Guest shows selection cards for their own selections
         this.createLocationCards();
         document.getElementById('status-message').textContent = 'Select locations for your Hunter and Apprentice';
+        const confirmBtn = document.getElementById('confirm-selection');
+        if (confirmBtn) confirmBtn.textContent = 'Select Both Locations';
     }
 
     showRulebook() {
@@ -2233,7 +2236,10 @@ class Game {
         this.checkSelectionComplete();
 
         // Handle completion based on game mode
-        if (this.gameMode === 'simultaneous') {
+        if (this.gameMode === 'online') {
+            // In online mode, bot completion is handled by startOnlineSelectionPhase
+            // No additional action needed here
+        } else if (this.gameMode === 'simultaneous') {
             // In simultaneous mode, mark bot as complete
             this.updatePlayerStatus(playerId, true);
 
@@ -3764,7 +3770,12 @@ class Game {
 
         // Refresh store display if in store phase to update capacity warnings
         if (this.roundPhase === 'store') {
-            if (this.gameMode === 'simultaneous' || this.gameMode === 'online') {
+            if (this.gameMode === 'online') {
+                // Only refresh store for the local player, not remote players
+                if (player.id === this.localPlayerId) {
+                    this.showStoreForPlayer(player);
+                }
+            } else if (this.gameMode === 'simultaneous') {
                 this.showStoreForPlayer(player);
             } else {
                 this.showStore();
@@ -3819,7 +3830,12 @@ class Game {
 
         // Refresh store display if in store phase to update capacity warnings
         if (this.roundPhase === 'store') {
-            if (this.gameMode === 'simultaneous' || this.gameMode === 'online') {
+            if (this.gameMode === 'online') {
+                // Only refresh store for the local player, not remote players
+                if (player.id === this.localPlayerId) {
+                    this.showStoreForPlayer(player);
+                }
+            } else if (this.gameMode === 'simultaneous') {
                 this.showStoreForPlayer(player);
             } else {
                 this.showStore();
@@ -5221,6 +5237,11 @@ class Game {
         player.maxResources[resourceType] = Math.min(10, player.maxResources[resourceType] + amount);
         // Also increase current value by the same amount
         player.resources[resourceType] += amount;
+
+        // Log the upgrade
+        if (!this.isAutomatedMode) {
+            this.addLogEntry(`⬆️ <strong>${player.name}</strong>'s max ${resourceType.toUpperCase()} increased to ${player.maxResources[resourceType]}!`, 'system', player);
+        }
         
         // Make sure current doesn't exceed max (though it shouldn't with this logic)
         if (player.resources[resourceType] > player.maxResources[resourceType]) {
@@ -5625,11 +5646,6 @@ class Game {
         // Hide battle UI for bot (host only sees status message)
         document.getElementById('monster-battle').style.display = 'none';
 
-        // Push bot battle state so all online players see the battle starting
-        if (this.gameMode === 'online' && this.isHost) {
-            this.pushBattleStateToGuest();
-        }
-        
         // Show status message
         const statusElement = document.getElementById('status-message');
         if (statusElement) {
@@ -5766,7 +5782,6 @@ class Game {
             // Continue to next battle or end battle phase
             setTimeout(() => {
                 if (this.gameMode === 'online' && this.isHost) {
-                    this.pushBattleStateToGuest();
                     if (this.remainingForestHunters && this.remainingForestHunters.length > 0) {
                         this.handleForestEncountersOnline(this.remainingForestHunters);
                     } else {
@@ -6138,7 +6153,6 @@ class Game {
         // Continue to next battle or end battle phase
         setTimeout(() => {
             if (this.gameMode === 'online' && this.isHost) {
-                this.pushBattleStateToGuest();
                 if (this.remainingForestHunters && this.remainingForestHunters.length > 0) {
                     this.handleForestEncountersOnline(this.remainingForestHunters);
                 } else {
@@ -6954,7 +6968,7 @@ class Game {
             if (player.upgradeProgress[upgradeType] === requiredAmount) {
                 this.levelUpMaxResource(playerId, upgradeType, 1);
                 player.upgradeProgress[upgradeType] = 0;
-                if (!this.suppressAlerts && (this.isHost || this.gameMode !== 'online')) alert(`Player ${playerId}'s max ${upgradeType.toUpperCase()} increased!`);
+                // Log entry handled by levelUpMaxResource
             }
 
             // Update all displays
@@ -6971,7 +6985,12 @@ class Game {
 
             // Refresh store display if in store phase to update capacity warnings
             if (this.roundPhase === 'store') {
-                if (this.gameMode === 'simultaneous' || this.gameMode === 'online') {
+                if (this.gameMode === 'online') {
+                    // Only refresh store for the local player, not remote players
+                    if (player.id === this.localPlayerId) {
+                        this.showStoreForPlayer(player);
+                    }
+                } else if (this.gameMode === 'simultaneous') {
                     this.showStoreForPlayer(player);
                 } else {
                     this.showStore();
@@ -7565,10 +7584,6 @@ class Game {
     }
     
     showEffectNotification(message, effectDescription) {
-        // Only show pop-up notification if not in automated mode
-        if (!this.isAutomatedMode) {
-            alert(`⚠️ Monster Effect Activated!\n\n${message}\n\n${effectDescription}`);
-        }
         
         // Add to log (but skip in automated mode for performance)
         if (!this.isAutomatedMode) {
@@ -9441,7 +9456,18 @@ class Game {
     endMonsterBattle(victory) {
         // Push final battle state before clearing (so guest sees result)
         if (this.gameMode === 'online' && this.isHost) {
-            this.pushBattleStateToGuest();
+            // Force battlePhase to 'ended' since the battle is over
+            // (can't rely on isActive — playerDefeated resets HP to 1 before calling this)
+            const battleState = this.serializeBattleState();
+            const state = this.serializeGameState();
+            state.roundPhase = 'battle';
+            state.battleState = battleState;
+            state.battlePhase = 'ended';
+            state.guestBattle = false;
+            if (battleState) {
+                state.currentBattlePlayerId = battleState.playerId;
+            }
+            this.onlineManager.pushGameState(state);
         }
 
         this.currentBattle = null;
@@ -10982,13 +11008,18 @@ class Game {
             if (this.isAutomatedMode) {
                 console.log(`[${new Date().toISOString()}] Found ${stationHunters.length} station hunters, showing modal`);
             }
-            this.showStationModal();
+            // In online mode, station phase is handled by pushStateAfterDistribution/processOnlineStationPhase
+            if (this.gameMode !== 'online') {
+                this.showStationModal();
+            }
         } else {
             // No station choices needed, go to store phase
             if (this.isAutomatedMode) {
                 console.log(`[${new Date().toISOString()}] No station players, going directly to store phase`);
             }
-            this.enterStorePhase();
+            if (this.gameMode !== 'online') {
+                this.enterStorePhase();
+            }
         }
     }
 
@@ -11025,20 +11056,57 @@ class Game {
         const lacksAmmo = (player.weapon.name === 'Rifle' && !player.inventory.some(i => i.name === 'Bullet')) ||
                          (player.weapon.name === 'Plasma' && !player.inventory.some(i => i.name === 'Battery'));
 
+        // Check if player has combat items (can attack even without ammunition)
+        const hasCombatItems = player.inventory.some(i =>
+            i.name === 'Grenade' || i.name === 'Bomb' || i.name === 'Dynamite'
+        );
+
+        // Rifle/Plasma without ammo can still fight if they have combat items
+        // Only truly stuck if no ammo AND no combat items
+        const cannotAttack = lacksAmmo && !hasCombatItems;
+
         // Check Condition 2: Total EP (current EP + beers) < 2
         const beerCount = player.inventory.filter(i => i.name === 'Beer').length;
         const lacksEP = player.resources.ep + beerCount < 2;
 
         // Check conditions and take appropriate action
-        if (lacksAmmo && lacksEP) {
-            // Both conditions fail - show failure with both messages
-            this.showForestFailureModal(player, true, true);
-        } else if (lacksAmmo) {
-            // Only ammunition condition fails
-            this.showForestFailureModal(player, true, false);
-        } else if (lacksEP) {
-            // Only EP condition fails
-            this.showForestFailureModal(player, false, true);
+        if (cannotAttack || lacksEP) {
+            // In online mode, handle remote players differently
+            if (this.gameMode === 'online' && this.isHost && player.id !== this.localPlayerId && !player.isBot) {
+                // Remote human player failed - auto-handle on host, push failure to guest
+                this.failedForestPlayers.push(player.id);
+                this.forestReadinessQueue.shift();
+
+                // Determine failure message
+                let message = '';
+                if (cannotAttack && lacksEP) {
+                    message = 'You had failed to fight the monster due to lack of EP and no way to attack (no ammunition or combat items).';
+                } else if (cannotAttack) {
+                    message = 'You had failed to fight the monster due to no way to attack (no ammunition or combat items).';
+                } else {
+                    message = 'You had failed to fight the monster due to lack of EP.';
+                }
+
+                // Push failure notification to guest
+                const state = this.serializeGameState();
+                state.roundPhase = 'battle';
+                state.forestFailure = {
+                    playerId: player.id,
+                    message: message
+                };
+                this.onlineManager.pushGameState(state);
+
+                this.addLogEntry(`⚠️ <strong>${player.name}</strong> failed to enter Forest: ${cannotAttack ? 'no way to attack' : ''}${cannotAttack && lacksEP ? ' and ' : ''}${lacksEP ? 'insufficient EP' : ''}`, 'warning', player);
+
+                // Continue to next hunter
+                this.checkNextForestHunter();
+            } else if (cannotAttack && lacksEP) {
+                this.showForestFailureModal(player, true, true);
+            } else if (cannotAttack) {
+                this.showForestFailureModal(player, true, false);
+            } else {
+                this.showForestFailureModal(player, false, true);
+            }
         } else {
             // Player is ready for battle
             this.forestReadinessQueue.shift();
@@ -11046,13 +11114,13 @@ class Game {
         }
     }
 
-    showForestFailureModal(player, lacksAmmo, lacksEP) {
+    showForestFailureModal(player, cannotAttack, lacksEP) {
         // Determine message based on which conditions failed
         let message = '';
-        if (lacksAmmo && lacksEP) {
-            message = 'You had failed to fight the monster due to lack of EP and ammunition.';
-        } else if (lacksAmmo) {
-            message = 'You had failed to fight the monster due to a lack of ammunition.';
+        if (cannotAttack && lacksEP) {
+            message = 'You had failed to fight the monster due to lack of EP and no way to attack (no ammunition or combat items).';
+        } else if (cannotAttack) {
+            message = 'You had failed to fight the monster due to no way to attack (no ammunition or combat items).';
         } else {
             message = 'You had failed to fight the monster due to lack of EP.';
         }
@@ -11066,16 +11134,21 @@ class Game {
     }
 
     acknowledgeForestFailure() {
-        // Add player to failed list
-        this.failedForestPlayers.push(this.currentFailurePlayer);
-
         // Hide modal
         document.getElementById('forest-failure-modal').style.display = 'none';
+
+        // Guest: just dismiss the modal, host already handled the game logic
+        if (this.gameMode === 'online' && !this.isHost) {
+            return;
+        }
+
+        // Add player to failed list
+        this.failedForestPlayers.push(this.currentFailurePlayer);
 
         // Move to next hunter
         this.forestReadinessQueue.shift();
 
-        // In online mode, after all forest readiness checks, proceed to battle
+        // Continue checking remaining hunters
         this.checkNextForestHunter();
     }
 
@@ -11777,6 +11850,80 @@ class Game {
         }, this.getDelay(2000));
     }
     
+    applyRoundStartPowers() {
+        // Apply weapon power effects at round start
+        this.players.forEach(player => {
+            // Bat Level 2 Power: Choice of +1 HP or +1 EP at round start
+            if (player.weapon.name === 'Bat' && player.weapon.powerTrackPosition >= 3) {
+                const maxHp = player.maxHP || 10;
+                const maxEp = player.maxEP || 10;
+                const hpFull = player.resources.hp >= maxHp;
+                const epFull = player.resources.ep >= maxEp;
+
+                if (hpFull && epFull) {
+                    console.log(`Bat Lv2 Power: ${player.name} has full HP and EP, no bonus received`);
+                    this.addLogEntry(`🦇 ${player.name}'s Bat Lv2 Power: Both HP and EP are full, no bonus`, 'power', player);
+                } else if (player.isBot) {
+                    let choice;
+                    if (hpFull) {
+                        choice = 'ep';
+                    } else if (epFull) {
+                        choice = 'hp';
+                    } else {
+                        const hpRatio = player.resources.hp / maxHp;
+                        const epRatio = player.resources.ep / maxEp;
+                        if (hpRatio < epRatio) {
+                            choice = 'hp';
+                        } else if (epRatio < hpRatio) {
+                            choice = 'ep';
+                        } else {
+                            choice = Math.random() < 0.5 ? 'hp' : 'ep';
+                        }
+                    }
+
+                    if (choice === 'hp') {
+                        this.modifyResource(player.id, 'hp', 1);
+                        this.addLogEntry(`🦇 ${player.name} chooses +1 HP from Bat Lv2 Power`, 'power', player);
+                    } else {
+                        this.modifyResource(player.id, 'ep', 1);
+                        this.addLogEntry(`🦇 ${player.name} chooses +1 EP from Bat Lv2 Power`, 'power', player);
+                    }
+                } else {
+                    // Human player: show choice dialog
+                    this.showBatPowerChoice(player.id);
+                }
+            }
+
+            if (player.weapon.name === 'Chain' && player.weapon.powerTrackPosition >= 3) {
+                player.resources.beer += 2;
+                this.addItemToInventory(player.id, 'Beer', 2);
+            }
+
+            if (player.weapon.name === 'Axe' && player.weapon.powerTrackPosition >= 3) {
+                player.resources.bloodBag += 1;
+                this.addItemToInventory(player.id, 'Blood Bag', 1);
+            }
+
+            if (player.weapon.name === 'Whip' && player.weapon.powerTrackPosition >= 3) {
+                player.resources.beer += 2;
+                this.addItemToInventory(player.id, 'Beer', 2);
+            }
+
+            if (player.weapon.name === 'Gloves' && player.weapon.powerTrackPosition >= 3) {
+                player.resources.bloodBag += 1;
+                this.addItemToInventory(player.id, 'Blood Bag', 1);
+            }
+
+            if (player.weapon.name === 'Rifle' && player.weapon.powerTrackPosition >= 3) {
+                this.modifyResource(player.id, 'money', 2);
+            }
+
+            if (player.weapon.name === 'Plasma' && player.weapon.powerTrackPosition >= 3) {
+                this.modifyResource(player.id, 'money', 2);
+            }
+        });
+    }
+
     startNewRound() {
         // Reset store phase completion flag for new round
         this.storePhaseCompleted = false;
@@ -11789,100 +11936,8 @@ class Game {
 
         // Log round start
         this.addLogEntry(`🔄 <strong>Round ${this.currentRound} Started</strong>`, 'round-start');
-        
-        // Apply weapon power effects at round start
-        this.players.forEach(player => {
-            // Bat Level 2 Power: Choice of +1 HP or +1 EP at round start
-            if (player.weapon.name === 'Bat' && player.weapon.powerTrackPosition >= 3) {
-                const maxHp = player.maxHP || 10;
-                const maxEp = player.maxEP || 10;
-                const hpFull = player.resources.hp >= maxHp;
-                const epFull = player.resources.ep >= maxEp;
-                
-                if (hpFull && epFull) {
-                    // Both resources are full, no bonus
-                    console.log(`Bat Lv2 Power: ${player.name} has full HP and EP, no bonus received`);
-                    this.addLogEntry(`🦇 ${player.name}'s Bat Lv2 Power: Both HP and EP are full, no bonus`, 'power', player);
-                } else if (player.isBot) {
-                    // Bot logic: choose based on what's available and HP/EP ratio
-                    let choice;
-                    if (hpFull) {
-                        choice = 'ep';
-                    } else if (epFull) {
-                        choice = 'hp';
-                    } else {
-                        // Neither is full, pick the lower resource
-                        const hpRatio = player.resources.hp / maxHp;
-                        const epRatio = player.resources.ep / maxEp;
-                        if (hpRatio < epRatio) {
-                            choice = 'hp';
-                        } else if (epRatio < hpRatio) {
-                            choice = 'ep';
-                        } else {
-                            // Equal ratios, choose randomly
-                            choice = Math.random() < 0.5 ? 'hp' : 'ep';
-                        }
-                    }
-                    
-                    if (choice === 'hp') {
-                        this.modifyResource(player.id, 'hp', 1);
-                        console.log(`Bat Lv2 Power: Bot ${player.name} chooses +1 HP at round start (HP: ${player.resources.hp}/${maxHp}, EP: ${player.resources.ep}/${maxEp})`);
-                        this.addLogEntry(`🦇 ${player.name} chooses +1 HP from Bat Lv2 Power`, 'power', player);
-                    } else {
-                        this.modifyResource(player.id, 'ep', 1);
-                        console.log(`Bat Lv2 Power: Bot ${player.name} chooses +1 EP at round start (HP: ${player.resources.hp}/${maxHp}, EP: ${player.resources.ep}/${maxEp})`);
-                        this.addLogEntry(`🦇 ${player.name} chooses +1 EP from Bat Lv2 Power`, 'power', player);
-                    }
-                } else {
-                    // Human player: show choice dialog
-                    this.showBatPowerChoice(player.id);
-                }
-            }
-            
-            // Chain Level 2 Power: +2 beers at round start
-            if (player.weapon.name === 'Chain' && player.weapon.powerTrackPosition >= 3) {
-                player.resources.beer += 2;
-                this.addItemToInventory(player.id, 'Beer', 2);
-                console.log(`Chain Lv2 Power: ${player.name} receives +2 beers at round start`);
-            }
-            
-            // Axe Level 2 Power: +1 blood bag at round start
-            if (player.weapon.name === 'Axe' && player.weapon.powerTrackPosition >= 3) {
-                player.resources.bloodBag += 1;
-                this.addItemToInventory(player.id, 'Blood Bag', 1);
-                console.log(`Axe Lv2 Power: ${player.name} receives +1 blood bag at round start`);
-            }
-            
-            // Whip Level 2 Power: +2 beers at round start
-            if (player.weapon.name === 'Whip' && player.weapon.powerTrackPosition >= 3) {
-                player.resources.beer += 2;
-                this.addItemToInventory(player.id, 'Beer', 2);
-                console.log(`Whip Lv2 Power: ${player.name} receives +2 beers at round start`);
-            }
-            
-            // Gloves Level 2 Power: +1 blood bag at round start
-            if (player.weapon.name === 'Gloves' && player.weapon.powerTrackPosition >= 3) {
-                player.resources.bloodBag += 1;
-                this.addItemToInventory(player.id, 'Blood Bag', 1);
-                console.log(`Gloves Lv2 Power: ${player.name} receives +1 blood bag at round start`);
-            }
-            
-            // Katana and Sword Level 2 powers moved to resource distribution phase
-            // They now give +1 EXP when hunter is alone at a location
-            
-            // Rifle Level 2 Power: +2$ at round start
-            if (player.weapon.name === 'Rifle' && player.weapon.powerTrackPosition >= 3) {
-                this.modifyResource(player.id, 'money', 2);
-                console.log(`Rifle Lv2 Power: ${player.name} receives +2$ at round start`);
-            }
-            
-            // Plasma Level 2 Power: +2$ at round start
-            if (player.weapon.name === 'Plasma' && player.weapon.powerTrackPosition >= 3) {
-                this.modifyResource(player.id, 'money', 2);
-                console.log(`Plasma Lv2 Power: ${player.name} receives +2$ at round start`);
-            }
-            
-        });
+
+        this.applyRoundStartPowers();
         
         // Update displays after applying round start effects
         this.updateResourceDisplay();
@@ -11903,7 +11958,10 @@ class Game {
         });
 
         // Update UI for next round
-        document.getElementById('confirm-selection').style.display = 'block';
+        const confirmBtn = document.getElementById('confirm-selection');
+        confirmBtn.style.display = 'block';
+        confirmBtn.textContent = 'Select Both Locations';
+        confirmBtn.disabled = true;
         document.getElementById('next-player').style.display = 'none';
         document.getElementById('status-message').textContent =
             `New Round Started! ${this.currentPlayer.name}: Select locations for your Hunter and Apprentice`;
@@ -12093,7 +12151,7 @@ class Game {
         if (player.upgradeProgress[upgradeType] === requiredAmount) {
             this.levelUpMaxResource(playerId, upgradeType, 1);
             player.upgradeProgress[upgradeType] = 0;
-            alert(`Player ${playerId}'s max ${upgradeType.toUpperCase()} increased!`);
+            // Log entry handled by levelUpMaxResource
         }
         
         // Update displays
@@ -12192,7 +12250,11 @@ class Game {
 
         // Refresh store display if in store phase to update capacity warnings
         if (this.roundPhase === 'store') {
-            if (this.gameMode === 'simultaneous') {
+            if (this.gameMode === 'online') {
+                if (player.id === this.localPlayerId) {
+                    this.showStoreForPlayer(player);
+                }
+            } else if (this.gameMode === 'simultaneous') {
                 this.showStoreForPlayer(player);
             } else {
                 this.showStore();
@@ -12725,27 +12787,27 @@ class Game {
             playerMaxHP: player ? player.maxResources.hp : 0,
             playerEP: player ? player.resources.ep : 0,
             playerMaxEP: player ? player.maxResources.ep : 0,
-            playerInventory: player ? player.inventory.map(i => ({ name: i.name, icon: i.icon, size: i.size })) : [],
+            playerInventory: player ? player.inventory.map(i => ({ name: i.name || '', icon: i.icon || '', size: i.size || 0 })) : [],
             monster: battle.monster ? {
-                name: battle.monster.name,
-                level: battle.monster.level,
-                hp: battle.monster.hp,
-                maxHp: battle.monster.maxHp,
-                attack: battle.monster.attack,
-                effect: battle.monster.effect,
-                effectId: battle.monster.effectId,
-                rewards: battle.monster.rewards
+                level: battle.monster.level || 0,
+                hp: battle.monster.hp || 0,
+                maxHp: battle.monster.maxHp || battle.monster.hp || 0,
+                attack: battle.monster.attack || battle.monster.att || 0,
+                effect: battle.monster.effect || '',
+                effectId: battle.monster.effectId || 0,
+                rewards: battle.monster.rewards || null
             } : null,
             turn: battle.turn,
-            bonusPts: battle.bonusPts,
-            petsUsed: battle.petsUsed,
-            hasAttacked: battle.hasAttacked,
-            doubleDamageUsed: battle.doubleDamageUsed,
-            canUseDoubleDamage: battle.canUseDoubleDamage,
+            bonusPts: battle.bonusPts || 0,
+            petsUsed: battle.petsUsed || false,
+            hasAttacked: battle.hasAttacked || false,
+            doubleDamageUsed: battle.doubleDamageUsed || false,
+            canUseDoubleDamage: battle.canUseDoubleDamage || false,
             lastAttackDamage: battle.lastAttackDamage || 0,
-            glovesPowerLevel: battle.glovesPowerLevel,
-            ammunitionConsumed: battle.ammunitionConsumed,
+            glovesPowerLevel: battle.glovesPowerLevel || 0,
+            ammunitionConsumed: battle.ammunitionConsumed || false,
             battleLogHTML: document.getElementById('battle-log')?.innerHTML || '',
+            monsterRewardsText: document.getElementById('battle-monster-rewards')?.textContent || '',
             isActive: battle.monster ? battle.monster.hp > 0 && (player ? player.resources.hp > 0 : true) : false
         };
     }
@@ -12868,9 +12930,10 @@ class Game {
         const phase = state.roundPhase;
 
         if (phase === 'selection' && prevPhase !== 'selection') {
-            // New selection round — hide store UI from previous phase
+            // New selection round — hide store/battle UI from previous phase
             const storeArea = document.getElementById('store-area');
             if (storeArea) storeArea.style.display = 'none';
+            document.getElementById('monster-battle').style.display = 'none';
 
             // Clear all player tokens from the board
             document.querySelectorAll('.token:not(.dummy-token)').forEach(token => token.remove());
@@ -12888,6 +12951,7 @@ class Game {
             const confirmBtn = document.getElementById('confirm-selection');
             if (confirmBtn) {
                 confirmBtn.disabled = true;
+                confirmBtn.textContent = 'Select Both Locations';
                 confirmBtn.style.display = 'inline-block';
             }
             // Show card selection UI
@@ -12936,6 +13000,11 @@ class Game {
         }
 
         if (phase === 'battle') {
+            // Check if guest received a forest failure notification
+            if (state.forestFailure && state.forestFailure.playerId === this.localPlayerId) {
+                document.getElementById('forest-failure-message').textContent = state.forestFailure.message;
+                document.getElementById('forest-failure-modal').style.display = 'flex';
+            }
             this.handleGuestBattleStateUpdate(state);
         }
 
@@ -12963,6 +13032,11 @@ class Game {
         this.resetPlayerCompletionStatus();
         this.showPlayerStatusIndicators();
 
+        // Ensure store/battle UIs are hidden from previous phase
+        const storeArea = document.getElementById('store-area');
+        if (storeArea) storeArea.style.display = 'none';
+        document.getElementById('monster-battle').style.display = 'none';
+
         // Run bot selections immediately
         const botPlayers = this.players.filter(p => p.isBot);
         botPlayers.forEach((player, i) => {
@@ -12979,10 +13053,18 @@ class Game {
             }, 50 * (i + 1));
         });
 
-        // Show selection cards for host
+        // Show selection UI for host
+        const cardSelection = document.querySelector('.card-selection');
+        if (cardSelection) cardSelection.style.display = 'grid';
         this.createLocationCards();
         this.updateLocationCardStates();
         document.getElementById('status-message').textContent = 'Select locations for your Hunter and Apprentice';
+        const confirmBtn = document.getElementById('confirm-selection');
+        if (confirmBtn) {
+            confirmBtn.textContent = 'Select Both Locations';
+            confirmBtn.disabled = true;
+            confirmBtn.style.display = 'inline-block';
+        }
 
         // Push initial state so guest can see selection phase started
         const state = this.serializeGameState();
@@ -13298,12 +13380,8 @@ class Game {
 
     proceedAfterStore() {
         // Check forest readiness and start battle
+        // checkForestReadiness -> startBattlePhase -> startBattlePhaseOnline (for online host)
         this.checkForestReadiness();
-
-        // After forest checks complete, push state and start battles
-        setTimeout(() => {
-            this.startBattlePhaseOnline();
-        }, 500);
     }
 
     // ==================== ONLINE: BATTLE PHASE ====================
@@ -13382,8 +13460,10 @@ class Game {
 
     handleGuestBattleStateUpdate(state) {
         if (!state.guestBattle) {
-            // Spectating mode - show battle read-only, or hide if no battle
-            if (state.battleState) {
+            // Not the guest's battle - only spectate if guest is also in the forest
+            const guestPlayer = this.players[this.localPlayerId];
+            const guestInForest = guestPlayer && guestPlayer.tokens.hunter === 7;
+            if (guestInForest && state.battleState) {
                 this.showBattleSpectator(state.battleState);
             } else {
                 document.getElementById('monster-battle').style.display = 'none';
@@ -13399,7 +13479,9 @@ class Game {
             return;
         }
 
-        // Guest's own battle
+        // Guest's own battle — hide any leftover spectator UI from prior bot battles
+        document.getElementById('monster-battle').style.display = 'none';
+
         if (state.battlePhase === 'monster_select') {
             // Guest needs to select monster level
             const player = this.players[this.localPlayerId];
@@ -13453,6 +13535,11 @@ class Game {
             document.getElementById('battle-monster-att').textContent = battleState.monster.attack;
         }
 
+        // Show monster rewards
+        if (battleState.monsterRewardsText) {
+            document.getElementById('battle-monster-rewards').textContent = battleState.monsterRewardsText;
+        }
+
         // Disable all buttons for spectator
         document.getElementById('battle-attack-btn').style.display = 'none';
         document.getElementById('battle-tame-btn').style.display = 'none';
@@ -13479,6 +13566,11 @@ class Game {
             document.getElementById('battle-monster-level').textContent = battleState.monster.level;
             document.getElementById('battle-monster-hp').textContent = `${battleState.monster.hp}/${battleState.monster.maxHp}`;
             document.getElementById('battle-monster-att').textContent = battleState.monster.attack;
+        }
+
+        // Show monster rewards
+        if (battleState.monsterRewardsText) {
+            document.getElementById('battle-monster-rewards').textContent = battleState.monsterRewardsText;
         }
 
         // Show battle log
@@ -13787,6 +13879,12 @@ class Game {
                 `🛒 <strong>${guestPlayer.name}</strong> bought ${itemName} for $${price}`,
                 'store', guestPlayer
             );
+
+            // Update host UI to reflect guest's purchase
+            this.updateResourceDisplay();
+            this.updateInventoryDisplay(guestPlayer.id);
+            if (itemName === 'Bullet') this.updateBulletDisplay(guestPlayer.id);
+            if (itemName === 'Battery') this.updateBatteryDisplay(guestPlayer.id);
         }
 
         // Push updated state to guest
@@ -13842,6 +13940,10 @@ class Game {
             }
         }
 
+        // Update host UI to reflect guest's changes
+        this.updateResourceDisplay();
+        this.updateInventoryDisplay(guestPlayer.id);
+
         // Check if overflow resolved
         if (this.getInventorySize(guestPlayer) <= guestPlayer.maxInventoryCapacity) {
             // Overflow resolved, push state and proceed
@@ -13895,8 +13997,9 @@ class Game {
         // Store pets for later battle start
         this.guestSelectedPets = pets || { level1: 0, level2: 0, level3: 0 };
 
-        // Get monster (level is 1-based, monsters are keyed 1-based)
-        const monster = this.selectRandomAvailableMonster(level, guestPlayer.id);
+        // Get monster (level from guest includes +1 offset for EP cost, subtract 1 for actual monster level)
+        const monsterLevel = level - 1;
+        const monster = this.selectRandomAvailableMonster(monsterLevel, guestPlayer.id);
         if (!monster) {
             console.warn(`No available monsters at level ${level} for guest`);
             return;
@@ -14105,18 +14208,17 @@ class Game {
         state.battlePhase = 'monster_preview';
         state.currentBattlePlayerId = playerId;
         state.monsterPreview = {
-            name: monster.name,
             level: monster.level,
             hp: monster.hp,
-            maxHp: monster.maxHp,
+            maxHp: monster.maxHp || monster.hp,
             att: monster.att,
             attack: monster.att,
-            money: monster.money,
-            energy: monster.energy,
-            blood: monster.blood,
-            pts: monster.pts,
-            effect: monster.effect,
-            effectId: monster.effectId
+            money: monster.money || 0,
+            energy: monster.energy || 0,
+            blood: monster.blood || 0,
+            pts: monster.pts || 0,
+            effect: monster.effect || '',
+            effectId: monster.effectId || 0
         };
         this.onlineManager.pushGameState(state);
         this.waitingForGuestAction = true;
@@ -14195,15 +14297,51 @@ class Game {
             return;
         }
 
-        // Start next round
-        this.startNextRoundPhase();
+        // Process next round: cleanup, move dummy tokens, apply weapon powers
+        // Do all data updates synchronously before pushing state
+        this.cleanupRoundEffects();
+        this.failedForestPlayers = [];
+        this.forestPlayersThisRound = new Set();
+        this.forestReadinessQueue = [];
 
-        // After next round phase processes, start new selection phase
+        // Reset token positions
+        this.players.forEach(player => {
+            player.tokens.hunter = null;
+            player.tokens.apprentice = null;
+        });
+
+        // Move dummy tokens and increment round
+        this.moveDummyTokens();
+        this.storePhaseCompleted = false;
+        this.currentRound++;
+
+        // Apply round-start weapon powers (same logic as startNewRound)
+        this.applyRoundStartPowers();
+
+        // Clear selections
+        this.stationChoices = {};
+        this.players.forEach(player => {
+            player.selectedCards.hunter = null;
+            player.selectedCards.apprentice = null;
+        });
+
+        this.roundPhase = 'selection';
+        this.currentPlayerIndex = this.localPlayerId;
+        this.pendingSelectionLogs = [];
+
+        // Push state with correct dummy positions, then start selection UI
         setTimeout(() => {
             const state = this.serializeGameState();
             state.roundPhase = 'selection';
             this.onlineManager.pushGameState(state);
             this.startOnlineSelectionPhase();
+
+            // Update local UI
+            document.querySelectorAll('.token').forEach(token => token.remove());
+            this.updateDummyTokenDisplay();
+            this.updateResourceDisplay();
+            this.players.forEach(p => this.updateInventoryDisplay(p.id));
+            this.addLogEntry(`🔄 <strong>Round ${this.currentRound} Started</strong>`, 'round-start');
         }, 1000);
     }
 
