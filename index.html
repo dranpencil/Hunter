@@ -25,7 +25,7 @@
         <!-- Main Menu Screen -->
         <div id="main-menu" class="main-menu" style="display: none;">
             <div class="menu-content">
-                <h1 class="game-title">Rock, Paper, Hunter</h1>
+                <h1 class="game-title">Rock, Paper, Hunters</h1>
                 <button class="menu-button rulebook-btn" onclick="game.showRulebook()">
                     <span class="button-icon">📖</span>
                 </button>
@@ -74,6 +74,16 @@
                                 <option value="2">2 Players</option>
                                 <option value="3" selected>3 Players</option>
                                 <option value="4">4 Players</option>
+                            </select>
+                        </div>
+                        <div class="setting-group">
+                            <label for="online-timeout">Disconnect Timeout:</label>
+                            <select id="online-timeout">
+                                <option value="30">30 seconds</option>
+                                <option value="60" selected>1 minute</option>
+                                <option value="120">2 minutes</option>
+                                <option value="300">5 minutes</option>
+                                <option value="600">10 minutes</option>
                             </select>
                         </div>
                     </div>

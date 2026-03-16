@@ -1061,7 +1061,7 @@ class Game {
             { name: 'Chain', reqExpAttack: 4, reqExpDefense: 3, capacity: 6, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 1, 1, 1], priority: 6,
               lv1Power: '怪獸於血量3以下即可收服', lv2Power: '回合開始+2啤酒', lv3Power: '寵物攻擊x2', preferLocation: 'bar' },
             { name: 'Axe', reqExpAttack: 4, reqExpDefense: 3, capacity: 6, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 0, 1, 1], priority: 4,
-              lv1Power: '玩家受傷時反擊怪獸受1點傷害(受傷時無法獲得經驗)', lv2Power: '回合開始+1血袋', lv3Power: '玩家受傷時反擊怪獸受一樣的傷害', preferLocation: 'hospital' },
+              lv1Power: '玩家受傷時反擊怪獸受1點傷害(受傷時獲得經驗-1)', lv2Power: '回合開始+1血袋', lv3Power: '玩家受傷時反擊怪獸受一樣的傷害', preferLocation: 'hospital' },
             { name: 'Whip', reqExpAttack: 4, reqExpDefense: 3, capacity: 6, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 1, 1, 1], priority: 5,
               lv1Power: '寵物和收服怪獸體力-1', lv2Power: '回合開始+2啤酒', lv3Power: '寵物和收服不耗體力', preferLocation: 'bar' },
             { name: 'Bow', reqExpAttack: 5, reqExpDefense: 3, capacity: 6, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 0, 0, 3], priority: 1,
@@ -1070,7 +1070,7 @@ class Game {
               lv1Power: '無', lv2Power: '單獨存在區域+2經驗', lv3Power: '每骰到至少1個1即+1分', preferLocation: 'dojo' },
             { name: 'Knife', reqExpAttack: 3, reqExpDefense: 3, capacity: 10, initialMoney: 8, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 0, 1, 1], priority: 2,
               lv1Power: '可將一次的攻擊力x2', lv2Power: '單獨存在區域+2分', lv3Power: '單獨存在區域+2分', preferLocation: 'plaza' },
-            { name: 'Gloves', reqExpAttack: 4, reqExpDefense: 3, capacity: 6, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 0, 1, 1], priority: 7,
+            { name: 'Gloves', reqExpAttack: 4, reqExpDefense: 3, capacity: 6, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 1, 1, 1], priority: 7,
               lv1Power: '基礎攻擊力=1，當hp少於一半時攻擊力+1', lv2Power: '回合開始+1血袋', lv3Power: '每次遭受攻擊而扣血，攻擊力+1', preferLocation: 'hospital' }
         ];
         
@@ -1239,10 +1239,13 @@ class Game {
 
     async createOnlineRoom() {
         const playerCount = parseInt(document.getElementById('online-player-count').value);
+        const timeoutSeconds = parseInt(document.getElementById('online-timeout').value);
         const maxHumans = playerCount; // All slots open for human players
 
         // Initialize OnlineManager
         this.onlineManager = new OnlineManager();
+        this.onlineManager.disconnectTimeout = timeoutSeconds * 1000;
+        this.onlineManager.warningTimeout = Math.floor(timeoutSeconds * 1000 / 2);
         this.isOnlineMode = true;
         this.isHost = true;
         this.onlinePlayerCount = playerCount;
@@ -3122,7 +3125,7 @@ class Game {
     }
     
     updateSoloModeUI() {
-        const slots = document.querySelectorAll('.player-slot');
+        const slots = document.querySelectorAll('#solo-play-section .player-slot');
 
         // Define color and weapon options with actual color values
         const allColorOptions = [
@@ -8131,7 +8134,8 @@ class Game {
         const monsterLevel = this.selectedMonsterLevel - 1; // Convert back to 0-based
         const totalEPCost = parseInt(document.getElementById('total-ep-cost').textContent);
 
-        if (player.resources.ep < totalEPCost) {
+        const effectiveEP = player.resources.ep + (this.overflowEP || 0);
+        if (effectiveEP < totalEPCost) {
             if (!this.isAutomatedMode) {
                 alert(`${player.name} needs ${totalEPCost} EP for this battle!`);
             }
@@ -13655,10 +13659,8 @@ class Game {
 
     handleGuestBattleStateUpdate(state) {
         if (!state.guestBattle) {
-            // Not the guest's battle - only spectate if guest is also in the forest
-            const guestPlayer = this.players[this.localPlayerId];
-            const guestInForest = guestPlayer && guestPlayer.tokens.hunter === 7;
-            if (guestInForest && state.battleState) {
+            // Not the guest's battle - spectate if there's an active battle
+            if (state.battleState) {
                 this.showBattleSpectator(state.battleState);
             } else {
                 document.getElementById('monster-battle').style.display = 'none';

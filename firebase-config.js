@@ -24,6 +24,8 @@ class OnlineManager {
         this.disconnectCheckInterval = null;
         this.onDisconnectRef = null;
         this.stateVersion = 0;
+        this.disconnectTimeout = 30000; // Default 30s, can be overridden
+        this.warningTimeout = 15000;    // Default 15s, can be overridden
     }
 
     // Initialize Firebase
@@ -77,6 +79,7 @@ class OnlineManager {
             status: 'waiting',
             playerCount: playerCount,
             humanPlayerCount: humanPlayerCount,
+            disconnectTimeout: this.disconnectTimeout,
             config: {
                 weapons: null
             },
@@ -115,6 +118,12 @@ class OnlineManager {
         const currentPlayerCount = room.players ? Object.keys(room.players).length : 0;
         if (currentPlayerCount >= room.humanPlayerCount) {
             throw new Error('Room is full');
+        }
+
+        // Apply host's timeout settings
+        if (room.disconnectTimeout) {
+            this.disconnectTimeout = room.disconnectTimeout;
+            this.warningTimeout = Math.floor(room.disconnectTimeout / 2);
         }
 
         // Join the room by adding to players list
@@ -243,9 +252,9 @@ class OnlineManager {
             for (const [playerId, lastBeat] of Object.entries(heartbeats)) {
                 if (playerId === this.localId) continue;
                 const elapsed = now - lastBeat;
-                if (elapsed > 30000) {
+                if (elapsed > this.disconnectTimeout) {
                     this.handleDisconnect(playerId);
-                } else if (elapsed > 15000) {
+                } else if (elapsed > this.warningTimeout) {
                     if (this.onConnectionWarning) {
                         this.onConnectionWarning(playerId);
                     }
