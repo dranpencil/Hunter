@@ -3966,7 +3966,8 @@ button {
     text-align: center;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
     min-width: 400px;
-    max-width: 500px;
+    max-width: 90vw;
+    width: fit-content;
 }
 
 .lobby-content h2 {
@@ -4052,11 +4053,17 @@ button {
     list-style: none;
     padding: 0;
     margin: 0 0 10px 0;
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+}
+
+.player-slot-list .player-slot {
+    white-space: nowrap;
 }
 
 .player-slot {
     padding: 6px 12px;
-    margin: 4px 0;
     border-radius: 4px;
     font-size: 14px;
 }
@@ -4070,7 +4077,7 @@ button {
 }
 
 .slot-status {
-    float: right;
+    margin-left: 4px;
 }
 
 .game-composition {
@@ -4197,3 +4204,34 @@ button {
 .online-connection-bar.disconnected {
     background: #e74c3c;
 }
+
+/* Phase Timer */
+.phase-timer {
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    color: #ecf0f1;
+    margin-left: 6px;
+    font-weight: bold;
+}
+.phase-timer.timer-warning {
+    color: #e74c3c;
+    animation: timer-blink 0.5s ease-in-out infinite alternate;
+}
+@keyframes timer-blink {
+    from { opacity: 1; }
+    to { opacity: 0.3; }
+}
+
+/* Kick Vote Modal */
+.kick-vote-buttons { display: flex; gap: 15px; justify-content: center; margin-top: 15px; }
+.kick-vote-yes-btn { background: #e74c3c; color: white; padding: 10px 25px; border-radius: 5px; border: none; cursor: pointer; font-size: 16px; }
+.kick-vote-no-btn { background: #27ae60; color: white; padding: 10px 25px; border-radius: 5px; border: none; cursor: pointer; font-size: 16px; }
+.kick-vote-yes-btn:disabled, .kick-vote-no-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.kick-vote-tally { display: flex; justify-content: center; gap: 30px; margin: 15px 0; }
+.tally-option { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+.tally-label { font-weight: bold; font-size: 14px; }
+.tally-count { font-size: 24px; font-weight: bold; }
+.tally-yes .tally-count { color: #e74c3c; }
+.tally-no .tally-count { color: #27ae60; }
+.kick-vote-timer { text-align: center; margin: 10px 0; }
+#kick-vote-timer-display { font-family: 'Courier New', monospace; font-size: 20px; font-weight: bold; color: #f39c12; }

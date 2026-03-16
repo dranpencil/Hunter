@@ -77,13 +77,13 @@
                             </select>
                         </div>
                         <div class="setting-group">
-                            <label for="online-timeout">Disconnect Timeout:</label>
-                            <select id="online-timeout">
+                            <label for="online-phase-timer">Phase Time Limit:</label>
+                            <select id="online-phase-timer">
                                 <option value="30">30 seconds</option>
                                 <option value="60" selected>1 minute</option>
                                 <option value="120">2 minutes</option>
-                                <option value="300">5 minutes</option>
-                                <option value="600">10 minutes</option>
+                                <option value="180">3 minutes</option>
+                                <option value="0">No time limit</option>
                             </select>
                         </div>
                     </div>
@@ -156,6 +156,31 @@
                 <h3>Player Disconnected</h3>
                 <p id="disconnect-message">The other player has disconnected.</p>
                 <button onclick="game.handleDisconnectAcknowledge()">Return to Menu</button>
+            </div>
+        </div>
+
+        <!-- Kick Vote Modal -->
+        <div id="kick-vote-modal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <h3 id="kick-vote-title">Kick Vote</h3>
+                <p id="kick-vote-message">Do you wish to kick out this player?</p>
+                <div class="kick-vote-tally">
+                    <div class="tally-option tally-yes">
+                        <span class="tally-label">Yes</span>
+                        <span class="tally-count" id="kick-vote-yes-count">0</span>
+                    </div>
+                    <div class="tally-option tally-no">
+                        <span class="tally-label">No</span>
+                        <span class="tally-count" id="kick-vote-no-count">0</span>
+                    </div>
+                </div>
+                <div class="kick-vote-timer">
+                    <span id="kick-vote-timer-display">0:30</span>
+                </div>
+                <div class="kick-vote-buttons">
+                    <button class="kick-vote-yes-btn" onclick="game.submitKickVote(true)">Yes</button>
+                    <button class="kick-vote-no-btn" onclick="game.submitKickVote(false)">No</button>
+                </div>
             </div>
         </div>
 

@@ -1140,6 +1140,14 @@ class Game {
         this.waitingForGuestAction = false; // Whether host is waiting for guest input
         this.onlineBattleState = null; // Battle state synced to Firebase
 
+        // Phase timer properties (online mode only)
+        this.phaseTimeLimit = 60; // seconds, default 1 min
+        this.phaseTimers = {}; // map of playerId -> { remaining, intervalId, running }
+        this.phaseTimersPaused = false; // true during kick vote
+        this.kickVote = null; // current vote state
+        this.expiredTimerPlayers = []; // accumulates players whose timer hits 0
+        this.expiredTimerDebounce = null; // debounce timeout for bundled expiry
+
         // Solo play mode configuration
         this.soloModeSlots = [
             { type: 'player', active: true, color: 'random', weapon: 'random' },
@@ -1239,19 +1247,22 @@ class Game {
 
     async createOnlineRoom() {
         const playerCount = parseInt(document.getElementById('online-player-count').value);
-        const timeoutSeconds = parseInt(document.getElementById('online-timeout').value);
         const maxHumans = playerCount; // All slots open for human players
+
+        // Read phase time limit setting
+        this.phaseTimeLimit = parseInt(document.getElementById('online-phase-timer').value);
 
         // Initialize OnlineManager
         this.onlineManager = new OnlineManager();
-        this.onlineManager.disconnectTimeout = timeoutSeconds * 1000;
-        this.onlineManager.warningTimeout = Math.floor(timeoutSeconds * 1000 / 2);
         this.isOnlineMode = true;
         this.isHost = true;
         this.onlinePlayerCount = playerCount;
 
         try {
             const roomCode = await this.onlineManager.createRoom(playerCount, maxHumans);
+
+            // Store phase time limit in room data
+            this.onlineManager.roomRef.child('phaseTimeLimit').set(this.phaseTimeLimit);
 
             // Show waiting room
             document.getElementById('create-room-view').style.display = 'none';
@@ -1373,6 +1384,11 @@ class Game {
         try {
             const room = await this.onlineManager.joinRoom(code);
 
+            // Read phase time limit from room data
+            if (room.phaseTimeLimit !== undefined && room.phaseTimeLimit !== null) {
+                this.phaseTimeLimit = room.phaseTimeLimit;
+            }
+
             // Show guest waiting room
             document.getElementById('join-room-view').style.display = 'none';
             document.getElementById('waiting-room-guest').style.display = 'block';
@@ -1436,7 +1452,18 @@ class Game {
             }
         };
 
-        this.onlineManager.onPlayerDisconnected = (playerId) => {
+        this.onlineManager.onPlayerDisconnected = (disconnectedFirebaseId) => {
+            // Find which game player this Firebase ID maps to
+            // If the player was already kicked (converted to bot), ignore the disconnect
+            const gamePlayerId = this.onlinePlayerMap ? this.onlinePlayerMap[disconnectedFirebaseId] : undefined;
+            if (gamePlayerId !== undefined) {
+                const player = this.players.find(p => p.id === gamePlayerId);
+                if (player && player.isBot) {
+                    // Player was already kicked and replaced by bot — ignore disconnect
+                    console.log(`Ignoring disconnect for kicked player ${player.name} (now bot)`);
+                    return;
+                }
+            }
             const modal = document.getElementById('disconnect-modal');
             if (modal) {
                 document.getElementById('disconnect-message').textContent =
@@ -1510,6 +1537,8 @@ class Game {
     initOnlineGameAsHost(config, assignedWeapons) {
         this.localPlayerId = config.humanSlots[this.onlineManager.localId];
         this.currentPlayerIndex = this.localPlayerId;
+        // Map Firebase IDs → game player IDs (used to identify kicked players on disconnect)
+        this.onlinePlayerMap = { ...config.humanSlots };
 
         // Hide lobby, show game
         document.getElementById('online-lobby').style.display = 'none';
@@ -1650,7 +1679,7 @@ class Game {
         const playerBoardsContainer = document.getElementById('player-boards-container');
         playerBoardsContainer.className = `player-boards players-${config.playerCount}`;
 
-        this.roundPhase = 'selection';
+        this.roundPhase = 'init'; // Set to 'init' so first state update triggers phase transition logic (including timer init)
         this.pendingSelectionLogs = [];
         this.playerCompletionStatus = {};
         this.players.forEach(player => {
@@ -2462,6 +2491,16 @@ class Game {
 
             statusDiv.appendChild(nameSpan);
             statusDiv.appendChild(iconSpan);
+
+            // Add phase timer display for human players in online mode (skip if no time limit)
+            if (this.isOnlineMode && !player.isBot && this.phaseTimeLimit > 0) {
+                const timerSpan = document.createElement('span');
+                timerSpan.className = 'phase-timer';
+                timerSpan.dataset.playerId = player.id;
+                timerSpan.textContent = this.formatTime(this.phaseTimeLimit * 1000);
+                statusDiv.appendChild(timerSpan);
+            }
+
             panel.appendChild(statusDiv);
         });
     }
@@ -12926,6 +12965,7 @@ class Game {
             })),
             dummyTokens: [...this.dummyTokens],
             playerCompletionStatus: { ...this.playerCompletionStatus },
+            phaseTimeLimit: this.phaseTimeLimit,
             battleLog: this.getBattleLogEntries(),
             stateVersion: 0 // Will be set by pushGameState
         };
@@ -13056,6 +13096,10 @@ class Game {
             // Update the status indicator UI for each player
             for (const [playerId, isComplete] of Object.entries(state.playerCompletionStatus)) {
                 this.updatePlayerStatus(parseInt(playerId), isComplete);
+                // Stop phase timer for completed players (guest side sync)
+                if (isComplete && !this.isHost) {
+                    this.stopPhaseTimer(parseInt(playerId));
+                }
             }
         }
 
@@ -13096,6 +13140,14 @@ class Game {
 
         // Handle phase-specific guest UI updates
         this.handleGuestPhaseUpdate(state, prevPhase);
+
+        // Handle kick vote state from host
+        this.handleGuestKickVoteState(state);
+
+        // Handle phase time limit from host
+        if (state.phaseTimeLimit !== undefined && !this.isHost) {
+            this.phaseTimeLimit = state.phaseTimeLimit;
+        }
     }
 
     handleGuestPhaseUpdate(state, prevPhase) {
@@ -13138,6 +13190,12 @@ class Game {
             if (localPlayer) {
                 localPlayer.selectedCards = { hunter: null, apprentice: null };
             }
+
+            // Initialize and start local phase timers for guest
+            this.initPhaseTimers();
+            this.players.forEach(p => {
+                if (!p.isBot) this.startPhaseTimer(p.id);
+            });
         }
 
         // Keep status indicators visible and updated during selection/store phases
@@ -13175,6 +13233,13 @@ class Game {
                     this.showStoreForPlayer(guestPlayer);
                 }
             }
+            // Initialize guest timers when first entering store phase
+            if (prevPhase !== 'store') {
+                this.initPhaseTimers();
+                this.players.forEach(p => {
+                    if (!p.isBot) this.startPhaseTimer(p.id);
+                });
+            }
         }
 
         if (phase === 'battle') {
@@ -13203,9 +13268,11 @@ class Game {
         }
 
         if (phase === 'capacityOverflow' && state.guestOverflow) {
-            // Guest needs to resolve capacity overflow
+            // Guest needs to resolve capacity overflow — start local timer
             const guestPlayer = this.players[this.localPlayerId];
             if (guestPlayer && this.getInventorySize(guestPlayer) > guestPlayer.maxInventoryCapacity) {
+                this.initPhaseTimerForPlayer(this.localPlayerId);
+                this.startPhaseTimer(this.localPlayerId);
                 this.handleCapacityOverflow([this.localPlayerId]);
             }
         }
@@ -13219,6 +13286,9 @@ class Game {
         this.resetPlayerCompletionStatus();
         this.showPlayerStatusIndicators();
         this.setPhaseTitle('Location Selection Phase');
+
+        // Initialize phase timers for this phase
+        this.initPhaseTimers();
 
         // Hide "Current Player" text — not needed in online mode
         document.querySelector('.current-player').style.display = 'none';
@@ -13235,11 +13305,17 @@ class Game {
                 this.handleBotLocationSelection(player.id);
                 this.updatePlayerStatus(player.id, true);
 
-                // After last bot completes, push state so guest sees bot statuses
+                // After last bot completes, push state so guest sees bot statuses & start human timers
                 if (i === botPlayers.length - 1) {
                     const state = this.serializeGameState();
                     state.roundPhase = 'selection';
+                    state.phaseTimeLimit = this.phaseTimeLimit;
                     this.onlineManager.pushGameState(state);
+
+                    // Start timers for all human players
+                    this.players.forEach(p => {
+                        if (!p.isBot) this.startPhaseTimer(p.id);
+                    });
                 }
             }, 50 * (i + 1));
         });
@@ -13307,6 +13383,7 @@ class Game {
             });
 
             this.updatePlayerStatus(localPlayer.id, true);
+            this.stopPhaseTimer(this.localPlayerId);
 
             // Push state so other players see host's status update
             const hostState = this.serializeGameState();
@@ -13324,6 +13401,7 @@ class Game {
             }
         } else {
             // Guest sends selection to host via Firebase
+            this.stopPhaseTimer(this.localPlayerId);
             this.onlineManager.pushAction({
                 type: 'selection',
                 playerId: this.localPlayerId,
@@ -13343,6 +13421,7 @@ class Game {
     onlineSelectionComplete() {
         // Host: all players have selected, proceed
         console.log('Online: All players completed selections');
+        this.stopAllPhaseTimers();
 
         for (const logEntry of this.pendingSelectionLogs) {
             this.addLogEntry(logEntry.message, logEntry.type, logEntry.player);
@@ -13481,6 +13560,9 @@ class Game {
         this.showPlayerStatusIndicators();
         this.setPhaseTitle('Store Phase');
 
+        // Initialize phase timers
+        this.initPhaseTimers();
+
         // Bots shop immediately
         this.players.forEach((player) => {
             if (player.isBot) {
@@ -13495,10 +13577,16 @@ class Game {
             this.showStoreForPlayer(hostPlayer);
         }
 
+        // Start timers for all human players
+        this.players.forEach(p => {
+            if (!p.isBot) this.startPhaseTimer(p.id);
+        });
+
         // Push state so guest can see store
         const state = this.serializeGameState();
         state.roundPhase = 'store';
         state.guestStorePhase = true;
+        state.phaseTimeLimit = this.phaseTimeLimit;
         this.onlineManager.pushGameState(state);
     }
 
@@ -13506,6 +13594,7 @@ class Game {
         if (this.isHost) {
             // Host finished shopping
             this.updatePlayerStatus(this.localPlayerId, true);
+            this.stopPhaseTimer(this.localPlayerId);
             document.getElementById('store-area').style.display = 'none';
 
             // Push state so other players see host's status update
@@ -13520,6 +13609,7 @@ class Game {
             }
         } else {
             // Guest sends finish signal
+            this.stopPhaseTimer(this.localPlayerId);
             this.onlineManager.pushAction({
                 type: 'finish_shopping',
                 playerId: this.localPlayerId
@@ -13531,6 +13621,7 @@ class Game {
 
     onlineStoreComplete() {
         this.storePhaseCompleted = true;
+        this.stopAllPhaseTimers();
         this.hidePlayerStatusIndicators();
 
         // Check capacity overflow
@@ -13553,16 +13644,27 @@ class Game {
         });
 
         if (hostOverflow) {
+            // Start a fresh phase timer for the host's overflow
+            this.initPhaseTimerForPlayer(this.localPlayerId);
+            this.startPhaseTimer(this.localPlayerId);
             this.handleCapacityOverflow([this.localPlayerId]);
             // After overflow resolved, check if guest needs overflow too
             return;
         }
 
         if (guestOverflow) {
+            // Start a fresh phase timer for the guest's overflow
+            const guestId = this.players.find(p => !p.isBot && p.id !== this.localPlayerId &&
+                this.getInventorySize(p) > p.maxInventoryCapacity)?.id;
+            if (guestId !== undefined) {
+                this.initPhaseTimerForPlayer(guestId);
+                this.startPhaseTimer(guestId);
+            }
             // Push state telling guest to resolve overflow
             const state = this.serializeGameState();
             state.roundPhase = 'capacityOverflow';
             state.guestOverflow = true;
+            state.phaseTimeLimit = this.phaseTimeLimit;
             this.onlineManager.pushGameState(state);
             return;
         }
@@ -13634,6 +13736,19 @@ class Game {
             return;
         }
 
+        // Init and start a phase timer for the battling human player
+        this.stopAllPhaseTimers();
+        this.expiredTimerPlayers = [];
+        this.phaseTimersPaused = false;
+        this.phaseTimers = {};
+        this.phaseTimers[player.id] = {
+            remaining: this.phaseTimeLimit * 1000,
+            intervalId: null,
+            running: false
+        };
+        this.updatePhaseTimerDisplay(player.id);
+        this.startPhaseTimer(player.id);
+
         if (player.id === this.localPlayerId && this.isHost) {
             // Host's battle - show monster modal normally
             this.selectedMonsterLevel = null;
@@ -13652,6 +13767,7 @@ class Game {
             state.guestBattle = true;
             state.battlePhase = 'monster_select';
             state.currentBattlePlayerId = player.id;
+            state.phaseTimeLimit = this.phaseTimeLimit;
             this.onlineManager.pushGameState(state);
             this.waitingForGuestAction = true;
         }
@@ -13680,7 +13796,18 @@ class Game {
         document.getElementById('monster-battle').style.display = 'none';
 
         if (state.battlePhase === 'monster_select') {
-            // Guest needs to select monster level
+            // Guest needs to select monster level — start local timer
+            this.stopAllPhaseTimers();
+            this.expiredTimerPlayers = [];
+            this.phaseTimersPaused = false;
+            this.phaseTimers = {};
+            this.phaseTimers[this.localPlayerId] = {
+                remaining: this.phaseTimeLimit * 1000,
+                intervalId: null,
+                running: false
+            };
+            this.startPhaseTimer(this.localPlayerId);
+
             const player = this.players[this.localPlayerId];
             this.currentMonsterPlayer = this.localPlayerId; // Set for confirmBattleSelection
             this.selectedMonsterLevel = null;
@@ -13965,9 +14092,28 @@ class Game {
             case 'player_board_action':
                 this.handleGuestBoardAction(action);
                 break;
+            case 'kick_vote':
+                this.handleGuestKickVote(action);
+                break;
             default:
                 console.warn('Unknown guest action:', action.type);
         }
+    }
+
+    handleGuestKickVote(action) {
+        if (!this.kickVote || this.kickVote.resolved) return;
+        const vote = action.data.vote;
+        this.kickVote.votes[action.playerId] = vote;
+        this.kickVote.voteOrder.push(action.playerId);
+        this.updateKickVoteTally();
+
+        // Push state so all clients see updated counts
+        const state = this.serializeGameState();
+        state.roundPhase = this.roundPhase;
+        state.kickVote = this.serializeKickVote();
+        this.onlineManager.pushGameState(state);
+
+        this.checkKickVoteCompletion();
     }
 
     handleGuestBoardAction(action) {
@@ -14011,6 +14157,7 @@ class Game {
         });
 
         this.updatePlayerStatus(guestPlayer.id, true);
+        this.stopPhaseTimer(action.playerId);
 
         // Push state so all players see updated status
         const state = this.serializeGameState();
@@ -14102,6 +14249,7 @@ class Game {
 
     handleGuestFinishShopping(action) {
         this.updatePlayerStatus(action.playerId, true);
+        this.stopPhaseTimer(action.playerId);
 
         // Push state so all players see updated status
         const state = this.serializeGameState();
@@ -14552,6 +14700,594 @@ class Game {
             this.players.forEach(p => this.updateInventoryDisplay(p.id));
             this.addLogEntry(`🔄 <strong>Round ${this.currentRound} Started</strong>`, 'round-start');
         }, 1000);
+    }
+
+    // ==================== PHASE TIMER SYSTEM ====================
+
+    formatTime(ms) {
+        const totalSeconds = Math.max(0, Math.ceil(ms / 1000));
+        const minutes = Math.floor(totalSeconds / 60);
+        const seconds = totalSeconds % 60;
+        return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    }
+
+    initPhaseTimers() {
+        // Clear any existing timers
+        this.stopAllPhaseTimers();
+        this.expiredTimerPlayers = [];
+        this.phaseTimersPaused = false;
+
+        this.players.forEach(player => {
+            if (!player.isBot) {
+                this.phaseTimers[player.id] = {
+                    remaining: this.phaseTimeLimit * 1000,
+                    intervalId: null,
+                    running: false
+                };
+            }
+        });
+
+        // Update display
+        this.players.forEach(player => {
+            if (!player.isBot) {
+                this.updatePhaseTimerDisplay(player.id);
+            }
+        });
+    }
+
+    initPhaseTimerForPlayer(playerId) {
+        // Init a fresh timer for a single player (e.g., for capacity overflow)
+        this.stopPhaseTimer(playerId);
+        this.phaseTimers[playerId] = {
+            remaining: this.phaseTimeLimit * 1000,
+            intervalId: null,
+            running: false
+        };
+        this.updatePhaseTimerDisplay(playerId);
+    }
+
+    startPhaseTimer(playerId) {
+        if (!this.isOnlineMode || this.phaseTimeLimit <= 0) return;
+        const player = this.players.find(p => p.id === playerId);
+        if (!player || player.isBot) return;
+        const timer = this.phaseTimers[playerId];
+        if (!timer || timer.running) return;
+
+        timer.running = true;
+        timer.intervalId = setInterval(() => {
+            if (this.phaseTimersPaused) return;
+            timer.remaining -= 1000;
+            this.updatePhaseTimerDisplay(playerId);
+            if (timer.remaining <= 0) {
+                timer.remaining = 0;
+                this.updatePhaseTimerDisplay(playerId);
+                clearInterval(timer.intervalId);
+                timer.intervalId = null;
+                timer.running = false;
+                this.onPhaseTimerExpired(playerId);
+            }
+        }, 1000);
+    }
+
+    stopPhaseTimer(playerId) {
+        const timer = this.phaseTimers[playerId];
+        if (!timer) return;
+        if (timer.intervalId) {
+            clearInterval(timer.intervalId);
+            timer.intervalId = null;
+        }
+        timer.running = false;
+    }
+
+    stopAllPhaseTimers() {
+        for (const playerId of Object.keys(this.phaseTimers)) {
+            this.stopPhaseTimer(parseInt(playerId));
+        }
+    }
+
+    pauseAllPhaseTimers() {
+        this.phaseTimersPaused = true;
+    }
+
+    resumeAllPhaseTimers() {
+        this.phaseTimersPaused = false;
+    }
+
+    updatePhaseTimerDisplay(playerId) {
+        const timerSpan = document.querySelector(`.phase-timer[data-player-id="${playerId}"]`);
+        if (!timerSpan) return;
+        const timer = this.phaseTimers[playerId];
+        if (!timer) return;
+        timerSpan.textContent = this.formatTime(timer.remaining);
+        if (timer.remaining <= 10000) {
+            timerSpan.classList.add('timer-warning');
+        } else {
+            timerSpan.classList.remove('timer-warning');
+        }
+    }
+
+    removePhaseTimerDisplay(playerId) {
+        const timerSpan = document.querySelector(`.phase-timer[data-player-id="${playerId}"]`);
+        if (timerSpan) timerSpan.remove();
+    }
+
+    onPhaseTimerExpired(playerId) {
+        // Only host handles timer expiry
+        if (!this.isHost) return;
+
+        this.expiredTimerPlayers.push(playerId);
+
+        // Debounce: wait 500ms for other timers to also expire
+        if (this.expiredTimerDebounce) clearTimeout(this.expiredTimerDebounce);
+        this.expiredTimerDebounce = setTimeout(() => {
+            const targets = [...this.expiredTimerPlayers];
+            this.expiredTimerPlayers = [];
+            this.expiredTimerDebounce = null;
+            this.triggerKickVote(targets);
+        }, 500);
+    }
+
+    // ==================== KICK VOTE SYSTEM ====================
+
+    triggerKickVote(targetPlayerIds) {
+        if (!this.isHost) return;
+
+        this.pauseAllPhaseTimers();
+
+        const targetNames = targetPlayerIds.map(id => {
+            const p = this.players.find(pl => pl.id === id);
+            return p ? p.name : `Player ${id + 1}`;
+        });
+
+        // Identify voters: human, non-bot, not in target list
+        const voterIds = this.players
+            .filter(p => !p.isBot && !targetPlayerIds.includes(p.id))
+            .map(p => p.id);
+
+        // If no voters (only bots/targets remain), auto-kick
+        if (voterIds.length === 0) {
+            targetPlayerIds.forEach(id => this.kickPlayer(id));
+            this.resumeAllPhaseTimers();
+            return;
+        }
+
+        this.kickVote = {
+            targetIds: [...targetPlayerIds],
+            targetNames: [...targetNames],
+            votes: {},
+            voterIds: [...voterIds],
+            voteOrder: [],
+            resolved: false,
+            voteTimerRemaining: 30000,
+            voteTimerIntervalId: null,
+            lostVoteRight: [] // voters who lost their right by not voting in time
+        };
+
+        this.startKickVoteTimer();
+
+        // Push state so guests see the vote modal
+        const state = this.serializeGameState();
+        state.roundPhase = this.roundPhase;
+        state.kickVote = this.serializeKickVote();
+        this.onlineManager.pushGameState(state);
+
+        // Show modal for host if host is a voter
+        if (voterIds.includes(this.localPlayerId)) {
+            this.showKickVoteModal(true);
+        } else if (targetPlayerIds.includes(this.localPlayerId)) {
+            this.showKickVoteModal(false);
+        }
+    }
+
+    serializeKickVote() {
+        if (!this.kickVote) return null;
+        const yesCount = Object.values(this.kickVote.votes).filter(v => v === true).length;
+        const noCount = Object.values(this.kickVote.votes).filter(v => v === false).length;
+        return {
+            targetIds: this.kickVote.targetIds,
+            targetNames: this.kickVote.targetNames,
+            voterIds: this.kickVote.voterIds,
+            yesCount: yesCount,
+            noCount: noCount,
+            voteTimerRemaining: this.kickVote.voteTimerRemaining,
+            lostVoteRight: this.kickVote.lostVoteRight || []
+        };
+    }
+
+    showKickVoteModal(isVoter) {
+        const modal = document.getElementById('kick-vote-modal');
+        if (!modal) return;
+
+        const targetNames = this.kickVote.targetNames.join(', ');
+        document.getElementById('kick-vote-title').textContent = 'Kick Vote';
+
+        if (isVoter) {
+            document.getElementById('kick-vote-message').textContent =
+                `Do you wish to kick out ${targetNames}?`;
+            const yesBtn = modal.querySelector('.kick-vote-yes-btn');
+            const noBtn = modal.querySelector('.kick-vote-no-btn');
+            yesBtn.style.display = 'inline-block';
+            noBtn.style.display = 'inline-block';
+            yesBtn.disabled = false;
+            noBtn.disabled = false;
+        } else {
+            document.getElementById('kick-vote-message').textContent =
+                'Other players are voting on whether to kick you...';
+            modal.querySelector('.kick-vote-yes-btn').style.display = 'none';
+            modal.querySelector('.kick-vote-no-btn').style.display = 'none';
+        }
+
+        this.updateKickVoteTally();
+        this.updateKickVoteTimerDisplay();
+        modal.style.display = 'flex';
+    }
+
+    hideKickVoteModal() {
+        const modal = document.getElementById('kick-vote-modal');
+        if (modal) modal.style.display = 'none';
+    }
+
+    updateKickVoteTally() {
+        if (!this.kickVote) return;
+        const yesCount = Object.values(this.kickVote.votes).filter(v => v === true).length;
+        const noCount = Object.values(this.kickVote.votes).filter(v => v === false).length;
+        const yesEl = document.getElementById('kick-vote-yes-count');
+        const noEl = document.getElementById('kick-vote-no-count');
+        if (yesEl) yesEl.textContent = yesCount;
+        if (noEl) noEl.textContent = noCount;
+    }
+
+    updateKickVoteTimerDisplay() {
+        if (!this.kickVote) return;
+        const el = document.getElementById('kick-vote-timer-display');
+        if (el) el.textContent = this.formatTime(this.kickVote.voteTimerRemaining);
+    }
+
+    startKickVoteTimer() {
+        if (!this.kickVote) return;
+        this.kickVote.voteTimerIntervalId = setInterval(() => {
+            this.kickVote.voteTimerRemaining -= 1000;
+            this.updateKickVoteTimerDisplay();
+
+            if (this.kickVote.voteTimerRemaining <= 0) {
+                // All remaining non-voted voters lose their right
+                const nonVoted = this.kickVote.voterIds.filter(
+                    id => !(id in this.kickVote.votes) && !(this.kickVote.lostVoteRight || []).includes(id)
+                );
+                nonVoted.forEach(id => {
+                    if (!this.kickVote.lostVoteRight) this.kickVote.lostVoteRight = [];
+                    this.kickVote.lostVoteRight.push(id);
+                });
+
+                // Disable buttons locally
+                const modal = document.getElementById('kick-vote-modal');
+                if (modal) {
+                    modal.querySelector('.kick-vote-yes-btn').disabled = true;
+                    modal.querySelector('.kick-vote-no-btn').disabled = true;
+                }
+
+                this.resolveKickVote();
+            }
+
+            // Push timer update so guests see countdown
+            if (this.isHost && this.kickVote && !this.kickVote.resolved) {
+                const state = this.serializeGameState();
+                state.roundPhase = this.roundPhase;
+                state.kickVote = this.serializeKickVote();
+                this.onlineManager.pushGameState(state);
+            }
+        }, 1000);
+    }
+
+    submitKickVote(vote) {
+        if (!this.kickVote) return;
+
+        // Check if this player already voted or lost right
+        if (this.kickVote.votes[this.localPlayerId] !== undefined) return;
+        if ((this.kickVote.lostVoteRight || []).includes(this.localPlayerId)) return;
+
+        // Disable buttons immediately
+        const modal = document.getElementById('kick-vote-modal');
+        if (modal) {
+            modal.querySelector('.kick-vote-yes-btn').disabled = true;
+            modal.querySelector('.kick-vote-no-btn').disabled = true;
+        }
+
+        if (this.isHost) {
+            this.kickVote.votes[this.localPlayerId] = vote;
+            this.kickVote.voteOrder.push(this.localPlayerId);
+            this.updateKickVoteTally();
+            this.checkKickVoteCompletion();
+
+            // Push state
+            const state = this.serializeGameState();
+            state.roundPhase = this.roundPhase;
+            state.kickVote = this.serializeKickVote();
+            this.onlineManager.pushGameState(state);
+        } else {
+            // Guest sends vote to host
+            this.onlineManager.pushAction({
+                type: 'kick_vote',
+                playerId: this.localPlayerId,
+                data: { vote: vote }
+            });
+        }
+    }
+
+    checkKickVoteCompletion() {
+        if (!this.kickVote || this.kickVote.resolved) return;
+
+        const activeVoters = this.kickVote.voterIds.filter(
+            id => !(this.kickVote.lostVoteRight || []).includes(id)
+        );
+        const allVoted = activeVoters.every(id => id in this.kickVote.votes);
+
+        if (allVoted || activeVoters.length === 0) {
+            this.resolveKickVote();
+        }
+    }
+
+    resolveKickVote() {
+        if (!this.kickVote || this.kickVote.resolved) return;
+        this.kickVote.resolved = true;
+
+        // Clear vote timer
+        if (this.kickVote.voteTimerIntervalId) {
+            clearInterval(this.kickVote.voteTimerIntervalId);
+            this.kickVote.voteTimerIntervalId = null;
+        }
+
+        const yesCount = Object.values(this.kickVote.votes).filter(v => v === true).length;
+        const noCount = Object.values(this.kickVote.votes).filter(v => v === false).length;
+        const totalVotes = yesCount + noCount;
+
+        let kick = false;
+
+        if (totalVotes === 0) {
+            // No one voted at all — auto-kick
+            kick = true;
+        } else if (yesCount > noCount) {
+            kick = true;
+        } else if (noCount > yesCount) {
+            kick = false;
+        } else {
+            // Tie — tiebreaker
+            // 1. If host voted, host's vote decides
+            if (this.kickVote.votes[this.localPlayerId] !== undefined) {
+                kick = this.kickVote.votes[this.localPlayerId] === true;
+            } else if (this.kickVote.voteOrder.length > 0) {
+                // 2. First voter decides
+                kick = this.kickVote.votes[this.kickVote.voteOrder[0]] === true;
+            } else {
+                // 3. No one voted — auto-kick
+                kick = true;
+            }
+        }
+
+        const targetIds = [...this.kickVote.targetIds];
+        const kicked = kick;
+
+        if (kicked) {
+            targetIds.forEach(id => this.kickPlayer(id));
+        } else {
+            // Targets stay — remove their timer display (0 time left but remain)
+            targetIds.forEach(id => {
+                this.removePhaseTimerDisplay(id);
+                this.stopPhaseTimer(id);
+            });
+        }
+
+        // Push result to guests
+        const state = this.serializeGameState();
+        state.roundPhase = this.roundPhase;
+        state.kickVoteResult = { targetIds: targetIds, kicked: kicked };
+        if (kicked) {
+            state.kickedPlayerIds = targetIds;
+        }
+        state.kickVote = null; // Clear the active vote
+        this.onlineManager.pushGameState(state);
+
+        this.hideKickVoteModal();
+        this.kickVote = null;
+        this.resumeAllPhaseTimers();
+
+        // Check if phase is now complete after kick
+        if (kicked && this.checkAllPlayersComplete()) {
+            if (this.roundPhase === 'selection') {
+                this.onlineSelectionComplete();
+            } else if (this.roundPhase === 'store') {
+                this.onlineStoreComplete();
+            }
+        }
+    }
+
+    kickPlayer(playerId) {
+        if (!this.isHost) return;
+
+        const player = this.players.find(p => p.id === playerId);
+        if (!player || player.isBot) return;
+
+        // Special case: Host is kicked → end game for everyone
+        if (playerId === this.localPlayerId) {
+            const state = this.serializeGameState();
+            state.hostKicked = true;
+            this.onlineManager.pushGameState(state);
+
+            // Show disconnect modal locally
+            document.getElementById('disconnect-message').textContent = 'The host has been kicked. Game over.';
+            document.getElementById('disconnect-modal').style.display = 'flex';
+            this.hideKickVoteModal();
+            this.stopAllPhaseTimers();
+            this.onlineManager.scheduleRoomDeletion(5000);
+            return;
+        }
+
+        const oldName = player.name;
+        player.isBot = true;
+        player.name = 'Bot' + (player.id + 1);
+
+        // Create BotPlayer instance
+        const botPlayer = new BotPlayer(player.id, player.weapon);
+        this.bots.push(botPlayer);
+
+        // Stop and remove phase timer
+        this.stopPhaseTimer(playerId);
+        this.removePhaseTimerDisplay(playerId);
+
+        // Clear waiting flag — this guest will never respond
+        this.waitingForGuestAction = false;
+
+        // Immediate bot action for current phase
+        if (this.roundPhase === 'selection' && !this.playerCompletionStatus[playerId]) {
+            this.handleBotLocationSelection(playerId);
+            this.updatePlayerStatus(playerId, true);
+        } else if (this.roundPhase === 'store' && !this.playerCompletionStatus[playerId]) {
+            this.handleBotShopping(player);
+            this.updatePlayerStatus(playerId, true);
+        } else if (this.roundPhase === 'battle') {
+            if (this.currentMonsterPlayer === playerId) {
+                this.handleBotMonsterSelection(player);
+            }
+        } else if (this.roundPhase === 'capacityOverflow') {
+            if (this.getInventorySize(player) > player.maxInventoryCapacity) {
+                botPlayer.handleBotCapacityOverflow(player, this);
+                this.updateResourceDisplay();
+                this.updateInventoryDisplay(player.id);
+            }
+        }
+
+        // Update all name tags for the kicked player
+        this.updateKickedPlayerNameTags(player);
+
+        // Update displays
+        this.updateResourceDisplay();
+        this.updateInventoryDisplay(playerId);
+        this.applyPlayerNameColors();
+
+        this.addLogEntry(`🚫 <strong>${oldName}</strong> was kicked and replaced by <strong>${player.name}</strong>`, 'system');
+
+        console.log(`Player ${playerId} (${oldName}) kicked and replaced by ${player.name}`);
+    }
+
+    updateKickedPlayerNameTags(player) {
+        const newName = player.name;
+        const playerColors = this.getPlayerColors(player.id);
+        const colorIndicator = player.color
+            ? `<span class="player-color-indicator" style="background-color: ${player.color.background}; border-color: ${player.color.border};"></span>`
+            : '';
+
+        // 1. Expanded player board name
+        const expandedName = document.getElementById(`player-${player.id}-name`);
+        if (expandedName) {
+            expandedName.innerHTML = `${colorIndicator} ${newName}`;
+        }
+
+        // 2. Collapsed player board name
+        const board = document.getElementById(`player-${player.id}-board`);
+        if (board) {
+            const collapsedName = board.querySelector('.collapsed-player-name');
+            if (collapsedName) {
+                collapsedName.innerHTML = `${colorIndicator} ${newName}`;
+            }
+        }
+
+        // 3. Status indicator name (red/green light panel)
+        const statusDiv = document.querySelector(`.player-status[data-player-id="${player.id}"]`);
+        if (statusDiv) {
+            const nameSpan = statusDiv.querySelector('.player-name');
+            if (nameSpan) {
+                nameSpan.textContent = newName;
+            }
+        }
+    }
+
+    handleGuestKickVoteState(state) {
+        if (this.isHost) return;
+
+        // Handle host kicked — game over for everyone
+        if (state.hostKicked) {
+            this.hideKickVoteModal();
+            this.stopAllPhaseTimers();
+            document.getElementById('disconnect-message').textContent = 'The host has been kicked. Game over.';
+            document.getElementById('disconnect-modal').style.display = 'flex';
+            return;
+        }
+
+        // Handle kicked players
+        if (state.kickedPlayerIds) {
+            if (state.kickedPlayerIds.includes(this.localPlayerId)) {
+                // This player was kicked
+                this.hideKickVoteModal();
+                document.getElementById('disconnect-message').textContent = 'You have been kicked from the game.';
+                document.getElementById('disconnect-modal').style.display = 'flex';
+                return;
+            }
+            // Update names/displays for kicked players (now bots)
+            state.kickedPlayerIds.forEach(id => {
+                const player = this.players.find(p => p.id === id);
+                if (player) {
+                    const oldName = player.name;
+                    player.isBot = true;
+                    player.name = 'Bot' + (player.id + 1);
+                    this.updateKickedPlayerNameTags(player);
+                    this.addLogEntry(`🚫 <strong>${oldName}</strong> was kicked and replaced by <strong>${player.name}</strong>`, 'system');
+                }
+            });
+            this.applyPlayerNameColors();
+        }
+
+        // Handle kick vote result
+        if (state.kickVoteResult) {
+            this.hideKickVoteModal();
+            this.kickVote = null;
+            return;
+        }
+
+        // Handle active kick vote
+        if (state.kickVote) {
+            // Reconstruct local kickVote for display
+            this.kickVote = {
+                targetIds: state.kickVote.targetIds,
+                targetNames: state.kickVote.targetNames,
+                voterIds: state.kickVote.voterIds,
+                votes: {},
+                voteOrder: [],
+                resolved: false,
+                voteTimerRemaining: state.kickVote.voteTimerRemaining,
+                voteTimerIntervalId: null,
+                lostVoteRight: state.kickVote.lostVoteRight || []
+            };
+
+            // Reconstruct vote counts for tally display
+            // We only have aggregate counts from host, create dummy entries
+            for (let i = 0; i < state.kickVote.yesCount; i++) {
+                this.kickVote.votes[`yes_${i}`] = true;
+            }
+            for (let i = 0; i < state.kickVote.noCount; i++) {
+                this.kickVote.votes[`no_${i}`] = false;
+            }
+
+            const isVoter = state.kickVote.voterIds.includes(this.localPlayerId) &&
+                            !(state.kickVote.lostVoteRight || []).includes(this.localPlayerId);
+            const isTarget = state.kickVote.targetIds.includes(this.localPlayerId);
+
+            // Check if guest already voted (buttons would be disabled)
+            const alreadyVoted = document.querySelector('.kick-vote-yes-btn')?.disabled &&
+                                 document.getElementById('kick-vote-modal')?.style.display === 'flex';
+
+            if (isVoter && !alreadyVoted) {
+                this.showKickVoteModal(true);
+            } else if (isTarget) {
+                this.showKickVoteModal(false);
+            }
+
+            this.updateKickVoteTally();
+            this.updateKickVoteTimerDisplay();
+        } else if (!state.kickVote && !state.kickVoteResult) {
+            // No active vote — hide modal if showing
+            this.hideKickVoteModal();
+            this.kickVote = null;
+        }
     }
 
     endGameOnline(winner) {
