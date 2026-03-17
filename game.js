@@ -8817,53 +8817,17 @@ class Game {
     }
     
     updateMonsterRewards(monster) {
-        const battle = this.currentBattle;
-        const player = this.players.find(p => p.id === battle.playerId);
         let rewards = [];
-        
-        // Add score points
-        if (monster.pts > 0) {
-            rewards.push(`${monster.pts} Points`);
-        }
-        
-        // Add money (including Rifle bonus)
-        if (monster.money > 0) {
-            let totalMoney = monster.money;
-            // Add Rifle Level 2 bonus money
-            if (player.weapon.name === 'Rifle' && player.weapon.powerTrackPosition >= 3) {
-                totalMoney += 3;
-                rewards.push(`${monster.money}+3 Money`);
-            } else {
-                rewards.push(`${monster.money} Money`);
-            }
-        } else {
-            // Even if monster gives no money, show Rifle bonus
-            if (player.weapon.name === 'Rifle' && player.weapon.powerTrackPosition >= 3) {
-                rewards.push(`3 Money (Rifle)`);
-            }
-        }
-        
-        // Add energy (beer)
-        if (monster.energy > 0) {
-            rewards.push(`${monster.energy} Beer`);
-        }
-        
-        // Add blood bags
-        if (monster.blood > 0) {
-            rewards.push(`${monster.blood} Blood Bags`);
-        }
-        
-        // Add Katana bonus EXP
-        if (player.katanaPower && player.katanaPower.bonusExp) {
-            rewards.push(`${player.katanaPower.bonusExp} EXP (Katana)`);
-        }
-        
-        // Add weapon power track advancement
+
+        if (monster.pts > 0) rewards.push(`🏆${monster.pts}`);
+        if (monster.money > 0) rewards.push(`💰${monster.money}`);
+        if (monster.energy > 0) rewards.push(`🍺${monster.energy}`);
+        if (monster.blood > 0) rewards.push(`🩸${monster.blood}`);
+
+        // Weapon power — text only, always shown
         rewards.push(`+${monster.level} Weapon Power`);
-        
-        // Display the rewards
-        const rewardsText = rewards.length > 0 ? rewards.join(', ') : 'No rewards';
-        document.getElementById('battle-monster-rewards').textContent = rewardsText;
+
+        document.getElementById('battle-monster-rewards').textContent = rewards.join(' ');
     }
     
     updateBattlePhase() {
@@ -14287,8 +14251,12 @@ class Game {
         document.getElementById('battle-monster-att').textContent = monsterPreview.att || monsterPreview.attack;
 
         // Show rewards
-        const rewards = `💰${monsterPreview.money} ⚡${monsterPreview.energy} 🩸${monsterPreview.blood} 🏆${monsterPreview.pts}`;
-        document.getElementById('battle-monster-rewards').textContent = rewards;
+        let rewards = [];
+        if (monsterPreview.pts > 0) rewards.push(`🏆${monsterPreview.pts}`);
+        if (monsterPreview.money > 0) rewards.push(`💰${monsterPreview.money}`);
+        if (monsterPreview.energy > 0) rewards.push(`🍺${monsterPreview.energy}`);
+        if (monsterPreview.blood > 0) rewards.push(`🩸${monsterPreview.blood}`);
+        document.getElementById('battle-monster-rewards').textContent = rewards.join(' ');
 
         // Hide all buttons
         document.getElementById('battle-attack-btn').style.display = 'none';
@@ -14345,23 +14313,15 @@ class Game {
             // Monster's turn — no controls
             turnText.textContent = 'Monster is attacking...';
         } else if (turn === 'player_items' && hasAttacked) {
-            // After attacking — show Defense button, items, and possibly double damage/tame
-            turnText.textContent = battleState.canTame ? 'Use items, defend, or tame the monster!' : 'You can use items or proceed to defense!';
+            // After attacking — show Defense button, items, and possibly double damage
+            // Tame is NOT available here — must wait until after monster attacks back
+            turnText.textContent = 'You can use items or proceed to defense!';
             defenseBtn.style.display = 'inline-block';
             defenseBtn.disabled = false;
             defenseBtn.onclick = () => {
                 this.onlineManager.pushAction({ type: 'battle_defense', playerId: this.localPlayerId });
                 defenseBtn.disabled = true;
             };
-
-            // Show tame button if applicable
-            if (battleState.canTame) {
-                tameBtn.style.display = 'inline-block';
-                tameBtn.onclick = () => {
-                    this.onlineManager.pushAction({ type: 'battle_tame', playerId: this.localPlayerId });
-                    tameBtn.disabled = true;
-                };
-            }
 
             // Show double damage button if applicable (Knife Lv1)
             if (battleState.canUseDoubleDamage && !battleState.doubleDamageUsed) {
@@ -14438,18 +14398,37 @@ class Game {
 
     showGuestBattleItems(battleState, itemBtns) {
         if (!battleState.playerInventory) return;
-        const itemCounts = {};
-        battleState.playerInventory.forEach(item => {
-            if (['Grenade', 'Bomb', 'Dynamite', 'Fake Blood', 'Beer', 'Blood Bag'].includes(item.name)) {
-                itemCounts[item.name] = (itemCounts[item.name] || 0) + 1;
-            }
-        });
-        Object.entries(itemCounts).forEach(([name, count]) => {
+
+        const battleItems = [
+            { name: 'Beer', icon: '🍺', effect: 'Recover 1 EP' },
+            { name: 'Blood Bag', icon: '🩸', effect: 'Recover 1 HP' },
+            { name: 'Grenade', icon: '💣', effect: 'Monster -1 HP' },
+            { name: 'Bomb', icon: '💥', effect: 'Monster -2 HP' },
+            { name: 'Dynamite', icon: '🧨', effect: 'Monster -3 HP' },
+            { name: 'Fake Blood', icon: '🩹', effect: 'Bonus +2 PTS' }
+        ];
+
+        battleItems.forEach(item => {
+            const itemCount = battleState.playerInventory.filter(inv => inv.name === item.name).length;
             const btn = document.createElement('button');
             btn.className = 'battle-item-btn';
-            btn.textContent = `${name} (${count})`;
+            btn.innerHTML = `${item.icon} ${item.name} (${itemCount})`;
+            btn.title = item.effect;
+
+            let isDisabled = itemCount === 0;
+
+            if (item.name === 'Beer' && battleState.playerEP >= battleState.playerMaxEP) {
+                isDisabled = true;
+                btn.title = 'EP is already at maximum';
+            }
+            if (item.name === 'Blood Bag' && battleState.playerHP >= battleState.playerMaxHP) {
+                isDisabled = true;
+                btn.title = 'HP is already at maximum';
+            }
+
+            btn.disabled = isDisabled;
             btn.onclick = () => {
-                this.onlineManager.pushAction({ type: 'battle_use_item', playerId: this.localPlayerId, data: { itemName: name } });
+                this.onlineManager.pushAction({ type: 'battle_use_item', playerId: this.localPlayerId, data: { itemName: item.name } });
                 btn.disabled = true;
             };
             itemBtns.appendChild(btn);
