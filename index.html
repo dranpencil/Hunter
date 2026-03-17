@@ -141,9 +141,9 @@
                         <ul class="player-slot-list" id="guest-player-slot-list"></ul>
                     </div>
                     <div id="guest-preference-selectors" class="online-preference-section"></div>
-                    <div class="waiting-status">
-                        <div class="waiting-spinner"></div>
-                        <p>Waiting for host to start the game...</p>
+                    <div class="guest-ready-section" id="guest-ready-section">
+                        <button class="ready-btn" id="guest-ready-btn" onclick="game.toggleGuestReady()">Ready</button>
+                        <p class="ready-status-text" id="guest-ready-status">Set your preferences, then click Ready</p>
                     </div>
                     <button class="back-btn" onclick="game.leaveOnlineRoom()">Leave</button>
                 </div>

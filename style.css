@@ -3025,6 +3025,25 @@ button {
     opacity: 0.5;
 }
 
+.guest-ready-section {
+    text-align: center;
+    margin: 15px 0;
+}
+
+.guest-ready-section .ready-btn.ready-active {
+    background-color: #27ae60;
+}
+
+.guest-ready-section .ready-btn.ready-active:hover {
+    background-color: #e74c3c;
+}
+
+#guest-ready-status {
+    color: #bdc3c7;
+    font-size: 14px;
+    margin-top: 8px;
+}
+
 .back-btn {
     display: block;
     margin: 10px auto;
@@ -3094,6 +3113,7 @@ button {
     flex-shrink: 0;
 }
 
+.slot-name-input,
 .slot-color-select,
 .slot-weapon-select {
     background-color: #34495e;
@@ -3107,12 +3127,20 @@ button {
     flex: 1;
 }
 
+.slot-name-input {
+    cursor: text;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.slot-name-input:hover,
 .slot-color-select:hover,
 .slot-weapon-select:hover {
     background-color: #3e4f68;
     border-color: #3498db;
 }
 
+.slot-name-input:focus,
 .slot-color-select:focus,
 .slot-weapon-select:focus {
     outline: none;

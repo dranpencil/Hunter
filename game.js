@@ -1300,16 +1300,29 @@ class Game {
                 if (connectedCount >= 2) {
                     if (connectedCount >= playerCount) {
                         document.getElementById('waiting-status-text').textContent = 'All players connected!';
-                        document.getElementById('guest-joined-text').textContent = 'All players connected!';
                         document.querySelector('#waiting-room-host .waiting-status').style.display = 'none';
                     } else {
                         const remaining = playerCount - connectedCount;
                         document.getElementById('waiting-status-text').textContent =
                             `Waiting for more players... (${remaining} open slot${remaining > 1 ? 's' : ''})`;
-                        document.getElementById('guest-joined-text').textContent =
-                            `${connectedCount} humans connected — empty slots will be filled by bots`;
                     }
                     document.getElementById('host-guest-joined').style.display = 'block';
+
+                    // Check if all players are ready
+                    const allReady = Object.values(players).every(p => p.isReady === true);
+                    const startBtn = document.querySelector('#host-guest-joined .ready-btn');
+                    if (startBtn) {
+                        startBtn.disabled = !allReady;
+                    }
+                    const readyCount = Object.values(players).filter(p => p.isReady === true).length;
+                    const totalCount = Object.keys(players).length;
+                    if (allReady) {
+                        document.getElementById('guest-joined-text').textContent =
+                            connectedCount >= playerCount ? 'All players connected and ready!' : `${connectedCount} humans connected — empty slots will be filled by bots`;
+                    } else {
+                        document.getElementById('guest-joined-text').textContent =
+                            `Waiting for players to ready up (${readyCount}/${totalCount})`;
+                    }
                 } else {
                     document.getElementById('waiting-status-text').textContent = 'Waiting for players to join...';
                     document.getElementById('host-guest-joined').style.display = 'none';
@@ -1536,13 +1549,20 @@ class Game {
         const assignedWeapons = this.resolveOnlineWeapons(playerCount, preferences);
         this.playerColors = this.resolveOnlineColors(playerCount, preferences);
 
+        // Build player names map from preferences
+        const playerNames = {};
+        sortedPlayers.forEach(([playerId, data], index) => {
+            playerNames[playerId] = data.preferredName || (index === 0 ? 'Host' : `Player ${index + 1}`);
+        });
+
         // Build config to share with all players
         const config = {
             humanSlots: humanSlots,
             playerCount: playerCount,
             humanPlayerCount: humanPlayerCount,
             weapons: assignedWeapons.map(w => this.weapons.findIndex(ww => ww.name === w.name)),
-            colors: this.playerColors
+            colors: this.playerColors,
+            playerNames: playerNames
         };
 
         await this.onlineManager.setConfig(config);
@@ -1588,11 +1608,7 @@ class Game {
 
         // Override names for online human players
         for (const [playerId, slot] of Object.entries(config.humanSlots)) {
-            if (playerId === this.onlineManager.localId) {
-                this.players[slot].name = 'Host';
-            } else {
-                this.players[slot].name = `Player ${slot + 1}`;
-            }
+            this.players[slot].name = config.playerNames[playerId];
         }
 
         // Set game mode to 'online'
@@ -1671,13 +1687,7 @@ class Game {
 
         // Override names for online human players
         for (const [playerId, slot] of Object.entries(config.humanSlots)) {
-            if (playerId === this.onlineManager.localId) {
-                this.players[slot].name = 'You';
-            } else if (slot === 0) {
-                this.players[slot].name = 'Host';
-            } else {
-                this.players[slot].name = `Player ${slot + 1}`;
-            }
+            this.players[slot].name = config.playerNames[playerId];
         }
 
         this.gameMode = 'online';
@@ -3223,10 +3233,17 @@ class Game {
         const allColorOptions = this.getAllColorOptions();
         const allWeaponOptions = this.getAllWeaponOptions();
 
+        const defaultName = role === 'host' ? 'Host' : 'Player' + (this.onlineManager.localJoinOrder + 1);
         const selectedColor = allColorOptions.find(opt => opt.value === 'random');
         container.innerHTML = `
             <h3>Your Preferences</h3>
             <div class="online-preference-row">
+                <div class="slot-option">
+                    <label>Name:</label>
+                    <input type="text" class="slot-name-input" id="${role}-pref-name"
+                           value="${defaultName}" maxlength="12"
+                           onchange="game.updateOnlinePreference('name', this.value, '${role}')">
+                </div>
                 <div class="slot-option">
                     <label>Color:</label>
                     <div class="color-select-wrapper">
@@ -3250,9 +3267,45 @@ class Game {
         `;
     }
 
+    toggleGuestReady() {
+        if (!this.onlineManager || !this.onlineManager.roomRef) return;
+        const localId = this.onlineManager.localId;
+        this.guestIsReady = !this.guestIsReady;
+        this.onlineManager.roomRef.child(`players/${localId}`).update({ isReady: this.guestIsReady });
+
+        const readyBtn = document.getElementById('guest-ready-btn');
+        const statusText = document.getElementById('guest-ready-status');
+        const prefSection = document.getElementById('guest-preference-selectors');
+        if (this.guestIsReady) {
+            if (readyBtn) {
+                readyBtn.textContent = 'Not Ready';
+                readyBtn.classList.add('ready-active');
+            }
+            if (statusText) statusText.textContent = 'Waiting for host to start...';
+            // Lock preference inputs
+            if (prefSection) {
+                prefSection.querySelectorAll('input, select').forEach(el => el.disabled = true);
+            }
+        } else {
+            if (readyBtn) {
+                readyBtn.textContent = 'Ready';
+                readyBtn.classList.remove('ready-active');
+            }
+            if (statusText) statusText.textContent = 'Set your preferences, then click Ready';
+            // Unlock preference inputs
+            if (prefSection) {
+                prefSection.querySelectorAll('input, select').forEach(el => el.disabled = false);
+            }
+        }
+    }
+
     updateOnlinePreference(type, value, role) {
         if (!this.onlineManager || !this.onlineManager.roomRef) return;
         const localId = this.onlineManager.localId;
+        if (type === 'name') {
+            this.onlineManager.roomRef.child(`players/${localId}`).update({ preferredName: value });
+            return;
+        }
         const key = type === 'color' ? 'preferredColor' : 'preferredWeapon';
         this.onlineManager.roomRef.child(`players/${localId}`).update({ [key]: value });
 
@@ -3349,7 +3402,7 @@ class Game {
                 const [playerId, data] = sortedPlayers[i];
                 const isHost = data.joinOrder === 0;
                 const isSelf = playerId === this.onlineManager.localId;
-                let label = isHost ? 'Host' : `Player ${i + 1}`;
+                let label = data.preferredName || (isHost ? 'Host' : `Player ${i + 1}`);
                 if (isSelf) label += ' (you)';
 
                 li.className = 'player-slot connected';
@@ -3365,7 +3418,8 @@ class Game {
                 const weaponLabel = prefWeapon !== 'random' ? prefWeapon : 'Random';
                 const picksHtml = `<span class="slot-picks">${colorDot} ${colorLabel} · ${weaponLabel}</span>`;
 
-                li.innerHTML = `${label} <span class="slot-status">&#x2705;</span>${picksHtml}`;
+                const readyIcon = data.isReady ? '&#x2705;' : '&#x1F534;';
+                li.innerHTML = `${label} <span class="slot-status">${readyIcon}</span>${picksHtml}`;
             } else {
                 li.className = 'player-slot pending';
                 li.innerHTML = `Slot ${i + 1} (open) <span class="slot-status">&#x23F3;</span>`;
@@ -4120,7 +4174,7 @@ class Game {
         if (!player) return;
 
         // Only allow interacting with own player in online mode
-        if (this.gameMode === 'online' && playerId !== this.localPlayerId) return;
+        if (this.gameMode === 'online' && playerId !== this.localPlayerId && !this.suppressAlerts) return;
 
         // Online non-host: send action to host
         if (this.gameMode === 'online' && !this.isHost) {
@@ -4184,7 +4238,7 @@ class Game {
         if (!player) return;
 
         // Only allow interacting with own player in online mode
-        if (this.gameMode === 'online' && playerId !== this.localPlayerId) return;
+        if (this.gameMode === 'online' && playerId !== this.localPlayerId && !this.suppressAlerts) return;
 
         // Online non-host: send action to host
         if (this.gameMode === 'online' && !this.isHost) {
@@ -8545,6 +8599,11 @@ class Game {
         } else {
             // Human players see the monster selection UI
             this.showMonsterSelectionUI(selectedMonster, playerId);
+
+            // Online host: push monster preview state so guests can spectate
+            if (this.gameMode === 'online' && this.isHost) {
+                this.pushMonsterPreviewToGuest(playerId, selectedMonster);
+            }
         }
     }
     
@@ -13486,7 +13545,7 @@ class Game {
         }
 
         if (phase === 'store') {
-            if (state.guestStorePhase) {
+            if (state.guestStorePhase && !this.playerCompletionStatus[this.localPlayerId]) {
                 // Show/refresh store for guest player
                 const guestPlayer = this.players[this.localPlayerId];
                 if (guestPlayer) {
@@ -13515,7 +13574,16 @@ class Game {
                 if (battlePlayer) {
                     this.showPlayerStatusIndicators(true);
                     this.setPhaseTitle(`Battle Phase: ${battlePlayer.name}`);
+                    // Show the battling player's status div so their timer is visible
+                    const battleStatusDiv = document.querySelector(`.player-status[data-player-id="${battlePlayerId}"]`);
+                    if (battleStatusDiv) {
+                        battleStatusDiv.style.display = 'flex';
+                    }
                 }
+            }
+            // Update phaseTimeLimit before battle handler uses it
+            if (state.phaseTimeLimit !== undefined) {
+                this.phaseTimeLimit = state.phaseTimeLimit;
             }
             this.handleGuestBattleStateUpdate(state);
         }
@@ -13998,6 +14066,11 @@ class Game {
         if (battlePlayer) {
             this.showPlayerStatusIndicators(true);
             this.setPhaseTitle(`Battle Phase: ${battlePlayer.name}`);
+            // Show the battling player's status div so their timer is visible
+            const battleStatusDiv = document.querySelector(`.player-status[data-player-id="${battlePlayer.id}"]`);
+            if (battleStatusDiv) {
+                battleStatusDiv.style.display = 'flex';
+            }
         }
 
         const player = this.players.find(p => p.id === this.currentMonsterPlayer);
@@ -14032,6 +14105,14 @@ class Game {
             this.updatePetSelectionUI();
             document.getElementById('monster-modal-title').textContent = `${player.name}: Choose Monster to Fight`;
             document.getElementById('monster-modal').style.display = 'flex';
+
+            // Push state so guests can see spectator view during monster selection
+            const selectState = this.serializeGameState();
+            selectState.roundPhase = 'battle';
+            selectState.guestBattle = false;
+            selectState.battlePhase = 'monster_select';
+            selectState.currentBattlePlayerId = player.id;
+            this.onlineManager.pushGameState(selectState);
         } else {
             // Guest's battle - push state telling guest to select monster
             const state = this.serializeGameState();
@@ -14042,6 +14123,9 @@ class Game {
             state.phaseTimeLimit = this.phaseTimeLimit;
             this.onlineManager.pushGameState(state);
             this.waitingForGuestAction = true;
+
+            // Show host spectator view during guest's monster selection
+            this.showMonsterSelectSpectator(player.name);
         }
     }
 
@@ -14050,6 +14134,12 @@ class Game {
             // Not the guest's battle - spectate if there's an active battle
             if (state.battleState) {
                 this.showBattleSpectator(state.battleState);
+            } else if (state.battlePhase === 'monster_select' && state.currentBattlePlayerId !== undefined) {
+                const battlePlayer = this.players.find(p => p.id === state.currentBattlePlayerId);
+                this.showMonsterSelectSpectator(battlePlayer ? battlePlayer.name : 'Unknown');
+            } else if (state.battlePhase === 'monster_preview' && state.monsterPreview) {
+                const battlePlayer = this.players.find(p => p.id === state.currentBattlePlayerId);
+                this.showMonsterPreviewSpectator(battlePlayer ? battlePlayer.name : 'Unknown', state.monsterPreview);
             } else {
                 document.getElementById('monster-battle').style.display = 'none';
             }
@@ -14060,6 +14150,12 @@ class Game {
             // Spectating someone else's battle
             if (state.battleState) {
                 this.showBattleSpectator(state.battleState);
+            } else if (state.battlePhase === 'monster_select') {
+                const battlePlayer = this.players.find(p => p.id === state.currentBattlePlayerId);
+                this.showMonsterSelectSpectator(battlePlayer ? battlePlayer.name : 'Unknown');
+            } else if (state.battlePhase === 'monster_preview' && state.monsterPreview) {
+                const battlePlayer = this.players.find(p => p.id === state.currentBattlePlayerId);
+                this.showMonsterPreviewSpectator(battlePlayer ? battlePlayer.name : 'Unknown', state.monsterPreview);
             }
             return;
         }
@@ -14079,6 +14175,7 @@ class Game {
                 running: false
             };
             this.startPhaseTimer(this.localPlayerId);
+            this.updatePhaseTimerDisplay(this.localPlayerId);
 
             const player = this.players[this.localPlayerId];
             this.currentMonsterPlayer = this.localPlayerId; // Set for confirmBattleSelection
@@ -14149,6 +14246,59 @@ class Game {
         }
 
         document.getElementById('battle-turn').textContent = `Watching ${battleState.playerName}'s battle...`;
+    }
+
+    showMonsterSelectSpectator(playerName) {
+        const battleDiv = document.getElementById('monster-battle');
+        battleDiv.style.display = 'flex';
+
+        document.getElementById('battle-player-name').textContent = playerName;
+        document.getElementById('battle-player-hp').textContent = '';
+        document.getElementById('battle-player-ep').textContent = '';
+
+        // Clear monster stats
+        document.getElementById('battle-monster-level').textContent = '?';
+        document.getElementById('battle-monster-hp').textContent = '?';
+        document.getElementById('battle-monster-att').textContent = '?';
+        document.getElementById('battle-monster-rewards').textContent = '';
+
+        // Hide all buttons
+        document.getElementById('battle-attack-btn').style.display = 'none';
+        document.getElementById('battle-tame-btn').style.display = 'none';
+        document.getElementById('battle-defense-btn').style.display = 'none';
+        document.getElementById('battle-double-damage-btn').style.display = 'none';
+        document.getElementById('battle-item-buttons').innerHTML = '';
+
+        document.getElementById('battle-log').innerHTML = '';
+        document.getElementById('battle-turn').textContent = `${playerName} is choosing a monster level...`;
+    }
+
+    showMonsterPreviewSpectator(playerName, monsterPreview) {
+        const battleDiv = document.getElementById('monster-battle');
+        battleDiv.style.display = 'flex';
+
+        document.getElementById('battle-player-name').textContent = playerName;
+        document.getElementById('battle-player-hp').textContent = '';
+        document.getElementById('battle-player-ep').textContent = '';
+
+        // Show monster stats
+        document.getElementById('battle-monster-level').textContent = monsterPreview.level;
+        document.getElementById('battle-monster-hp').textContent = `${monsterPreview.hp}/${monsterPreview.maxHp || monsterPreview.hp}`;
+        document.getElementById('battle-monster-att').textContent = monsterPreview.att || monsterPreview.attack;
+
+        // Show rewards
+        const rewards = `💰${monsterPreview.money} ⚡${monsterPreview.energy} 🩸${monsterPreview.blood} 🏆${monsterPreview.pts}`;
+        document.getElementById('battle-monster-rewards').textContent = rewards;
+
+        // Hide all buttons
+        document.getElementById('battle-attack-btn').style.display = 'none';
+        document.getElementById('battle-tame-btn').style.display = 'none';
+        document.getElementById('battle-defense-btn').style.display = 'none';
+        document.getElementById('battle-double-damage-btn').style.display = 'none';
+        document.getElementById('battle-item-buttons').innerHTML = '';
+
+        document.getElementById('battle-log').innerHTML = '';
+        document.getElementById('battle-turn').textContent = `${playerName} encountered a Level ${monsterPreview.level} monster!`;
     }
 
     showBattleUIForGuest(battleState) {
@@ -14848,6 +14998,12 @@ class Game {
         };
         this.onlineManager.pushGameState(state);
         this.waitingForGuestAction = true;
+
+        // Show host spectator view of monster preview
+        if (this.isHost && playerId !== this.localPlayerId) {
+            const battlePlayer = this.players.find(p => p.id === playerId);
+            this.showMonsterPreviewSpectator(battlePlayer ? battlePlayer.name : 'Unknown', state.monsterPreview);
+        }
     }
 
     handleGuestBatPowerChoice(action) {
@@ -14889,7 +15045,18 @@ class Game {
 
             // Add tame availability info for the fighting player
             if (this.currentBattle && this.currentBattle.monster && battlePlayer) {
-                state.battleState.canTame = this.canTameMonster(battlePlayer, this.currentBattle.monster);
+                // Compute canTame matching the local battle logic (lines 8879-8899)
+                let canTame = false;
+                let requiredEP = 1;
+                if (battlePlayer.weapon.name === 'Whip' && battlePlayer.weapon.powerTrackPosition >= 1) {
+                    requiredEP = battlePlayer.weapon.powerTrackPosition >= 7 ? 0 : 0;
+                }
+                if (battlePlayer.weapon.name === 'Chain' && battlePlayer.weapon.powerTrackPosition >= 1) {
+                    canTame = this.currentBattle.monster.hp < 4 && battlePlayer.resources.ep >= requiredEP;
+                } else {
+                    canTame = this.currentBattle.monster.hp === 1 && battlePlayer.resources.ep >= requiredEP;
+                }
+                state.battleState.canTame = canTame;
             }
         } else {
             state.guestBattle = false;
@@ -14897,15 +15064,6 @@ class Game {
         }
 
         this.onlineManager.pushGameState(state);
-    }
-
-    canTameMonster(player, monster) {
-        if (!player || !monster) return false;
-        const weaponName = player.weapon.name;
-        if (weaponName !== 'Chain' && weaponName !== 'Whip') return false;
-
-        const tameThreshold = weaponName === 'Chain' ? 3 : 3;
-        return monster.hp <= tameThreshold;
     }
 
     // ==================== ONLINE: END ROUND ====================
@@ -15342,10 +15500,10 @@ class Game {
         if (kicked) {
             targetIds.forEach(id => this.kickPlayer(id));
         } else {
-            // Targets stay — remove their timer display (0 time left but remain)
+            // Reset saved players' timers — give them a fresh countdown
             targetIds.forEach(id => {
-                this.removePhaseTimerDisplay(id);
-                this.stopPhaseTimer(id);
+                this.initPhaseTimerForPlayer(id);
+                this.startPhaseTimer(id);
             });
         }
 
@@ -15512,6 +15670,7 @@ class Game {
         if (state.kickVoteResult) {
             this.hideKickVoteModal();
             this.kickVote = null;
+            this.resumeAllPhaseTimers();
             return;
         }
 
