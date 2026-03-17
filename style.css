@@ -4111,6 +4111,52 @@ button {
     to { transform: rotate(360deg); }
 }
 
+/* Online Preference Section */
+.online-preference-section {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 15px;
+    margin: 15px 0;
+}
+.online-preference-section h3 {
+    color: #f39c12;
+    margin-bottom: 10px;
+    font-size: 16px;
+}
+.online-preference-row {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+.online-preference-row .slot-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.online-preference-row label {
+    color: #bdc3c7;
+    font-size: 14px;
+}
+
+/* Player slot list with preference display */
+.player-slot-list .player-slot .slot-picks {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    margin-left: 6px;
+    font-size: 12px;
+    color: #bdc3c7;
+}
+.player-slot-list .player-slot .slot-picks .slot-color-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
 .guest-joined-text {
     color: #2ecc71;
     font-size: 18px;

@@ -104,6 +104,7 @@
                         <ul class="player-slot-list" id="player-slot-list"></ul>
                         <div class="game-composition" id="game-composition"></div>
                     </div>
+                    <div id="host-preference-selectors" class="online-preference-section"></div>
                     <div class="waiting-status">
                         <div class="waiting-spinner"></div>
                         <p id="waiting-status-text">Waiting for players to join...</p>
@@ -130,11 +131,16 @@
 
                 <!-- Waiting Room (Guest) -->
                 <div id="waiting-room-guest" class="lobby-view" style="display: none;">
-                    <h2>Joined Room</h2>
+                    <h2>Waiting for Players</h2>
                     <div class="room-code-display">
                         <p>Room Code:</p>
                         <div class="room-code" id="guest-room-code">----</div>
                     </div>
+                    <div id="guest-player-count-display" class="player-count-display">
+                        <div class="player-count-header">Players: <span id="guest-human-count">1</span>/<span id="guest-human-total">2</span> connected</div>
+                        <ul class="player-slot-list" id="guest-player-slot-list"></ul>
+                    </div>
+                    <div id="guest-preference-selectors" class="online-preference-section"></div>
                     <div class="waiting-status">
                         <div class="waiting-spinner"></div>
                         <p>Waiting for host to start the game...</p>

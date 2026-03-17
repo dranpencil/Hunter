@@ -1279,6 +1279,9 @@ class Game {
             // Build dynamic player slot list (all slots open)
             this.buildWaitingRoomSlots(playerCount);
 
+            // Build preference UI for host
+            this.buildOnlinePreferenceUI('host');
+
             // Listen for players to join
             this.onlineManager.listenForPlayers((players) => {
                 const connectedCount = Object.keys(players).length;
@@ -1287,18 +1290,11 @@ class Game {
                 document.getElementById('human-count').textContent = connectedCount;
                 this.updateWaitingRoomComposition(connectedCount, playerCount);
 
-                // Update slot statuses
-                const slotList = document.getElementById('player-slot-list');
-                const slots = slotList.querySelectorAll('.player-slot');
-                let slotIndex = 0;
-                for (const [playerId, data] of Object.entries(players).sort((a, b) => a[1].joinOrder - b[1].joinOrder)) {
-                    if (slotIndex < slots.length) {
-                        slots[slotIndex].className = 'player-slot connected';
-                        const label = slotIndex === 0 ? 'Host (you)' : `Player ${slotIndex + 1}`;
-                        slots[slotIndex].innerHTML = `${label} <span class="slot-status">&#x2705;</span>`;
-                    }
-                    slotIndex++;
-                }
+                // Update slot list with player names and picks
+                this.updateWaitingRoomSlots(players, 'player-slot-list', playerCount);
+
+                // Refresh preference dropdowns to disable taken options
+                this.refreshOnlinePreferenceDropdowns(players, 'host');
 
                 // Show Start button once at least 1 guest has joined
                 if (connectedCount >= 2) {
@@ -1393,6 +1389,21 @@ class Game {
             document.getElementById('join-room-view').style.display = 'none';
             document.getElementById('waiting-room-guest').style.display = 'block';
             document.getElementById('guest-room-code').textContent = code;
+
+            // Set player count display
+            const totalPlayers = room.playerCount || 2;
+            document.getElementById('guest-human-total').textContent = totalPlayers;
+
+            // Build preference UI for guest
+            this.buildOnlinePreferenceUI('guest');
+
+            // Listen for players to update guest slot list and preferences
+            this.onlineManager.listenForPlayers((players) => {
+                const connectedCount = Object.keys(players).length;
+                document.getElementById('guest-human-count').textContent = connectedCount;
+                this.updateWaitingRoomSlots(players, 'guest-player-slot-list', totalPlayers);
+                this.refreshOnlinePreferenceDropdowns(players, 'guest');
+            });
 
             // Listen for game start
             this.onlineManager.listenForGameStart(() => {
@@ -1504,19 +1515,26 @@ class Game {
         // Host starts the game - configure weapons, slots, etc.
         const playerCount = this.onlinePlayerCount || parseInt(document.getElementById('online-player-count').value);
 
-        const assignedWeapons = this.getRandomWeapons(playerCount);
-        this.playerColors = this.getRandomPlayerColors(playerCount);
-
         // Get connected players and assign slots by join order
         const snapshot = await this.onlineManager.roomRef.child('players').once('value');
         const players = snapshot.val();
         const sortedPlayers = Object.entries(players).sort((a, b) => a[1].joinOrder - b[1].joinOrder);
         const humanPlayerCount = sortedPlayers.length;
 
+        // Build preferences map from player data: { slotIndex: { color, weapon } }
+        const preferences = {};
         const humanSlots = {};
         sortedPlayers.forEach(([playerId, data], index) => {
             humanSlots[playerId] = index;
+            preferences[index] = {
+                color: data.preferredColor || 'random',
+                weapon: data.preferredWeapon || 'random'
+            };
         });
+
+        // Resolve weapons and colors respecting preferences
+        const assignedWeapons = this.resolveOnlineWeapons(playerCount, preferences);
+        this.playerColors = this.resolveOnlineColors(playerCount, preferences);
 
         // Build config to share with all players
         const config = {
@@ -3163,11 +3181,10 @@ class Game {
         }
     }
     
-    updateSoloModeUI() {
-        const slots = document.querySelectorAll('#solo-play-section .player-slot');
+    // ==================== SHARED OPTION DEFINITIONS ====================
 
-        // Define color and weapon options with actual color values
-        const allColorOptions = [
+    getAllColorOptions() {
+        return [
             { value: 'random', label: 'Random', bg: 'linear-gradient(90deg, #e67e22, #27ae60, #3498db, #9b59b6)', border: '#666' },
             { value: 'orange', label: 'Orange', bg: '#e67e22', border: '#d35400' },
             { value: 'green', label: 'Green', bg: '#27ae60', border: '#229954' },
@@ -3177,17 +3194,10 @@ class Game {
             { value: 'yellow', label: 'Yellow', bg: '#f5f50a', border: '#828205' },
             { value: 'black', label: 'Black', bg: '#000000', border: '#333333' }
         ];
+    }
 
-        // Get all currently selected colors and weapons (excluding 'random')
-        const selectedColors = this.soloModeSlots
-            .filter(slot => slot.active && slot.color !== 'random')
-            .map(slot => slot.color);
-
-        const selectedWeapons = this.soloModeSlots
-            .filter(slot => slot.active && slot.weapon !== 'random')
-            .map(slot => slot.weapon);
-
-        const allWeaponOptions = [
+    getAllWeaponOptions() {
+        return [
             { value: 'random', label: 'Random' },
             { value: 'Bat', label: 'Bat' },
             { value: 'Katana', label: 'Katana' },
@@ -3201,6 +3211,252 @@ class Game {
             { value: 'Knife', label: 'Knife' },
             { value: 'Gloves', label: 'Gloves' }
         ];
+    }
+
+    // ==================== ONLINE PREFERENCE UI ====================
+
+    buildOnlinePreferenceUI(role) {
+        const containerId = role === 'host' ? 'host-preference-selectors' : 'guest-preference-selectors';
+        const container = document.getElementById(containerId);
+        if (!container) return;
+
+        const allColorOptions = this.getAllColorOptions();
+        const allWeaponOptions = this.getAllWeaponOptions();
+
+        const selectedColor = allColorOptions.find(opt => opt.value === 'random');
+        container.innerHTML = `
+            <h3>Your Preferences</h3>
+            <div class="online-preference-row">
+                <div class="slot-option">
+                    <label>Color:</label>
+                    <div class="color-select-wrapper">
+                        <span class="color-indicator" id="${role}-pref-color-indicator" style="background: ${selectedColor.bg}; border: 2px solid ${selectedColor.border};"></span>
+                        <select class="slot-color-select" id="${role}-pref-color" onchange="game.updateOnlinePreference('color', this.value, '${role}')">
+                            ${allColorOptions.map(opt =>
+                                `<option value="${opt.value}">${opt.label}</option>`
+                            ).join('')}
+                        </select>
+                    </div>
+                </div>
+                <div class="slot-option">
+                    <label>Weapon:</label>
+                    <select class="slot-weapon-select" id="${role}-pref-weapon" onchange="game.updateOnlinePreference('weapon', this.value, '${role}')">
+                        ${allWeaponOptions.map(opt =>
+                            `<option value="${opt.value}">${opt.label}</option>`
+                        ).join('')}
+                    </select>
+                </div>
+            </div>
+        `;
+    }
+
+    updateOnlinePreference(type, value, role) {
+        if (!this.onlineManager || !this.onlineManager.roomRef) return;
+        const localId = this.onlineManager.localId;
+        const key = type === 'color' ? 'preferredColor' : 'preferredWeapon';
+        this.onlineManager.roomRef.child(`players/${localId}`).update({ [key]: value });
+
+        // Update color indicator if color changed
+        if (type === 'color') {
+            const allColorOptions = this.getAllColorOptions();
+            const colorOpt = allColorOptions.find(opt => opt.value === value);
+            if (colorOpt) {
+                const indicator = document.getElementById(`${role}-pref-color-indicator`);
+                if (indicator) {
+                    indicator.style.background = colorOpt.bg;
+                    indicator.style.borderColor = colorOpt.border;
+                }
+            }
+        }
+    }
+
+    refreshOnlinePreferenceDropdowns(players, role) {
+        const localId = this.onlineManager.localId;
+        const allColorOptions = this.getAllColorOptions();
+        const allWeaponOptions = this.getAllWeaponOptions();
+
+        // Collect picks from OTHER players
+        const takenColors = [];
+        const takenWeapons = [];
+        for (const [playerId, data] of Object.entries(players)) {
+            if (playerId === localId) continue;
+            if (data.preferredColor && data.preferredColor !== 'random') {
+                takenColors.push(data.preferredColor);
+            }
+            if (data.preferredWeapon && data.preferredWeapon !== 'random') {
+                takenWeapons.push(data.preferredWeapon);
+            }
+        }
+
+        const localData = players[localId];
+        const myColor = localData ? (localData.preferredColor || 'random') : 'random';
+        const myWeapon = localData ? (localData.preferredWeapon || 'random') : 'random';
+
+        // Check for race condition: someone else took our pick
+        let needReset = false;
+        if (myColor !== 'random' && takenColors.includes(myColor)) {
+            this.onlineManager.roomRef.child(`players/${localId}`).update({ preferredColor: 'random' });
+            needReset = true;
+        }
+        if (myWeapon !== 'random' && takenWeapons.includes(myWeapon)) {
+            this.onlineManager.roomRef.child(`players/${localId}`).update({ preferredWeapon: 'random' });
+            needReset = true;
+        }
+        if (needReset) return; // Will re-fire via listener
+
+        // Update color dropdown
+        const colorSelect = document.getElementById(`${role}-pref-color`);
+        if (colorSelect) {
+            const currentColor = colorSelect.value;
+            colorSelect.innerHTML = allColorOptions.map(opt => {
+                const taken = opt.value !== 'random' && opt.value !== currentColor && takenColors.includes(opt.value);
+                return `<option value="${opt.value}" ${taken ? 'disabled' : ''} ${opt.value === myColor ? 'selected' : ''}>${opt.label}${taken ? ' (taken)' : ''}</option>`;
+            }).join('');
+        }
+
+        // Update weapon dropdown
+        const weaponSelect = document.getElementById(`${role}-pref-weapon`);
+        if (weaponSelect) {
+            const currentWeapon = weaponSelect.value;
+            weaponSelect.innerHTML = allWeaponOptions.map(opt => {
+                const taken = opt.value !== 'random' && opt.value !== currentWeapon && takenWeapons.includes(opt.value);
+                return `<option value="${opt.value}" ${taken ? 'disabled' : ''} ${opt.value === myWeapon ? 'selected' : ''}>${opt.label}${taken ? ' (taken)' : ''}</option>`;
+            }).join('');
+        }
+
+        // Update color indicator
+        const colorOpt = allColorOptions.find(opt => opt.value === myColor);
+        if (colorOpt) {
+            const indicator = document.getElementById(`${role}-pref-color-indicator`);
+            if (indicator) {
+                indicator.style.background = colorOpt.bg;
+                indicator.style.borderColor = colorOpt.border;
+            }
+        }
+    }
+
+    updateWaitingRoomSlots(players, slotListId, totalSlots) {
+        const slotList = document.getElementById(slotListId);
+        if (!slotList) return;
+
+        const allColorOptions = this.getAllColorOptions();
+        const sortedPlayers = Object.entries(players).sort((a, b) => a[1].joinOrder - b[1].joinOrder);
+
+        slotList.innerHTML = '';
+        for (let i = 0; i < totalSlots; i++) {
+            const li = document.createElement('li');
+            if (i < sortedPlayers.length) {
+                const [playerId, data] = sortedPlayers[i];
+                const isHost = data.joinOrder === 0;
+                const isSelf = playerId === this.onlineManager.localId;
+                let label = isHost ? 'Host' : `Player ${i + 1}`;
+                if (isSelf) label += ' (you)';
+
+                li.className = 'player-slot connected';
+
+                // Build picks display — always show color + weapon for every connected player
+                const prefColor = data.preferredColor || 'random';
+                const prefWeapon = data.preferredWeapon || 'random';
+                const colorOpt = allColorOptions.find(opt => opt.value === prefColor);
+                const colorDot = colorOpt
+                    ? `<span class="slot-color-dot" style="background: ${colorOpt.bg}; border: 1px solid ${colorOpt.border};"></span>`
+                    : `<span class="slot-color-dot" style="background: linear-gradient(90deg, #e67e22, #27ae60, #3498db, #9b59b6); border: 1px solid #666;"></span>`;
+                const colorLabel = colorOpt ? colorOpt.label : 'Random';
+                const weaponLabel = prefWeapon !== 'random' ? prefWeapon : 'Random';
+                const picksHtml = `<span class="slot-picks">${colorDot} ${colorLabel} · ${weaponLabel}</span>`;
+
+                li.innerHTML = `${label} <span class="slot-status">&#x2705;</span>${picksHtml}`;
+            } else {
+                li.className = 'player-slot pending';
+                li.innerHTML = `Slot ${i + 1} (open) <span class="slot-status">&#x23F3;</span>`;
+            }
+            slotList.appendChild(li);
+        }
+    }
+
+    // ==================== ONLINE WEAPON/COLOR RESOLUTION ====================
+
+    resolveOnlineWeapons(playerCount, preferences) {
+        const availableWeapons = [...this.weapons];
+        const selectedWeapons = new Array(playerCount).fill(null);
+
+        // Pass 1: assign explicit (non-random) picks
+        for (const [slotIndex, pref] of Object.entries(preferences)) {
+            const idx = parseInt(slotIndex);
+            if (pref.weapon && pref.weapon !== 'random') {
+                const weapon = this.weapons.find(w => w.name === pref.weapon);
+                if (weapon) {
+                    selectedWeapons[idx] = weapon;
+                    const availIdx = availableWeapons.findIndex(w => w.name === weapon.name);
+                    if (availIdx !== -1) availableWeapons.splice(availIdx, 1);
+                }
+            }
+        }
+
+        // Pass 2: fill remaining slots from leftover pool
+        for (let i = 0; i < playerCount; i++) {
+            if (!selectedWeapons[i]) {
+                const randomIndex = Math.floor(Math.random() * availableWeapons.length);
+                selectedWeapons[i] = availableWeapons.splice(randomIndex, 1)[0];
+            }
+        }
+
+        console.log('Resolved online weapons:', selectedWeapons.map(w => w.name));
+        return selectedWeapons;
+    }
+
+    resolveOnlineColors(playerCount, preferences) {
+        const colorPalette = [
+            { background: '#e67e22', border: '#d35400', name: 'orange' },
+            { background: '#27ae60', border: '#229954', name: 'green' },
+            { background: '#3498db', border: '#2980b9', name: 'blue' },
+            { background: '#9b59b6', border: '#8e44ad', name: 'purple' },
+            { background: '#e74c3c', border: '#c0392b', name: 'red' },
+            { background: '#f5f50a', border: '#828205', name: 'yellow' },
+            { background: '#000000', border: '#333333', name: 'black' }
+        ];
+        const availableColors = [...colorPalette];
+        const playerColors = {};
+
+        // Pass 1: assign explicit picks
+        for (const [slotIndex, pref] of Object.entries(preferences)) {
+            const idx = parseInt(slotIndex);
+            if (pref.color && pref.color !== 'random') {
+                const color = colorPalette.find(c => c.name === pref.color);
+                if (color) {
+                    playerColors[idx + 1] = color;
+                    const availIdx = availableColors.findIndex(c => c.name === color.name);
+                    if (availIdx !== -1) availableColors.splice(availIdx, 1);
+                }
+            }
+        }
+
+        // Pass 2: fill remaining
+        for (let i = 0; i < playerCount; i++) {
+            if (!playerColors[i + 1]) {
+                const randomIndex = Math.floor(Math.random() * availableColors.length);
+                playerColors[i + 1] = availableColors.splice(randomIndex, 1)[0];
+            }
+        }
+
+        console.log('Resolved online colors:', Object.values(playerColors).map(c => c.name));
+        return playerColors;
+    }
+
+    updateSoloModeUI() {
+        const slots = document.querySelectorAll('#solo-play-section .player-slot');
+
+        const allColorOptions = this.getAllColorOptions();
+        const allWeaponOptions = this.getAllWeaponOptions();
+
+        // Get all currently selected colors and weapons (excluding 'random')
+        const selectedColors = this.soloModeSlots
+            .filter(slot => slot.active && slot.color !== 'random')
+            .map(slot => slot.color);
+
+        const selectedWeapons = this.soloModeSlots
+            .filter(slot => slot.active && slot.weapon !== 'random')
+            .map(slot => slot.weapon);
         
         slots.forEach((slotElement, index) => {
             const slot = this.soloModeSlots[index];
@@ -3873,6 +4129,7 @@ class Game {
                 playerId: playerId,
                 data: { action: 'restoreHP' }
             });
+            return;
         }
 
         // Check if HP is already full
@@ -3936,6 +4193,7 @@ class Game {
                 playerId: playerId,
                 data: { action: 'restoreEP' }
             });
+            return;
         }
 
         // Check if EP is already full
@@ -7135,6 +7393,7 @@ class Game {
                 playerId: playerId,
                 data: { action: 'addToUpgrade', upgradeType: upgradeType }
             });
+            return;
         }
 
         // Check if already at maximum
@@ -7341,6 +7600,7 @@ class Game {
                 playerId: playerId,
                 data: { action: 'upgradeWeapon', upgradeType: upgradeType }
             });
+            return;
         }
 
         let upgraded = false;
@@ -13319,6 +13579,18 @@ class Game {
                 }
             }, 50 * (i + 1));
         });
+
+        // Handle no-bot case: timers and state push never happen inside the forEach
+        if (botPlayers.length === 0) {
+            const state = this.serializeGameState();
+            state.roundPhase = 'selection';
+            state.phaseTimeLimit = this.phaseTimeLimit;
+            this.onlineManager.pushGameState(state);
+
+            this.players.forEach(p => {
+                if (!p.isBot) this.startPhaseTimer(p.id);
+            });
+        }
 
         // Show selection UI for host
         const cardSelection = document.querySelector('.card-selection');

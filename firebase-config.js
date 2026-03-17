@@ -74,7 +74,7 @@ class OnlineManager {
         const roomData = {
             hostId: this.localId,
             players: {
-                [this.localId]: { joinOrder: 0 }
+                [this.localId]: { joinOrder: 0, preferredColor: 'random', preferredWeapon: 'random' }
             },
             status: 'waiting',
             playerCount: playerCount,
@@ -121,7 +121,9 @@ class OnlineManager {
 
         // Join the room by adding to players list
         await this.roomRef.child(`players/${this.localId}`).set({
-            joinOrder: currentPlayerCount
+            joinOrder: currentPlayerCount,
+            preferredColor: 'random',
+            preferredWeapon: 'random'
         });
 
         // Set up onDisconnect cleanup
