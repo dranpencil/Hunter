@@ -13244,7 +13244,8 @@ class Game {
                 pets: { ...p.pets },
                 monstersDefeated: { ...p.monstersDefeated },
                 hunterAloneCount: p.hunterAloneCount,
-                apprenticeWithHuntersCount: p.apprenticeWithHuntersCount
+                apprenticeWithHuntersCount: p.apprenticeWithHuntersCount,
+                locationSelections: JSON.parse(JSON.stringify(p.locationSelections))
             })),
             dummyTokens: [...this.dummyTokens],
             playerCompletionStatus: { ...this.playerCompletionStatus },
@@ -13346,6 +13347,9 @@ class Game {
                 localPlayer.maxInventoryCapacity = remotePlayer.maxInventoryCapacity;
                 localPlayer.hunterAloneCount = remotePlayer.hunterAloneCount;
                 localPlayer.apprenticeWithHuntersCount = remotePlayer.apprenticeWithHuntersCount;
+                if (remotePlayer.locationSelections) {
+                    localPlayer.locationSelections = JSON.parse(JSON.stringify(remotePlayer.locationSelections));
+                }
 
                 // Update weapon stats
                 if (remotePlayer.weapon) {
@@ -14164,13 +14168,35 @@ class Game {
             // Hide monster selection modals if still showing
             document.getElementById('monster-modal').style.display = 'none';
             document.getElementById('monster-selection-modal').style.display = 'none';
+
+            // Start battle timer for guest (only if not already running)
+            const existingTimer = this.phaseTimers[this.localPlayerId];
+            if (!existingTimer || !existingTimer.running) {
+                this.stopAllPhaseTimers();
+                this.expiredTimerPlayers = [];
+                this.phaseTimersPaused = false;
+                this.phaseTimers = {};
+                this.phaseTimers[this.localPlayerId] = {
+                    remaining: this.phaseTimeLimit * 1000,
+                    intervalId: null,
+                    running: false
+                };
+                this.startPhaseTimer(this.localPlayerId);
+                this.updatePhaseTimerDisplay(this.localPlayerId);
+            }
+
             // Active battle - guest sees battle UI with controls
             this.showBattleUIForGuest(state.battleState);
         }
 
         if (state.battlePhase === 'ended') {
-            // Battle ended
-            document.getElementById('monster-battle').style.display = 'none';
+            // Stop battle timer
+            this.stopAllPhaseTimers();
+            // Delay hiding to let guest see the final battle result (matches host's 3s delay)
+            setTimeout(() => {
+                document.getElementById('monster-battle').style.display = 'none';
+                document.getElementById('battle-log').innerHTML = '';
+            }, 3000);
         }
     }
 
@@ -14287,9 +14313,11 @@ class Game {
             document.getElementById('battle-monster-rewards').textContent = battleState.monsterRewardsText;
         }
 
-        // Show battle log
+        // Show battle log (clear first to remove entries from previous battles)
+        const battleLog = document.getElementById('battle-log');
+        battleLog.innerHTML = '';
         if (battleState.battleLogHTML) {
-            document.getElementById('battle-log').innerHTML = battleState.battleLogHTML;
+            battleLog.innerHTML = battleState.battleLogHTML;
         }
 
         const attackBtn = document.getElementById('battle-attack-btn');
@@ -15714,7 +15742,7 @@ class Game {
         const statsButton = document.createElement('button');
         statsButton.textContent = 'View Game Stats';
         statsButton.className = 'control-button';
-        statsButton.onclick = () => this.toggleGameStats();
+        statsButton.onclick = () => this.showGameStats();
         controls.appendChild(statsButton);
 
         const exitButton = document.createElement('button');
@@ -15727,6 +15755,9 @@ class Game {
             this.exitToMainMenu();
         };
         controls.appendChild(exitButton);
+
+        // Automatically show game stats
+        this.showGameStats();
 
         // Cleanup online connection after delay
         if (this.isHost && this.onlineManager) {
