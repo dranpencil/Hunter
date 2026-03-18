@@ -13422,6 +13422,9 @@ class Game {
         this.players.forEach(p => this.updatePopularityTrackDisplay(p.id));
         this.applyPlayerNameColors();
 
+        // Refresh button states so upgrade/restore buttons reflect synced resources
+        this.refreshAllPlayerButtonStates();
+
         // Update game log from host
         if (state.battleLog && state.battleLog.length > 0) {
             const logEl = document.getElementById('game-log');
