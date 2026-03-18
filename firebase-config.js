@@ -315,6 +315,24 @@ class OnlineManager {
         }, delayMs);
     }
 
+    // ==================== CHAT ====================
+
+    async pushChat(message) {
+        await this.roomRef.child('chat').push({
+            senderId: this.localId,
+            message: message,
+            timestamp: firebase.database.ServerValue.TIMESTAMP
+        });
+    }
+
+    listenForChat(callback) {
+        const ref = this.roomRef.child('chat');
+        const handler = ref.on('child_added', (snapshot) => {
+            callback(snapshot.val());
+        });
+        this.listeners.push({ ref, event: 'child_added', handler });
+    }
+
     // Callbacks (set by game.js)
     onConnectionWarning = null;
     onPlayerDisconnected = null;

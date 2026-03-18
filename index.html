@@ -14,13 +14,38 @@
         
         <!-- Game Log Section -->
         <div id="game-log-section" class="game-log-section" style="display: none;">
+            <!-- Top half: Game Log -->
             <div class="log-header">
                 <h3>Game Log</h3>
             </div>
             <div id="game-log" class="game-log">
                 <div class="log-entry">Welcome to Rock, Paper, Hunter!</div>
             </div>
+
+            <!-- Bottom half: Chat -->
+            <div class="chat-section" id="chat-section" style="display: none;">
+                <div class="chat-header">
+                    <h3>Chat</h3>
+                </div>
+                <div id="chat-messages" class="chat-messages"></div>
+                <div id="canned-msg-panel" class="canned-msg-panel" style="display: none;">
+                    <div class="canned-msg-tabs">
+                        <button class="canned-tab active" data-tab="0">問候語</button>
+                        <button class="canned-tab" data-tab="1">比賽中</button>
+                        <button class="canned-tab" data-tab="2">結語</button>
+                        <button class="canned-tab" data-tab="3">戰術</button>
+                        <button class="canned-tab" data-tab="4" style="display: none;">地點</button>
+                    </div>
+                    <div id="canned-msg-list" class="canned-msg-list"></div>
+                </div>
+                <div class="chat-input-area">
+                    <input type="text" id="chat-input" class="chat-input" placeholder="Type a message..." maxlength="100" />
+                    <button id="chat-send-btn" class="chat-send-btn">Send</button>
+                    <button id="canned-msg-btn" class="canned-msg-btn"><b>Q</b>uick</button>
+                </div>
+            </div>
         </div>
+
         
         <!-- Main Menu Screen -->
         <div id="main-menu" class="main-menu" style="display: none;">

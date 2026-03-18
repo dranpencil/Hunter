@@ -1140,6 +1140,20 @@ class Game {
         this.waitingForGuestAction = false; // Whether host is waiting for guest input
         this.onlineBattleState = null; // Battle state synced to Firebase
 
+        // Chat properties
+        this.pendingTacticsMessage = null;
+        this.cannedMessages = [
+            ['你好', '這個真難抉擇', '這真是場精彩的比賽', '我要去__，誰都別想跟我搶', '工地'],
+            ['來個精彩的對決吧', '這隻怪獸真難纏', '看來我今天的運氣比較好', '小心！有人要去__', '酒吧'],
+            ['請多多指教', '被你猜到了，真厲害', '比分差距不大，真是驚險', '這輪__變得很誘人耶', '車站'],
+            ['我是新手，請鞭小力一點', '讓我領先一下', '不好意思贏太多', '看起來你很想去__，嘿嘿', '醫院'],
+            ['好久不見', '看起來還有機會', '謝謝', '大家快去圍堵他，衝向__', '道場'],
+            ['', '大夥進攻囉', '好玩，要不要再一場？', '該不會你想去__吧？', '廣場'],
+            ['', '', '', '看來我們都很想去__，要不輪流一下', '森林'],
+            ['', '', '', '各位高抬貴手，讓去__一次拜託', ''],
+        ];
+        this.cannedTabNames = ['問候語', '比賽中', '結語', '戰術', '地點'];
+
         // Phase timer properties (online mode only)
         this.phaseTimeLimit = 60; // seconds, default 1 min
         this.phaseTimers = {}; // map of playerId -> { remaining, intervalId, running }
@@ -1644,6 +1658,9 @@ class Game {
             this.handleGuestAction(action);
         });
 
+        // Initialize chat
+        this.initChat();
+
         // Start selection phase - host sees cards, bots select instantly
         this.startOnlineSelectionPhase();
     }
@@ -1651,6 +1668,7 @@ class Game {
     initOnlineGameAsGuest(config) {
         this.localPlayerId = config.humanSlots[this.onlineManager.localId];
         this.currentPlayerIndex = this.localPlayerId;
+        this.onlinePlayerMap = { ...config.humanSlots };
 
         // Hide lobby, show game
         document.getElementById('online-lobby').style.display = 'none';
@@ -1715,6 +1733,9 @@ class Game {
         });
 
         this.initGuestUI();
+
+        // Initialize chat
+        this.initChat();
 
         // Listen for game state updates from host
         this.onlineManager.listenForGameState((state) => {
@@ -15762,6 +15783,269 @@ class Game {
         // Cleanup online connection after delay
         if (this.isHost && this.onlineManager) {
             this.onlineManager.scheduleRoomDeletion(60000);
+        }
+    }
+
+    // ==================== CHAT SYSTEM ====================
+
+    initChat() {
+        if (!this.isOnlineMode || !this.onlineManager) return;
+
+        // Show chat section
+        const chatSection = document.getElementById('chat-section');
+        if (chatSection) chatSection.style.display = 'flex';
+
+        // Add class to log section so CSS knows chat is active
+        const logSection = document.getElementById('game-log-section');
+        if (logSection) logSection.classList.add('has-chat');
+
+        // Listen for incoming chat messages
+        this.onlineManager.listenForChat((data) => {
+            this.onChatMessageReceived(data);
+        });
+
+        // Bind send button
+        const sendBtn = document.getElementById('chat-send-btn');
+        if (sendBtn) {
+            sendBtn.addEventListener('click', () => {
+                this.sendChatFromInput();
+            });
+        }
+
+        // Bind Enter key on input
+        const chatInput = document.getElementById('chat-input');
+        if (chatInput) {
+            chatInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    this.sendChatFromInput();
+                }
+            });
+        }
+
+        // Bind Quick button to toggle canned message panel
+        const cannedBtn = document.getElementById('canned-msg-btn');
+        if (cannedBtn) {
+            cannedBtn.addEventListener('click', () => {
+                this.toggleCannedPanel();
+            });
+        }
+
+        // Bind tab switching
+        const tabs = document.querySelectorAll('.canned-tab');
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const tabIndex = parseInt(tab.dataset.tab);
+                // Tab 4 only accessible after selecting tab 3 message
+                if (tabIndex === 4 && !this.pendingTacticsMessage) return;
+                this.switchCannedTab(tabIndex);
+            });
+        });
+
+        // Keyboard shortcuts for canned message panel
+        this.cannedPanelState = 'closed';
+        document.addEventListener('keydown', (e) => {
+            // Alt+Q toggles canned panel
+            if (e.altKey && (e.key === 'q' || e.key === 'Q')) {
+                e.preventDefault();
+                this.toggleCannedPanel();
+                return;
+            }
+
+            // Only process number keys when panel is open
+            const panel = document.getElementById('canned-msg-panel');
+            if (!panel || panel.style.display === 'none') return;
+
+            // Ignore if chat input is focused (user typing a message)
+            if (document.activeElement === document.getElementById('chat-input')) return;
+
+            const num = parseInt(e.key); // 1-9
+            if (isNaN(num) || num < 1) return;
+
+            e.preventDefault();
+
+            if (this.cannedPanelState === 'tabs') {
+                // Number selects tab: 1→tab 0, 2→tab 1, etc.
+                const tabIndex = num - 1;
+                // Tab 4 only if pendingTacticsMessage exists
+                if (tabIndex === 4 && !this.pendingTacticsMessage) return;
+                // Tabs 0-4 valid
+                if (tabIndex > 4) return;
+                // Check tab is visible
+                const tabBtn = document.querySelector(`.canned-tab[data-tab="${tabIndex}"]`);
+                if (!tabBtn || tabBtn.style.display === 'none') return;
+                this.switchCannedTab(tabIndex);
+                this.cannedPanelState = 'messages';
+            } else if (this.cannedPanelState === 'messages') {
+                // Number selects message by position (1-indexed)
+                const items = document.querySelectorAll('#canned-msg-list .canned-msg-item');
+                const idx = num - 1;
+                if (idx >= items.length) return;
+                items[idx].click();
+            }
+        });
+    }
+
+    sendChatFromInput() {
+        const chatInput = document.getElementById('chat-input');
+        if (!chatInput) return;
+        const text = chatInput.value.trim();
+        if (text) {
+            this.sendChatMessage(text);
+            chatInput.value = '';
+        }
+    }
+
+    async sendChatMessage(text) {
+        if (!text || !this.onlineManager) return;
+        try {
+            await this.onlineManager.pushChat(text);
+        } catch (e) {
+            console.error('Failed to send chat message:', e);
+        }
+    }
+
+    onChatMessageReceived(data) {
+        const container = document.getElementById('chat-messages');
+        if (!container) return;
+
+        // Find the player by Firebase senderId
+        let senderName = 'Unknown';
+        let senderColor = '#95a5a6';
+
+        if (this.players && this.onlinePlayerMap) {
+            const playerSlot = this.onlinePlayerMap[data.senderId];
+            if (playerSlot !== undefined && this.players[playerSlot]) {
+                const player = this.players[playerSlot];
+                senderName = player.name;
+                senderColor = player.color?.background || '#95a5a6';
+            }
+        }
+
+        const msgEl = document.createElement('div');
+        msgEl.className = 'chat-message';
+
+        const senderSpan = document.createElement('span');
+        senderSpan.className = 'chat-sender';
+        senderSpan.style.color = senderColor;
+        senderSpan.textContent = senderName + ':';
+
+        const textNode = document.createTextNode(' ' + data.message);
+
+        msgEl.appendChild(senderSpan);
+        msgEl.appendChild(textNode);
+        container.appendChild(msgEl);
+
+        // Auto-scroll
+        container.scrollTop = container.scrollHeight;
+
+        // Limit to last 50 messages
+        const messages = container.querySelectorAll('.chat-message');
+        if (messages.length > 50) {
+            messages[0].remove();
+        }
+    }
+
+    toggleCannedPanel() {
+        const panel = document.getElementById('canned-msg-panel');
+        if (!panel) return;
+
+        if (panel.style.display === 'none') {
+            panel.style.display = 'flex';
+            this.pendingTacticsMessage = null;
+            // Hide tab 4
+            const tab4 = document.querySelector('.canned-tab[data-tab="4"]');
+            if (tab4) tab4.style.display = 'none';
+            // Open to context-aware default tab
+            this.switchCannedTab(this.getDefaultCannedTab());
+            this.cannedPanelState = 'tabs';
+        } else {
+            this.closeCannedPanel();
+        }
+    }
+
+    getDefaultCannedTab() {
+        if (this.roundPhase === 'gameover') return 2;           // 結語
+        if (this.roundPhase === 'selection' && this.currentRound === 1) return 0; // 問候語
+        if (this.roundPhase === 'selection') return 3;           // 戰術
+        return 1;                                                // 比賽中
+    }
+
+    closeCannedPanel() {
+        const panel = document.getElementById('canned-msg-panel');
+        if (panel) panel.style.display = 'none';
+        this.cannedPanelState = 'closed';
+        this.pendingTacticsMessage = null;
+        // Clear input if it had a pending tactics message
+        const chatInput = document.getElementById('chat-input');
+        if (chatInput && chatInput.dataset.pending) {
+            chatInput.value = '';
+            delete chatInput.dataset.pending;
+        }
+    }
+
+    switchCannedTab(tabIndex) {
+        // Update active tab styling
+        const tabs = document.querySelectorAll('.canned-tab');
+        tabs.forEach(t => t.classList.remove('active'));
+        const activeTab = document.querySelector(`.canned-tab[data-tab="${tabIndex}"]`);
+        if (activeTab) activeTab.classList.add('active');
+
+        // Populate message list
+        const listContainer = document.getElementById('canned-msg-list');
+        if (!listContainer) return;
+        listContainer.innerHTML = '';
+
+        let itemIndex = 1;
+        for (let row = 0; row < this.cannedMessages.length; row++) {
+            const msg = this.cannedMessages[row][tabIndex];
+            if (!msg) continue;
+
+            const item = document.createElement('button');
+            item.className = 'canned-msg-item';
+            item.textContent = `${itemIndex}. ${msg}`;
+            item.addEventListener('click', () => {
+                this.handleCannedMessageClick(tabIndex, msg);
+            });
+            listContainer.appendChild(item);
+            itemIndex++;
+        }
+
+        this.cannedPanelState = 'messages';
+        this.cannedActiveTab = tabIndex;
+    }
+
+    handleCannedMessageClick(tabIndex, message) {
+        if (tabIndex <= 2) {
+            // Tabs 0-2: auto-send immediately
+            this.sendChatMessage(message);
+            this.closeCannedPanel();
+        } else if (tabIndex === 3) {
+            // Tab 3 (戰術): store pending, show in input, switch to tab 4
+            this.pendingTacticsMessage = message;
+            const chatInput = document.getElementById('chat-input');
+            if (chatInput) {
+                chatInput.value = message;
+                chatInput.dataset.pending = 'true';
+            }
+
+            // Show and activate tab 4
+            const tab4 = document.querySelector('.canned-tab[data-tab="4"]');
+            if (tab4) tab4.style.display = '';
+            this.switchCannedTab(4);
+        } else if (tabIndex === 4) {
+            // Tab 4 (地點): replace __ in pending message, send
+            if (this.pendingTacticsMessage) {
+                const composed = this.pendingTacticsMessage.replace('__', message);
+                this.sendChatMessage(composed);
+                this.pendingTacticsMessage = null;
+                const chatInput = document.getElementById('chat-input');
+                if (chatInput) {
+                    chatInput.value = '';
+                    delete chatInput.dataset.pending;
+                }
+                this.closeCannedPanel();
+            }
         }
     }
 }
