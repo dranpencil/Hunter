@@ -3610,6 +3610,7 @@ button {
     text-shadow: 3px 3px 6px rgba(0,0,0,0.3);
     font-weight: bold;
     letter-spacing: -2px;
+    white-space: nowrap;
 }
 
 .menu-buttons {
@@ -3683,6 +3684,33 @@ button {
 }
 
 .rulebook-btn .button-icon {
+    font-size: 32px;
+    margin: 0;
+    line-height: 1;
+}
+
+/* Language Button (matches rulebook style, sits to the left of it) */
+.language-btn {
+    position: absolute;
+    top: 20px;
+    right: 90px;
+    width: 60px;
+    height: 60px;
+    padding: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.language-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: scale(1.1);
+}
+
+.language-btn .button-icon {
     font-size: 32px;
     margin: 0;
     line-height: 1;

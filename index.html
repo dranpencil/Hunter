@@ -16,32 +16,32 @@
         <div id="game-log-section" class="game-log-section" style="display: none;">
             <!-- Top half: Game Log -->
             <div class="log-header">
-                <h3>Game Log</h3>
+                <h3 data-i18n="log.title">Game Log</h3>
             </div>
             <div id="game-log" class="game-log">
-                <div class="log-entry">Welcome to Rock, Paper, Hunter!</div>
+                <div class="log-entry" data-i18n="welcome.message">Welcome to Rock, Paper, Hunter!</div>
             </div>
 
             <!-- Bottom half: Chat -->
             <div class="chat-section" id="chat-section" style="display: none;">
                 <div class="chat-header">
-                    <h3>Chat</h3>
+                    <h3 data-i18n="chat.title">Chat</h3>
                 </div>
                 <div id="chat-messages" class="chat-messages"></div>
                 <div id="canned-msg-panel" class="canned-msg-panel" style="display: none;">
                     <div class="canned-msg-tabs">
-                        <button class="canned-tab active" data-tab="0">問候語</button>
-                        <button class="canned-tab" data-tab="1">比賽中</button>
-                        <button class="canned-tab" data-tab="2">結語</button>
-                        <button class="canned-tab" data-tab="3">戰術</button>
-                        <button class="canned-tab" data-tab="4" style="display: none;">地點</button>
+                        <button class="canned-tab active" data-tab="0" data-i18n="chat.tab.greeting">問候語</button>
+                        <button class="canned-tab" data-tab="1" data-i18n="chat.tab.midgame">比賽中</button>
+                        <button class="canned-tab" data-tab="2" data-i18n="chat.tab.closing">結語</button>
+                        <button class="canned-tab" data-tab="3" data-i18n="chat.tab.tactics">戰術</button>
+                        <button class="canned-tab" data-tab="4" style="display: none;" data-i18n="chat.tab.locations">地點</button>
                     </div>
                     <div id="canned-msg-list" class="canned-msg-list"></div>
                 </div>
                 <div class="chat-input-area">
-                    <input type="text" id="chat-input" class="chat-input" placeholder="Type a message..." maxlength="100" />
-                    <button id="chat-send-btn" class="chat-send-btn">Send</button>
-                    <button id="canned-msg-btn" class="canned-msg-btn"><b>Q</b>uick</button>
+                    <input type="text" id="chat-input" class="chat-input" placeholder="Type a message..." data-i18n-placeholder="chat.placeholder" maxlength="100" />
+                    <button id="chat-send-btn" class="chat-send-btn" data-i18n="chat.send">Send</button>
+                    <button id="canned-msg-btn" class="canned-msg-btn" data-i18n="chat.quickButton"><b>Q</b>uick</button>
                 </div>
             </div>
         </div>
@@ -50,21 +50,24 @@
         <!-- Main Menu Screen -->
         <div id="main-menu" class="main-menu" style="display: none;">
             <div class="menu-content">
-                <h1 class="game-title">Rock, Paper, Hunters</h1>
-                <button class="menu-button rulebook-btn" onclick="game.showRulebook()">
+                <h1 class="game-title" data-i18n="menu.title">Rock, Paper, Hunters</h1>
+                <button class="menu-button rulebook-btn" onclick="game.showRulebook()" data-i18n-title="menu.rulebook" title="Rulebook">
                     <span class="button-icon">📖</span>
+                </button>
+                <button class="menu-button language-btn" onclick="game.showLanguageModal()" data-i18n-title="menu.language" title="Language">
+                    <span class="button-icon">🌐</span>
                 </button>
                 <div class="menu-buttons">
                     <button class="menu-button local-play-btn" onclick="game.showLocalPlay()">
                         <span class="button-icon">🎮</span>
-                        <span>Local Play</span>
+                        <span data-i18n="menu.localPlay">Local Play</span>
                     </button>
                     <button class="menu-button online-play-btn" onclick="game.showOnlinePlay()">
                         <span class="button-icon">🌐</span>
-                        <span>Online Play</span>
+                        <span data-i18n="menu.onlinePlay">Online Play</span>
                     </button>
                     <button class="menu-button" onclick="game.showDataCollectionModal()">
-                        <span>Data Collection Mode</span>
+                        <span data-i18n="menu.dataCollection">Data Collection Mode</span>
                     </button>
                 </div>
             </div>
@@ -75,133 +78,133 @@
             <div class="lobby-content">
                 <!-- Create/Join Selection -->
                 <div id="online-menu" class="online-menu">
-                    <h2>Online Play</h2>
+                    <h2 data-i18n="lobby.online.title">Online Play</h2>
                     <div class="online-menu-buttons">
                         <button class="menu-button" onclick="game.showCreateRoom()">
                             <span class="button-icon">🏠</span>
-                            <span>Create Room</span>
+                            <span data-i18n="lobby.online.createRoom">Create Room</span>
                         </button>
                         <button class="menu-button" onclick="game.showJoinRoom()">
                             <span class="button-icon">🚪</span>
-                            <span>Join Room</span>
+                            <span data-i18n="lobby.online.joinRoom">Join Room</span>
                         </button>
                     </div>
-                    <button class="back-btn" onclick="game.backFromOnlineLobby()">Back</button>
+                    <button class="back-btn" onclick="game.backFromOnlineLobby()" data-i18n="common.back">Back</button>
                 </div>
 
                 <!-- Create Room View -->
                 <div id="create-room-view" class="lobby-view" style="display: none;">
-                    <h2>Create Room</h2>
+                    <h2 data-i18n="lobby.create.title">Create Room</h2>
                     <div class="create-room-settings">
                         <div class="setting-group">
-                            <label for="online-player-count">Total Players:</label>
+                            <label for="online-player-count" data-i18n="lobby.create.totalPlayers">Total Players:</label>
                             <select id="online-player-count">
-                                <option value="2">2 Players</option>
-                                <option value="3" selected>3 Players</option>
-                                <option value="4">4 Players</option>
+                                <option value="2" data-i18n="lobby.create.players2">2 Players</option>
+                                <option value="3" selected data-i18n="lobby.create.players3">3 Players</option>
+                                <option value="4" data-i18n="lobby.create.players4">4 Players</option>
                             </select>
                         </div>
                         <div class="setting-group">
-                            <label for="online-phase-timer">Phase Time Limit:</label>
+                            <label for="online-phase-timer" data-i18n="lobby.create.timeLimit">Phase Time Limit:</label>
                             <select id="online-phase-timer">
-                                <option value="30">30 seconds</option>
-                                <option value="60" selected>1 minute</option>
-                                <option value="120">2 minutes</option>
-                                <option value="180">3 minutes</option>
-                                <option value="0">No time limit</option>
+                                <option value="30" data-i18n="lobby.create.timer30">30 seconds</option>
+                                <option value="60" selected data-i18n="lobby.create.timer60">1 minute</option>
+                                <option value="120" data-i18n="lobby.create.timer120">2 minutes</option>
+                                <option value="180" data-i18n="lobby.create.timer180">3 minutes</option>
+                                <option value="0" data-i18n="lobby.create.timerNone">No time limit</option>
                             </select>
                         </div>
                     </div>
-                    <button class="ready-btn" onclick="game.createOnlineRoom()">Create Room</button>
-                    <button class="back-btn" onclick="game.backToOnlineMenu()">Back</button>
+                    <button class="ready-btn" onclick="game.createOnlineRoom()" data-i18n="lobby.create.button">Create Room</button>
+                    <button class="back-btn" onclick="game.backToOnlineMenu()" data-i18n="common.back">Back</button>
                 </div>
 
                 <!-- Waiting Room (Host) -->
                 <div id="waiting-room-host" class="lobby-view" style="display: none;">
-                    <h2>Waiting for Players</h2>
+                    <h2 data-i18n="lobby.waiting.title">Waiting for Players</h2>
                     <div class="room-code-display">
-                        <p>Share this room code:</p>
+                        <p data-i18n="lobby.waiting.shareCode">Share this room code:</p>
                         <div class="room-code" id="room-code-display">----</div>
-                        <button class="copy-code-btn" onclick="game.copyRoomCode()">Copy Code</button>
+                        <button class="copy-code-btn" onclick="game.copyRoomCode()" data-i18n="lobby.waiting.copyCode">Copy Code</button>
                     </div>
                     <div id="player-count-display" class="player-count-display">
-                        <div class="player-count-header">Players: <span id="human-count">1</span>/<span id="human-total">2</span> connected</div>
+                        <div class="player-count-header"><span data-i18n="lobby.waiting.playersLabel">Players:</span> <span id="human-count">1</span>/<span id="human-total">2</span> <span data-i18n="lobby.waiting.connectedSuffix">connected</span></div>
                         <ul class="player-slot-list" id="player-slot-list"></ul>
                         <div class="game-composition" id="game-composition"></div>
                     </div>
                     <div id="host-preference-selectors" class="online-preference-section"></div>
                     <div class="waiting-status">
                         <div class="waiting-spinner"></div>
-                        <p id="waiting-status-text">Waiting for players to join...</p>
+                        <p id="waiting-status-text" data-i18n="lobby.waiting.spinner">Waiting for players to join...</p>
                     </div>
                     <div id="host-guest-joined" style="display: none;">
-                        <p class="guest-joined-text" id="guest-joined-text">Ready to start!</p>
-                        <button class="ready-btn" onclick="game.startOnlineGame()">Start Game</button>
+                        <p class="guest-joined-text" id="guest-joined-text" data-i18n="lobby.waiting.readyToStart">Ready to start!</p>
+                        <button class="ready-btn" onclick="game.startOnlineGame()" data-i18n="lobby.waiting.startGame">Start Game</button>
                     </div>
-                    <button class="back-btn" onclick="game.cancelOnlineRoom()">Cancel</button>
+                    <button class="back-btn" onclick="game.cancelOnlineRoom()" data-i18n="common.cancel">Cancel</button>
                 </div>
 
                 <!-- Join Room View -->
                 <div id="join-room-view" class="lobby-view" style="display: none;">
-                    <h2>Join Room</h2>
+                    <h2 data-i18n="lobby.join.title">Join Room</h2>
                     <div class="join-room-input">
-                        <label for="room-code-input">Enter Room Code:</label>
+                        <label for="room-code-input" data-i18n="lobby.join.enterCode">Enter Room Code:</label>
                         <input type="text" id="room-code-input" maxlength="4" placeholder="ABCD"
                                oninput="this.value = this.value.toUpperCase()">
                         <p id="join-error" class="join-error" style="display: none;"></p>
                     </div>
-                    <button class="ready-btn" onclick="game.joinOnlineRoom()">Join</button>
-                    <button class="back-btn" onclick="game.backToOnlineMenu()">Back</button>
+                    <button class="ready-btn" onclick="game.joinOnlineRoom()" data-i18n="lobby.join.button">Join</button>
+                    <button class="back-btn" onclick="game.backToOnlineMenu()" data-i18n="common.back">Back</button>
                 </div>
 
                 <!-- Waiting Room (Guest) -->
                 <div id="waiting-room-guest" class="lobby-view" style="display: none;">
-                    <h2>Waiting for Players</h2>
+                    <h2 data-i18n="lobby.guest.title">Waiting for Players</h2>
                     <div class="room-code-display">
-                        <p>Room Code:</p>
+                        <p data-i18n="lobby.guest.roomCode">Room Code:</p>
                         <div class="room-code" id="guest-room-code">----</div>
                     </div>
                     <div id="guest-player-count-display" class="player-count-display">
-                        <div class="player-count-header">Players: <span id="guest-human-count">1</span>/<span id="guest-human-total">2</span> connected</div>
+                        <div class="player-count-header"><span data-i18n="lobby.waiting.playersLabel">Players:</span> <span id="guest-human-count">1</span>/<span id="guest-human-total">2</span> <span data-i18n="lobby.waiting.connectedSuffix">connected</span></div>
                         <ul class="player-slot-list" id="guest-player-slot-list"></ul>
                     </div>
                     <div id="guest-preference-selectors" class="online-preference-section"></div>
                     <div class="guest-ready-section" id="guest-ready-section">
-                        <button class="ready-btn" id="guest-ready-btn" onclick="game.toggleGuestReady()">Ready</button>
-                        <p class="ready-status-text" id="guest-ready-status">Set your preferences, then click Ready</p>
+                        <button class="ready-btn" id="guest-ready-btn" onclick="game.toggleGuestReady()" data-i18n="lobby.guest.ready">Ready</button>
+                        <p class="ready-status-text" id="guest-ready-status" data-i18n="lobby.guest.statusText">Set your preferences, then click Ready</p>
                     </div>
-                    <button class="back-btn" onclick="game.leaveOnlineRoom()">Leave</button>
+                    <button class="back-btn" onclick="game.leaveOnlineRoom()" data-i18n="lobby.guest.leave">Leave</button>
                 </div>
             </div>
         </div>
 
         <!-- Online Connection Status Bar -->
         <div id="online-connection-bar" class="online-connection-bar" style="display: none;">
-            <span id="connection-status-text">Connected</span>
+            <span id="connection-status-text" data-i18n="connection.connected">Connected</span>
             <span id="connection-role-text"></span>
         </div>
 
         <!-- Disconnect Modal -->
         <div id="disconnect-modal" class="modal" style="display: none;">
             <div class="modal-content">
-                <h3>Player Disconnected</h3>
-                <p id="disconnect-message">The other player has disconnected.</p>
-                <button onclick="game.handleDisconnectAcknowledge()">Return to Menu</button>
+                <h3 data-i18n="disconnect.title">Player Disconnected</h3>
+                <p id="disconnect-message" data-i18n="disconnect.message">The other player has disconnected.</p>
+                <button onclick="game.handleDisconnectAcknowledge()" data-i18n="disconnect.return">Return to Menu</button>
             </div>
         </div>
 
         <!-- Kick Vote Modal -->
         <div id="kick-vote-modal" class="modal" style="display: none;">
             <div class="modal-content">
-                <h3 id="kick-vote-title">Kick Vote</h3>
-                <p id="kick-vote-message">Do you wish to kick out this player?</p>
+                <h3 id="kick-vote-title" data-i18n="kickVote.title">Kick Vote</h3>
+                <p id="kick-vote-message" data-i18n="kickVote.message">Do you wish to kick out this player?</p>
                 <div class="kick-vote-tally">
                     <div class="tally-option tally-yes">
-                        <span class="tally-label">Yes</span>
+                        <span class="tally-label" data-i18n="kickVote.yes">Yes</span>
                         <span class="tally-count" id="kick-vote-yes-count">0</span>
                     </div>
                     <div class="tally-option tally-no">
-                        <span class="tally-label">No</span>
+                        <span class="tally-label" data-i18n="kickVote.no">No</span>
                         <span class="tally-count" id="kick-vote-no-count">0</span>
                     </div>
                 </div>
@@ -209,8 +212,8 @@
                     <span id="kick-vote-timer-display">0:30</span>
                 </div>
                 <div class="kick-vote-buttons">
-                    <button class="kick-vote-yes-btn" onclick="game.submitKickVote(true)">Yes</button>
-                    <button class="kick-vote-no-btn" onclick="game.submitKickVote(false)">No</button>
+                    <button class="kick-vote-yes-btn" onclick="game.submitKickVote(true)" data-i18n="kickVote.yes">Yes</button>
+                    <button class="kick-vote-no-btn" onclick="game.submitKickVote(false)" data-i18n="kickVote.no">No</button>
                 </div>
             </div>
         </div>
@@ -218,33 +221,33 @@
         <!-- Player Count Selection Screen -->
         <div id="player-count-selection" class="player-count-selection" style="display: none;">
             <div class="selection-content">
-                <h2>Configure Players</h2>
+                <h2 data-i18n="setup.title">Configure Players</h2>
                 <div id="solo-play-section" class="mode-section" style="display: block;">
                     <div class="player-slots">
                         <div class="player-slot active" data-slot="0">
                             <span class="slot-number">1</span>
-                            <span class="slot-type">Player</span>
-                            <button class="slot-toggle" onclick="game.toggleSlotType(0)">Change to Bot</button>
+                            <span class="slot-type" data-i18n="setup.slot.player">Player</span>
+                            <button class="slot-toggle" onclick="game.toggleSlotType(0)" data-i18n="setup.changeToBot">Change to Bot</button>
                         </div>
                         <div class="player-slot closed" data-slot="1">
                             <span class="slot-number">2</span>
-                            <span class="slot-status">Closed</span>
-                            <button class="slot-activate" onclick="game.activateSlot(1)">Add Player</button>
+                            <span class="slot-status" data-i18n="setup.slot.closed">Closed</span>
+                            <button class="slot-activate" onclick="game.activateSlot(1)" data-i18n="setup.addPlayer">Add Player</button>
                         </div>
                         <div class="player-slot closed" data-slot="2">
                             <span class="slot-number">3</span>
-                            <span class="slot-status">Closed</span>
-                            <button class="slot-activate" onclick="game.activateSlot(2)">Add Player</button>
+                            <span class="slot-status" data-i18n="setup.slot.closed">Closed</span>
+                            <button class="slot-activate" onclick="game.activateSlot(2)" data-i18n="setup.addPlayer">Add Player</button>
                         </div>
                         <div class="player-slot closed" data-slot="3">
                             <span class="slot-number">4</span>
-                            <span class="slot-status">Closed</span>
-                            <button class="slot-activate" onclick="game.activateSlot(3)">Add Player</button>
+                            <span class="slot-status" data-i18n="setup.slot.closed">Closed</span>
+                            <button class="slot-activate" onclick="game.activateSlot(3)" data-i18n="setup.addPlayer">Add Player</button>
                         </div>
                     </div>
-                    <button class="ready-btn" id="solo-ready-btn" onclick="game.startSoloGame()" disabled>Ready</button>
+                    <button class="ready-btn" id="solo-ready-btn" onclick="game.startSoloGame()" disabled data-i18n="setup.ready">Ready</button>
                 </div>
-                <button class="back-btn" onclick="game.backToModeSelection()">Back</button>
+                <button class="back-btn" onclick="game.backToModeSelection()" data-i18n="common.back">Back</button>
             </div>
         </div>
 
@@ -254,7 +257,7 @@
             <div class="main-left-column">
                 <!-- Player Boards -->
                 <div class="player-boards-controls">
-            <button id="toggle-boards-btn" class="toggle-boards-btn" onclick="game.toggleAllPlayerBoards()" style="display: none;">Collapse</button>
+            <button id="toggle-boards-btn" class="toggle-boards-btn" onclick="game.toggleAllPlayerBoards()" style="display: none;" data-i18n="status.toggleBoards">Collapse</button>
         </div>
         <div class="player-boards" id="player-boards-container">
             <!-- Player boards will be generated dynamically -->
@@ -262,10 +265,10 @@
         
         <!-- Combat Section -->
         <div class="combat-section" style="display: none;" id="combat-section">
-            <h3>Combat</h3>
+            <h3 data-i18n="battle.combat">Combat</h3>
             <div class="combat-controls">
-                <button onclick="game.performCombat(1, 2)">Player 1 attacks Player 2</button>
-                <button onclick="game.performCombat(2, 1)">Player 2 attacks Player 1</button>
+                <button onclick="game.performCombat(1, 2)" data-i18n="battle.player1Attacks">Player 1 attacks Player 2</button>
+                <button onclick="game.performCombat(2, 1)" data-i18n="battle.player2Attacks">Player 2 attacks Player 1</button>
             </div>
             <div id="combat-results"></div>
         </div>
@@ -273,38 +276,38 @@
         <!-- Game Board -->
         <div class="game-board">
             <div class="location" data-location="1">
-                <h3><img src="work_site.png" class="location-icon" alt="Work Site"> Work Site</h3>
-                <div class="reward-info">$6/4</div>
+                <h3><img src="work_site.png" class="location-icon" alt="Work Site"> <span data-i18n="location.workSite">Work Site</span></h3>
+                <div class="reward-info" data-i18n="location.workSite.reward">$6/4</div>
                 <div class="token-slots"></div>
             </div>
             <div class="location" data-location="2">
-                <h3><img src="bar.png" class="location-icon" alt="Bar"> Bar</h3>
-                <div class="reward-info">Beer 6/4</div>
+                <h3><img src="bar.png" class="location-icon" alt="Bar"> <span data-i18n="location.bar">Bar</span></h3>
+                <div class="reward-info" data-i18n="location.bar.reward">Beer 6/4</div>
                 <div class="token-slots"></div>
             </div>
             <div class="location" data-location="3">
-                <h3><img src="station.png" class="location-icon" alt="Station"> Station</h3>
-                <div class="reward-info">Wild Card</div>
+                <h3><img src="station.png" class="location-icon" alt="Station"> <span data-i18n="location.station">Station</span></h3>
+                <div class="reward-info" data-i18n="location.station.reward">Wild Card</div>
                 <div class="token-slots"></div>
             </div>
             <div class="location" data-location="4">
-                <h3><img src="hospital.png" class="location-icon" alt="Hospital"> Hospital</h3>
-                <div class="reward-info">Blood 4/2</div>
+                <h3><img src="hospital.png" class="location-icon" alt="Hospital"> <span data-i18n="location.hospital">Hospital</span></h3>
+                <div class="reward-info" data-i18n="location.hospital.reward">Blood 4/2</div>
                 <div class="token-slots"></div>
             </div>
             <div class="location" data-location="5">
-                <h3><img src="dojo.png" class="location-icon" alt="Dojo"> Dojo</h3>
-                <div class="reward-info">EXP 4/2</div>
+                <h3><img src="dojo.png" class="location-icon" alt="Dojo"> <span data-i18n="location.dojo">Dojo</span></h3>
+                <div class="reward-info" data-i18n="location.dojo.reward">EXP 4/2</div>
                 <div class="token-slots"></div>
             </div>
             <div class="location" data-location="6">
-                <h3><img src="plaza.png" class="location-icon" alt="Plaza"> Plaza</h3>
-                <div class="reward-info">Score 4/2</div>
+                <h3><img src="plaza.png" class="location-icon" alt="Plaza"> <span data-i18n="location.plaza">Plaza</span></h3>
+                <div class="reward-info" data-i18n="location.plaza.reward">Score 4/2</div>
                 <div class="token-slots"></div>
             </div>
             <div class="location" data-location="7">
-                <h3><img src="forest.png" class="location-icon" alt="Forest"> Forest</h3>
-                <div class="reward-info">Monster Hunt</div>
+                <h3><img src="forest.png" class="location-icon" alt="Forest"> <span data-i18n="location.forest">Forest</span></h3>
+                <div class="reward-info" data-i18n="location.forest.reward">Monster Hunt</div>
                 <div class="token-slots"></div>
             </div>
         </div>
@@ -320,7 +323,7 @@
                 <!-- Player Area -->
                 <div class="player-area">
             <div class="current-player">
-                <h2>Current Player: <span id="current-player-name">Player 1</span></h2>
+                <h2><span data-i18n="status.currentPlayer">Current Player:</span> <span id="current-player-name">Player 1</span></h2>
             </div>
 
             <!-- Player Status Indicators -->
@@ -332,32 +335,32 @@
             <!-- Card Selection Area -->
             <div class="card-selection">
                 <div class="token-selection">
-                    <h3>Hunter Location</h3>
+                    <h3 data-i18n="selection.hunterLocation">Hunter Location</h3>
                     <div class="hunter-cards cards-container" id="hunter-cards"></div>
                 </div>
                 <div class="token-selection">
-                    <h3>Apprentice Location</h3>
+                    <h3 data-i18n="selection.apprenticeLocation">Apprentice Location</h3>
                     <div class="apprentice-cards cards-container" id="apprentice-cards"></div>
                 </div>
             </div>
-            
+
             <!-- Store Area -->
             <div class="store-area" id="store-area" style="display: none;">
-                <h3>Store - <span id="store-current-player">Player 1</span></h3>
+                <h3><span data-i18n="store.title">Store</span> - <span id="store-current-player">Player 1</span></h3>
                 <div class="store-info">
-                    <span>Money: $<span id="store-player-money">0</span></span>
-                    <span>Capacity: <span id="store-current-capacity">0</span>/<span id="store-max-capacity">0</span></span>
+                    <span><span data-i18n="store.money">Money:</span> $<span id="store-player-money">0</span></span>
+                    <span><span data-i18n="store.capacity">Capacity:</span> <span id="store-current-capacity">0</span>/<span id="store-max-capacity">0</span></span>
                 </div>
                 <div class="store-items-grid" id="store-items-grid">
                     <!-- Store items will be added here -->
                 </div>
-                <button class="finish-shopping-btn" onclick="game.finishShopping()">Finish Shopping</button>
+                <button class="finish-shopping-btn" onclick="game.finishShopping()" data-i18n="store.finishShopping">Finish Shopping</button>
             </div>
-            
+
             <!-- Control Buttons -->
             <div class="controls">
-                <button id="confirm-selection" disabled>Confirm Selection</button>
-                <button id="next-player" style="display: none;">Next Player</button>
+                <button id="confirm-selection" disabled data-i18n="status.confirmSelection">Confirm Selection</button>
+                <button id="next-player" style="display: none;" data-i18n="status.nextPlayer">Next Player</button>
             </div>
         </div>
             </div>
@@ -370,22 +373,22 @@
                 <div class="station-choices">
                     <button class="station-choice" onclick="game.selectStationResource('money')">
                         <span class="choice-icon">💰</span>
-                        <span>Money</span>
+                        <span data-i18n="station.money">Money</span>
                         <span class="choice-amount" id="money-amount">6</span>
                     </button>
                     <button class="station-choice" onclick="game.selectStationResource('beer')">
                         <span class="choice-icon">🍺</span>
-                        <span>Beer</span>
+                        <span data-i18n="station.beer">Beer</span>
                         <span class="choice-amount" id="beer-amount">6</span>
                     </button>
                     <button class="station-choice" onclick="game.selectStationResource('bloodBag')">
                         <span class="choice-icon">🩸</span>
-                        <span>Blood Bag</span>
+                        <span data-i18n="station.bloodBag">Blood Bag</span>
                         <span class="choice-amount" id="bloodBag-amount">4</span>
                     </button>
                     <button class="station-choice" onclick="game.selectStationResource('exp')">
                         <span class="choice-icon">⭐</span>
-                        <span>Experience</span>
+                        <span data-i18n="station.experience">Experience</span>
                         <span class="choice-amount" id="exp-amount">4</span>
                     </button>
                 </div>
@@ -396,36 +399,36 @@
         <div id="monster-modal" class="modal" style="display: none;">
             <div class="modal-content">
                 <div class="modal-header-with-info">
-                    <h3 id="monster-modal-title">Choose Monster Level</h3>
-                    <button class="info-btn" onclick="game.showMonsterLevelInfo()" title="View monster statistics">ℹ️</button>
+                    <h3 id="monster-modal-title" data-i18n="monsterSelect.title">Choose Monster Level</h3>
+                    <button class="info-btn" onclick="game.showMonsterLevelInfo()" title="View monster statistics" data-i18n-title="monsterSelect.viewStats">ℹ️</button>
                 </div>
                 <div class="monster-choices">
                     <button class="monster-choice" onclick="game.selectMonsterLevel(game.currentMonsterPlayer, 1)" data-tooltip="🩸 3 | ⚔️ 2 | 🏆 3">
                         <span class="choice-icon">👹</span>
-                        <span>Level 1</span>
+                        <span data-i18n="monsterSelect.level1">Level 1</span>
                         <span class="choice-cost">2 EP</span>
                     </button>
                     <button class="monster-choice" onclick="game.selectMonsterLevel(game.currentMonsterPlayer, 2)" data-tooltip="🩸 6 | ⚔️ 3 | 🏆 7">
                         <span class="choice-icon">👺</span>
-                        <span>Level 2</span>
+                        <span data-i18n="monsterSelect.level2">Level 2</span>
                         <span class="choice-cost">3 EP</span>
                     </button>
                     <button class="monster-choice" onclick="game.selectMonsterLevel(game.currentMonsterPlayer, 3)" data-tooltip="🩸 10 | ⚔️ 4 | 🏆 15">
                         <span class="choice-icon">😈</span>
-                        <span>Level 3</span>
+                        <span data-i18n="monsterSelect.level3">Level 3</span>
                         <span class="choice-cost">4 EP</span>
                     </button>
                 </div>
                 <div class="pet-selection-section">
-                    <h4>Select Pets to Join Battle (Optional)</h4>
+                    <h4 data-i18n="monsterSelect.petTitle">Select Pets to Join Battle (Optional)</h4>
                     <div id="pet-selection-container">
                         <!-- Pet selection options will be populated here -->
                     </div>
                     <div class="beer-consumption-section" id="beer-consumption-section" style="display: none;">
-                        <h4>Consume Beers to Increase EP (Optional)</h4>
+                        <h4 data-i18n="monsterSelect.beerTitle">Consume Beers to Increase EP (Optional)</h4>
                         <div class="beer-consumption-controls">
                             <span class="beer-info">
-                                Available Beers: <span id="available-beers-count">0</span>
+                                <span data-i18n="monsterSelect.availableBeers">Available Beers:</span> <span id="available-beers-count">0</span>
                             </span>
                             <span class="beer-counter">
                                 <button onclick="game.adjustBeerConsumptionInBattle(-1)">-</button>
@@ -434,14 +437,14 @@
                             </span>
                         </div>
                         <div class="beer-ep-preview">
-                            Current EP: <span id="current-ep-display">0</span> / <span id="max-ep-display">10</span>
+                            <span data-i18n="monsterSelect.currentEp">Current EP:</span> <span id="current-ep-display">0</span> / <span id="max-ep-display">10</span>
                         </div>
                     </div>
                     <div class="ep-cost-summary">
-                        <span>Total EP Cost: </span>
+                        <span data-i18n="monsterSelect.totalEpCost">Total EP Cost:</span>
                         <span id="total-ep-cost">0</span>
                     </div>
-                    <button class="confirm-battle-btn" onclick="game.confirmBattleSelection()" style="display: none;">Confirm Battle</button>
+                    <button class="confirm-battle-btn" onclick="game.confirmBattleSelection()" style="display: none;" data-i18n="monsterSelect.confirmBattle">Confirm Battle</button>
                 </div>
             </div>
         </div>
@@ -449,12 +452,12 @@
         <!-- Monster Level Info Modal -->
         <div id="monster-level-info-modal" class="modal" style="display: none;">
             <div class="modal-content">
-                <h3>Monster Level Information</h3>
+                <h3 data-i18n="monsterLevel.info.title">Monster Level Information</h3>
                 <div class="monster-level-info-content">
                     <div class="level-info-row">
                         <div class="level-info-header">
                             <span class="choice-icon">👹</span>
-                            <strong>Level 1 Monsters</strong>
+                            <strong data-i18n="monsterLevel.info.lv1">Level 1 Monsters</strong>
                         </div>
                         <div class="level-stats">
                             <span>Ave. 🩸 3</span>
@@ -465,7 +468,7 @@
                     <div class="level-info-row">
                         <div class="level-info-header">
                             <span class="choice-icon">👺</span>
-                            <strong>Level 2 Monsters</strong>
+                            <strong data-i18n="monsterLevel.info.lv2">Level 2 Monsters</strong>
                         </div>
                         <div class="level-stats">
                             <span>Ave. 🩸 6</span>
@@ -476,7 +479,7 @@
                     <div class="level-info-row">
                         <div class="level-info-header">
                             <span class="choice-icon">😈</span>
-                            <strong>Level 3 Monsters</strong>
+                            <strong data-i18n="monsterLevel.info.lv3">Level 3 Monsters</strong>
                         </div>
                         <div class="level-stats">
                             <span>Ave. 🩸 10</span>
@@ -485,51 +488,51 @@
                         </div>
                     </div>
                 </div>
-                <button class="close-info-btn" onclick="game.closeMonsterLevelInfo()">Close</button>
+                <button class="close-info-btn" onclick="game.closeMonsterLevelInfo()" data-i18n="monsterLevel.info.close">Close</button>
             </div>
         </div>
 
         <!-- Monster Battle UI -->
         <div id="monster-battle" class="modal" style="display: none;">
             <div class="battle-content">
-                <h3>Monster Battle</h3>
+                <h3 data-i18n="battle.title">Monster Battle</h3>
                 <div class="battle-info">
                     <div class="battle-player">
                         <h4 id="battle-player-name">Player 1</h4>
-                        <p>HP: <span id="battle-player-hp">4/4</span></p>
-                        <p>EP: <span id="battle-player-ep">6/6</span></p>
-                        <p id="battle-bullets-info" style="display: none;">Bullets: <span id="battle-bullet-count">0/6</span></p>
-                        <p id="battle-batteries-info" style="display: none;">Batteries: <span id="battle-battery-count">0/6</span></p>
+                        <p><span data-i18n="battle.playerHP">HP:</span> <span id="battle-player-hp">4/4</span></p>
+                        <p><span data-i18n="battle.playerEP">EP:</span> <span id="battle-player-ep">6/6</span></p>
+                        <p id="battle-bullets-info" style="display: none;"><span data-i18n="battle.bullets">Bullets:</span> <span id="battle-bullet-count">0/6</span></p>
+                        <p id="battle-batteries-info" style="display: none;"><span data-i18n="battle.batteries">Batteries:</span> <span id="battle-battery-count">0/6</span></p>
                         <div id="battle-pets-info" class="battle-pets-info">
                             <!-- Pet info will be displayed here -->
                         </div>
                     </div>
-                    <div class="vs">VS</div>
+                    <div class="vs" data-i18n="battle.vs">VS</div>
                     <div class="battle-monster">
-                        <h4>Level <span id="battle-monster-level">1</span> Monster</h4>
-                        <p>HP: <span id="battle-monster-hp">4/4</span></p>
-                        <p>ATT: <span id="battle-monster-att">2</span></p>
+                        <h4><span data-i18n="common.level">Level</span> <span id="battle-monster-level">1</span> <span data-i18n="common.monster">Monster</span></h4>
+                        <p><span data-i18n="battle.playerHP">HP:</span> <span id="battle-monster-hp">4/4</span></p>
+                        <p><span data-i18n="battle.monsterATT">ATT:</span> <span id="battle-monster-att">2</span></p>
                         <div class="monster-rewards">
-                            <p class="rewards-title">Rewards:</p>
-                            <p id="battle-monster-rewards">Loading...</p>
+                            <p class="rewards-title" data-i18n="battle.rewards">Rewards:</p>
+                            <p id="battle-monster-rewards" data-i18n="battle.rewardsLoading">Loading...</p>
                         </div>
                     </div>
                 </div>
                 <div class="battle-status">
-                    <p id="battle-turn">Your turn to attack!</p>
-                    <button id="battle-attack-btn" class="battle-btn">Attack!</button>
-                    <button id="battle-tame-btn" class="battle-btn" style="display: none;">Tame!</button>
-                    <button id="battle-defense-btn" class="battle-btn" style="display: none;">Defense!</button>
-                    <button id="battle-double-damage-btn" class="battle-btn" style="display: none;">2x Damage!</button>
+                    <p id="battle-turn" data-i18n="battle.yourTurn">Your turn to attack!</p>
+                    <button id="battle-attack-btn" class="battle-btn" data-i18n="battle.attack">Attack!</button>
+                    <button id="battle-tame-btn" class="battle-btn" style="display: none;" data-i18n="battle.tame">Tame!</button>
+                    <button id="battle-defense-btn" class="battle-btn" style="display: none;" data-i18n="battle.defense">Defense!</button>
+                    <button id="battle-double-damage-btn" class="battle-btn" style="display: none;" data-i18n="battle.doubleDamage">2x Damage!</button>
                 </div>
                 <div class="battle-items">
-                    <h4>Use Items:</h4>
+                    <h4 data-i18n="battle.useItems">Use Items:</h4>
                     <div id="battle-item-buttons" class="battle-item-buttons">
                         <!-- Item buttons will be added here dynamically -->
                     </div>
                 </div>
                 <div class="battle-log-container">
-                    <h4>Battle Log:</h4>
+                    <h4 data-i18n="battle.logHeading">Battle Log:</h4>
                     <div id="battle-log" class="battle-log"></div>
                 </div>
             </div>
@@ -538,36 +541,36 @@
         <!-- Store Modal -->
         <div id="store-modal" class="modal" style="display: none;">
             <div class="store-content">
-                <h3>Store</h3>
+                <h3 data-i18n="store.title">Store</h3>
                 <div class="store-header">
                     <div class="store-player-info">
-                        <span id="store-player-name">Player 1</span> | 
-                        Money: $<span id="store-player-money">0</span> | 
-                        Capacity: <span id="store-player-capacity">0/6</span>
+                        <span id="store-player-name">Player 1</span> |
+                        <span data-i18n="store.money">Money:</span> $<span id="store-player-money">0</span> |
+                        <span data-i18n="store.capacity">Capacity:</span> <span id="store-player-capacity">0/6</span>
                     </div>
-                    <button class="finish-shopping-btn" onclick="game.finishShopping()">Finish Shopping</button>
+                    <button class="finish-shopping-btn" onclick="game.finishShopping()" data-i18n="store.finishShopping">Finish Shopping</button>
                 </div>
                 <div class="store-grid">
                     <div class="store-items-section">
-                        <h4>Available Items</h4>
+                        <h4 data-i18n="store.itemsHeading">Available Items</h4>
                         <div id="store-items" class="store-items"></div>
                     </div>
                     <div class="player-inventory-section">
-                        <h4>Your Inventory</h4>
+                        <h4 data-i18n="store.inventoryHeading">Your Inventory</h4>
                         <div id="player-inventory" class="player-inventory"></div>
                     </div>
                 </div>
             </div>
         </div>
-        
+
         <!-- Capacity Management Modal -->
         <div id="capacity-modal" class="modal" style="display: none;">
             <div class="modal-content">
-                <h3>Capacity Overflow</h3>
+                <h3 data-i18n="capacity.title">Capacity Overflow</h3>
                 <div class="capacity-info">
-                    <p><span id="capacity-player-name">Player 1</span>, your inventory is over capacity!</p>
-                    <p>Current: <span id="capacity-current">8</span> | Max: <span id="capacity-max">6</span> | Excess: <span id="capacity-excess">2</span></p>
-                    <p>Please remove items to fit within your capacity:</p>
+                    <p id="capacity-message-text"><span id="capacity-player-name">Player 1</span><span data-i18n="capacity.messageSuffix">, your inventory is over capacity!</span></p>
+                    <p><span data-i18n="capacity.current">Current:</span> <span id="capacity-current">8</span> | <span data-i18n="capacity.max">Max:</span> <span id="capacity-max">6</span> | <span data-i18n="capacity.excess">Excess:</span> <span id="capacity-excess">2</span></p>
+                    <p data-i18n="capacity.removePrompt">Please remove items to fit within your capacity:</p>
                 </div>
                 <div id="capacity-items" class="capacity-items"></div>
             </div>
@@ -576,39 +579,39 @@
         <!-- Forest Failure Modal -->
         <div id="forest-failure-modal" class="modal" style="display: none;">
             <div class="modal-content">
-                <h3>⚠️ Forest Entry Failed</h3>
+                <h3 data-i18n="forest.failureTitle">⚠️ Forest Entry Failed</h3>
                 <p id="forest-failure-message"></p>
-                <button onclick="game.acknowledgeForestFailure()">OK</button>
+                <button onclick="game.acknowledgeForestFailure()" data-i18n="forest.acknowledgeOk">OK</button>
             </div>
         </div>
 
         <!-- Monster Selection Modal -->
         <div id="monster-selection-modal" class="modal" style="display: none;">
             <div class="modal-content">
-                <h3>Monster Encountered!</h3>
+                <h3 data-i18n="monster.title">Monster Encountered!</h3>
                 <div class="monster-info">
                     <div class="monster-stats">
-                        <p><strong>Level:</strong> <span id="monster-level-display"></span></p>
-                        <p><strong>HP:</strong> <span id="monster-hp-display"></span></p>
-                        <p><strong>ATT:</strong> <span id="monster-att-display"></span></p>
+                        <p><strong data-i18n="monster.level">Level:</strong> <span id="monster-level-display"></span></p>
+                        <p><strong data-i18n="monster.hp">HP:</strong> <span id="monster-hp-display"></span></p>
+                        <p><strong data-i18n="monster.att">ATT:</strong> <span id="monster-att-display"></span></p>
                     </div>
                     <div class="monster-rewards">
-                        <h4>Rewards:</h4>
-                        <p>💰 Money: <span id="monster-money-display"></span></p>
-                        <p>⚡ Energy: <span id="monster-energy-display"></span></p>
-                        <p>🩸 Blood: <span id="monster-blood-display"></span></p>
-                        <p>🏆 Points: <span id="monster-pts-display"></span></p>
+                        <h4 data-i18n="monster.rewards">Rewards:</h4>
+                        <p><span data-i18n="monster.money">💰 Money:</span> <span id="monster-money-display"></span></p>
+                        <p><span data-i18n="monster.energy">⚡ Energy:</span> <span id="monster-energy-display"></span></p>
+                        <p><span data-i18n="monster.blood">🩸 Blood:</span> <span id="monster-blood-display"></span></p>
+                        <p><span data-i18n="monster.points">🏆 Points:</span> <span id="monster-pts-display"></span></p>
                     </div>
                     <div class="monster-effect">
-                        <h4>Effect:</h4>
+                        <h4 data-i18n="monster.effect">Effect:</h4>
                         <div id="monster-effect-display" class="effect-text"></div>
                     </div>
                 </div>
                 <div class="beer-consumption-section" id="monster-select-beer-section" style="display: none;">
-                    <h4>Consume Beers to Increase EP</h4>
+                    <h4 data-i18n="monsterSelect.consumeBeers">Consume Beers to Increase EP</h4>
                     <div class="beer-consumption-controls">
                         <span class="beer-info">
-                            Available Beers: <span id="monster-select-beers-count">0</span>
+                            <span data-i18n="monsterSelect.availableBeers">Available Beers:</span> <span id="monster-select-beers-count">0</span>
                         </span>
                         <span class="beer-counter">
                             <button onclick="game.adjustBeerInMonsterSelection(-1)">-</button>
@@ -617,12 +620,12 @@
                         </span>
                     </div>
                     <div class="beer-ep-preview">
-                        Current EP: <span id="monster-select-ep-display">0</span> / <span id="monster-select-max-ep">10</span>
+                        <span data-i18n="monsterSelect.currentEp">Current EP:</span> <span id="monster-select-ep-display">0</span> / <span id="monster-select-max-ep">10</span>
                     </div>
                 </div>
                 <div class="monster-actions">
-                    <button onclick="game.changeMonster()" id="change-monster-btn">Change (-1 EP)</button>
-                    <button onclick="game.confirmMonsterSelection()">Ready</button>
+                    <button onclick="game.changeMonster()" id="change-monster-btn" data-i18n="monster.changeButton">Change (-1 EP)</button>
+                    <button onclick="game.confirmMonsterSelection()" data-i18n="monster.readyButton">Ready</button>
                 </div>
             </div>
         </div>
@@ -630,23 +633,23 @@
         <!-- Data Collection Modal -->
         <div id="data-collection-modal" class="modal" style="display: none;">
             <div class="modal-content">
-                <h3>Data Collection Mode</h3>
+                <h3 data-i18n="dataCollection.title">Data Collection Mode</h3>
                 <div class="data-collection-settings">
                     <div class="setting-group">
-                        <label for="num-games">Number of Games:</label>
+                        <label for="num-games" data-i18n="dataCollection.numGames">Number of Games:</label>
                         <input type="number" id="num-games" min="1" max="1000" value="10">
                     </div>
                     <div class="setting-group">
-                        <label for="player-count-select">Player Count:</label>
+                        <label for="player-count-select" data-i18n="dataCollection.playerCount">Player Count:</label>
                         <select id="player-count-select">
-                            <option value="2">2 Players</option>
-                            <option value="3">3 Players</option>
-                            <option value="4">4 Players</option>
+                            <option value="2" data-i18n="lobby.create.players2">2 Players</option>
+                            <option value="3" data-i18n="lobby.create.players3">3 Players</option>
+                            <option value="4" data-i18n="lobby.create.players4">4 Players</option>
                         </select>
                     </div>
                     <div class="button-group">
-                        <button class="start-collection-btn" onclick="game.startDataCollection()">Start Collection</button>
-                        <button class="cancel-btn" onclick="game.hideDataCollectionModal()">Cancel</button>
+                        <button class="start-collection-btn" onclick="game.startDataCollection()" data-i18n="dataCollection.start">Start Collection</button>
+                        <button class="cancel-btn" onclick="game.hideDataCollectionModal()" data-i18n="dataCollection.cancel">Cancel</button>
                     </div>
                     <div id="data-collection-status" class="data-collection-status"></div>
                 </div>
@@ -657,15 +660,15 @@
     <!-- Data Collection Running Overlay -->
     <div id="data-collection-overlay" class="data-collection-overlay" style="display: none;">
         <div class="data-collection-overlay-content">
-            <h2>Data Collection Running</h2>
+            <h2 data-i18n="dataCollection.running">Data Collection Running</h2>
             <div id="dc-overlay-progress-text" class="dc-overlay-progress-text">Running game 1 of 10...</div>
             <div class="dc-overlay-progress-bar-container">
                 <div id="dc-overlay-progress-bar" class="dc-overlay-progress-bar" style="width: 0%"></div>
             </div>
-            <button class="dc-overlay-stop-btn" onclick="game.stopDataCollection()">Stop Collection</button>
+            <button class="dc-overlay-stop-btn" onclick="game.stopDataCollection()" data-i18n="dataCollection.stop">Stop Collection</button>
             <div id="dc-overlay-results" class="dc-overlay-results" style="display: none;">
                 <div id="dc-overlay-results-content"></div>
-                <button class="dc-overlay-close-btn" onclick="game.closeDataCollectionOverlay()">Close</button>
+                <button class="dc-overlay-close-btn" onclick="game.closeDataCollectionOverlay()" data-i18n="dataCollection.close">Close</button>
             </div>
         </div>
     </div>
@@ -674,15 +677,15 @@
     <div id="game-stats-overlay" class="game-stats-overlay" style="display: none;">
         <div class="game-stats-container">
             <div class="stats-header">
-                <h2>Game Statistics</h2>
+                <h2 data-i18n="gameStats.title">Game Statistics</h2>
                 <button class="stats-close-btn" onclick="game.toggleGameStats()">✕</button>
             </div>
             <div id="game-stats-content" class="game-stats-content">
                 <!-- Stats will be dynamically generated here -->
             </div>
             <div class="stats-footer">
-                <button class="stats-button" onclick="game.toggleGameStats()">Close Stats</button>
-                <button class="stats-button exit-button" onclick="game.exitToMainMenu()">Exit to Main Menu</button>
+                <button class="stats-button" onclick="game.toggleGameStats()" data-i18n="gameStats.close">Close Stats</button>
+                <button class="stats-button exit-button" onclick="game.exitToMainMenu()" data-i18n="gameStats.exit">Exit to Main Menu</button>
             </div>
         </div>
     </div>
@@ -691,7 +694,7 @@
     <div id="rules-modal" class="modal rules-modal" style="display: none;">
         <div class="rules-modal-content">
             <div class="rules-header">
-                <h2>Game Rules</h2>
+                <h2 data-i18n="rules.title">Game Rules</h2>
                 <button class="rules-close-btn" onclick="game.hideRulebook()">✕</button>
             </div>
             <div id="rules-content" class="rules-content">
@@ -699,6 +702,25 @@
             </div>
         </div>
     </div>
+
+    <!-- Language Modal -->
+    <div id="language-modal" class="modal" style="display: none;">
+        <div class="language-modal-content" style="background:#2c3e50; color:#ecf0f1; padding:30px 40px; border-radius:12px; box-shadow:0 8px 32px rgba(0,0,0,0.5); text-align:center; max-width:400px; border:2px solid #34495e;">
+            <div style="display:flex; flex-direction:column; gap:12px;">
+                <button class="menu-button" onclick="game.selectLanguage('en')" style="padding:14px 24px; font-size:18px;">
+                    🇬🇧 English
+                </button>
+                <button class="menu-button" onclick="game.selectLanguage('zh')" style="padding:14px 24px; font-size:18px;">
+                    🇹🇼 中文
+                </button>
+            </div>
+            <button class="back-btn" onclick="game.hideLanguageModal()" style="margin-top:20px;" data-i18n="common.cancel">Cancel</button>
+        </div>
+    </div>
+
+    <!-- i18n: translations.js holds the embedded CSV, i18n.js consumes it. Both must load BEFORE game.js -->
+    <script src="translations.js"></script>
+    <script src="i18n.js"></script>
 
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>

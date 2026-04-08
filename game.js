@@ -448,7 +448,7 @@ class BotPlayer {
             if (currentBullets < 3) {
                 // Prioritize bullets until we have at least 3
                 itemPriority = [
-                    { name: 'Bullet', price: 2, size: 1 },
+                    { name: 'Bullet', price: 2, size: 0 },
                     { name: 'Dynamite', price: 6, size: 4 },
                     { name: 'Bomb', price: 4, size: 3 },
                     { name: 'Grenade', price: 2, size: 2 },
@@ -463,7 +463,7 @@ class BotPlayer {
                     { name: 'Bomb', price: 4, size: 3 },
                     { name: 'Grenade', price: 2, size: 2 },
                     { name: 'Fake Blood', price: 2, size: 2 },
-                    { name: 'Bullet', price: 2, size: 1 },
+                    { name: 'Bullet', price: 2, size: 0 },
                     { name: 'Blood Bag', price: 2, size: 1 },
                     { name: 'Beer', price: 2, size: 1 }
                 ];
@@ -474,7 +474,7 @@ class BotPlayer {
             if (currentBatteries < 3) {
                 // Prioritize batteries until we have at least 3
                 itemPriority = [
-                    { name: 'Battery', price: 2, size: 1 }, // Plasma Lv1: batteries cost $2
+                    { name: 'Battery', price: 2, size: 0 }, // Plasma Lv1: batteries cost $2
                     { name: 'Dynamite', price: 6, size: 4 },
                     { name: 'Bomb', price: 4, size: 3 },
                     { name: 'Grenade', price: 2, size: 2 },
@@ -489,7 +489,7 @@ class BotPlayer {
                     { name: 'Bomb', price: 4, size: 3 },
                     { name: 'Grenade', price: 2, size: 2 },
                     { name: 'Fake Blood', price: 2, size: 2 },
-                    { name: 'Battery', price: 2, size: 1 }, // Plasma Lv1: batteries cost $2
+                    { name: 'Battery', price: 2, size: 0 }, // Plasma Lv1: batteries cost $2
                     { name: 'Blood Bag', price: 2, size: 1 },
                     { name: 'Beer', price: 2, size: 1 }
                 ];
@@ -685,22 +685,22 @@ class BotPlayer {
                 player.inventory.splice(bloodBagIndex, 1);
                 player.resources.bloodBag = Math.max(0, player.resources.bloodBag - 1);
                 
-                logActions.push(`used Blood Bag (+${recoveryAmount} HP)`);
+                logActions.push(t('botAction.usedBloodBag', recoveryAmount));
                 actionTaken = true;
                 continue;
             }
-            
+
             // Priority 2: Use beer to recover EP if not at max
             const beers = player.inventory.filter(item => item.name === 'Beer');
             if (beers.length > 0 && player.resources.ep < player.maxResources.ep) {
                 const beerIndex = player.inventory.findIndex(item => item.name === 'Beer');
                 const recoveryAmount = Math.min(1, player.maxResources.ep - player.resources.ep);
-                
+
                 player.resources.ep += recoveryAmount;
                 player.inventory.splice(beerIndex, 1);
                 player.resources.beer = Math.max(0, player.resources.beer - 1);
-                
-                logActions.push(`used Beer (+${recoveryAmount} EP)`);
+
+                logActions.push(t('botAction.usedBeer', recoveryAmount));
                 actionTaken = true;
                 continue;
             }
@@ -729,14 +729,14 @@ class BotPlayer {
                 for (const m of hpMilestones) {
                     if (player.maxResources.hp === m.value) {
                         if (game.checkAndAwardMilestone(player, 'hp', m.value, m.points, m.key)) {
-                            logActions.push(`upgraded max HP to ${player.maxResources.hp} (+${m.points} milestone points)`);
+                            logActions.push(t('botAction.upgradedHpMilestone', player.maxResources.hp, m.points));
                             milestoneAwarded = true;
                         }
                         break;
                     }
                 }
                 if (!milestoneAwarded) {
-                    logActions.push(`upgraded max HP to ${player.maxResources.hp}`);
+                    logActions.push(t('botAction.upgradedHp', player.maxResources.hp));
                 }
                 
                 actionTaken = true;
@@ -765,7 +765,7 @@ class BotPlayer {
                         const checkbox = document.getElementById(`p${player.id}-ep-milestone-8`);
                         if (checkbox) checkbox.checked = true;
                     }
-                    logActions.push(`upgraded max EP to ${player.maxResources.ep} (+2 milestone points)`);
+                    logActions.push(t('botAction.upgradedEpMilestone', player.maxResources.ep, 2));
                 } else if (player.maxResources.ep === 10 && !player.milestones.ep10) {
                     game.addScore(player.id, 4, 'milestone');
                     player.milestones.ep10 = true;
@@ -773,9 +773,9 @@ class BotPlayer {
                         const checkbox = document.getElementById(`p${player.id}-ep-milestone-10`);
                         if (checkbox) checkbox.checked = true;
                     }
-                    logActions.push(`upgraded max EP to ${player.maxResources.ep} (+4 milestone points)`);
+                    logActions.push(t('botAction.upgradedEpMilestone', player.maxResources.ep, 4));
                 } else {
-                    logActions.push(`upgraded max EP to ${player.maxResources.ep}`);
+                    logActions.push(t('botAction.upgradedEp', player.maxResources.ep));
                 }
                 
                 actionTaken = true;
@@ -821,7 +821,7 @@ class BotPlayer {
                         player.resources.bloodBag = Math.max(0, player.resources.bloodBag - 1);
                     }
                     
-                    logActions.push(`discarded ${itemToDiscard.name}`);
+                    logActions.push(t('botAction.discarded', game.getItemDisplayName(itemToDiscard.name)));
                     actionTaken = true;
                 }
             }
@@ -1057,7 +1057,7 @@ class Game {
             { name: 'Rifle', reqExpAttack: 6, reqExpDefense: 3, capacity: 8, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 1, 2, 2], priority: 10,
               lv1Power: '可購買子彈:2$，每次戰鬥花費1子彈', lv2Power: '回合開始+2$', lv3Power: '商店價格-1$', preferLocation: 'work site' },
             { name: 'Plasma', reqExpAttack: 7, reqExpDefense: 3, capacity: 8, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 2, 2, 2], priority: 11,
-              lv1Power: '可購買電池:2$，每次戰鬥花費1電池', lv2Power: '回合開始+2$', lv3Power: '無限電池', preferLocation: 'work site' },
+              lv1Power: '可購買電池:2$，每次戰鬥花費1電池', lv2Power: '回合開始+2$', lv3Power: '回合開始+2exp', preferLocation: 'work site' },
             { name: 'Chain', reqExpAttack: 4, reqExpDefense: 3, capacity: 6, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 1, 1, 1], priority: 6,
               lv1Power: '怪獸於血量3以下即可收服', lv2Power: '回合開始+2啤酒', lv3Power: '寵物攻擊x2', preferLocation: 'bar' },
             { name: 'Axe', reqExpAttack: 4, reqExpDefense: 3, capacity: 6, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 0, 1, 1], priority: 4,
@@ -1067,9 +1067,9 @@ class Game {
             { name: 'Bow', reqExpAttack: 5, reqExpDefense: 3, capacity: 6, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 0, 0, 3], priority: 1,
               lv1Power: '閃避率+16%', lv2Power: '單獨存在區域+2經驗', lv3Power: '傷害x2', preferLocation: 'plaza' },
             { name: 'Sword', reqExpAttack: 5, reqExpDefense: 3, capacity: 4, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 1, 1, 2], priority: 9,
-              lv1Power: '無', lv2Power: '單獨存在區域+2經驗', lv3Power: '每骰到至少1個1即+1分', preferLocation: 'dojo' },
+              lv1Power: '無', lv2Power: '單獨存在區域+2經驗', lv3Power: '打敗怪獸+X分(X=怪獸等級)', preferLocation: 'dojo' },
             { name: 'Knife', reqExpAttack: 3, reqExpDefense: 3, capacity: 10, initialMoney: 8, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 0, 1, 1], priority: 2,
-              lv1Power: '可將一次的攻擊力x2', lv2Power: '單獨存在區域+2分', lv3Power: '單獨存在區域+2分', preferLocation: 'plaza' },
+              lv1Power: '打敗怪獸資源x2', lv2Power: '單獨存在區域+2分', lv3Power: '可將一次的攻擊力x2', preferLocation: 'plaza' },
             { name: 'Gloves', reqExpAttack: 4, reqExpDefense: 3, capacity: 6, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 1, 1, 1], priority: 7,
               lv1Power: '基礎攻擊力=1，當hp少於一半時攻擊力+1', lv2Power: '回合開始+1血袋', lv3Power: '每次遭受攻擊而扣血，攻擊力+1', preferLocation: 'hospital' }
         ];
@@ -1192,17 +1192,26 @@ class Game {
         // Show main menu
         const mainMenu = document.getElementById('main-menu');
         if (mainMenu) mainMenu.style.display = 'flex';
+
+        // Apply translations to static DOM (handles both first load and language switches)
+        const self = this;
+        if (window.i18n && typeof window.i18n.onReady === 'function') {
+            window.i18n.onReady(function () {
+                self.applyTranslationsToDOM();
+            });
+        }
     }
-    
+
     showLocalPlay() {
         // Hide main menu
         const mainMenu = document.getElementById('main-menu');
         if (mainMenu) mainMenu.style.display = 'none';
-        
+
         // Show player configuration screen
         this.showPlayerCountSelection();
+        this.applyTranslationsToDOM();
     }
-    
+
     showOnlinePlay() {
         // Hide main menu
         const mainMenu = document.getElementById('main-menu');
@@ -1214,6 +1223,7 @@ class Game {
 
         // Show the online menu (create/join choice)
         this.showOnlineMenu();
+        this.applyTranslationsToDOM();
     }
 
     showOnlineMenu() {
@@ -1283,7 +1293,7 @@ class Game {
             document.getElementById('waiting-room-host').style.display = 'block';
             document.getElementById('room-code-display').textContent = roomCode;
             document.getElementById('host-guest-joined').style.display = 'none';
-            document.getElementById('waiting-status-text').textContent = 'Waiting for players to join...';
+            document.getElementById('waiting-status-text').textContent = t('lobby.waiting.spinner');
 
             // Update player count display
             document.getElementById('human-count').textContent = '1';
@@ -1313,12 +1323,12 @@ class Game {
                 // Show Start button once at least 1 guest has joined
                 if (connectedCount >= 2) {
                     if (connectedCount >= playerCount) {
-                        document.getElementById('waiting-status-text').textContent = 'All players connected!';
+                        document.getElementById('waiting-status-text').textContent = t('online.allConnected');
                         document.querySelector('#waiting-room-host .waiting-status').style.display = 'none';
                     } else {
                         const remaining = playerCount - connectedCount;
                         document.getElementById('waiting-status-text').textContent =
-                            `Waiting for more players... (${remaining} open slot${remaining > 1 ? 's' : ''})`;
+                            t('lobby.composition.waitingMore', remaining, remaining > 1 ? 's' : '');
                     }
                     document.getElementById('host-guest-joined').style.display = 'block';
 
@@ -1332,13 +1342,13 @@ class Game {
                     const totalCount = Object.keys(players).length;
                     if (allReady) {
                         document.getElementById('guest-joined-text').textContent =
-                            connectedCount >= playerCount ? 'All players connected and ready!' : `${connectedCount} humans connected — empty slots will be filled by bots`;
+                            connectedCount >= playerCount ? t('lobby.composition.allConnected') : t('lobby.composition.connectedHumans', connectedCount);
                     } else {
                         document.getElementById('guest-joined-text').textContent =
-                            `Waiting for players to ready up (${readyCount}/${totalCount})`;
+                            t('lobby.composition.waitingReady', readyCount, totalCount);
                     }
                 } else {
-                    document.getElementById('waiting-status-text').textContent = 'Waiting for players to join...';
+                    document.getElementById('waiting-status-text').textContent = t('lobby.waiting.spinner');
                     document.getElementById('host-guest-joined').style.display = 'none';
                     document.querySelector('#waiting-room-host .waiting-status').style.display = 'flex';
                 }
@@ -1349,7 +1359,7 @@ class Game {
 
         } catch (error) {
             console.error('Error creating room:', error);
-            alert('Failed to create room. Check your Firebase configuration.');
+            alert(t('alert.failCreateRoom'));
             this.isOnlineMode = false;
             this.onlineManager = null;
         }
@@ -1372,9 +1382,9 @@ class Game {
         const botCount = playerCount - connectedCount;
         let text;
         if (botCount > 0) {
-            text = `${connectedCount} human${connectedCount > 1 ? 's' : ''} + ${botCount} bot${botCount > 1 ? 's' : ''} = ${playerCount} players`;
+            text = t('lobby.composition.mixed', connectedCount, botCount, playerCount);
         } else {
-            text = `${connectedCount} humans = ${playerCount} players`;
+            text = t('lobby.composition.allHumans', connectedCount, playerCount);
         }
         document.getElementById('game-composition').textContent = text;
     }
@@ -1383,8 +1393,8 @@ class Game {
         const code = document.getElementById('room-code-display').textContent;
         navigator.clipboard.writeText(code).then(() => {
             const btn = document.querySelector('.copy-code-btn');
-            btn.textContent = 'Copied!';
-            setTimeout(() => { btn.textContent = 'Copy Code'; }, 2000);
+            btn.textContent = t('lobby.waiting.copied');
+            setTimeout(() => { btn.textContent = t('lobby.waiting.copyCode'); }, 2000);
         });
     }
 
@@ -1394,7 +1404,7 @@ class Game {
         const errorEl = document.getElementById('join-error');
 
         if (code.length !== 4) {
-            errorEl.textContent = 'Please enter a 4-character room code.';
+            errorEl.textContent = t('alert.invalidRoomCode');
             errorEl.style.display = 'block';
             return;
         }
@@ -1530,7 +1540,7 @@ class Game {
         if (bar) {
             bar.style.display = 'flex';
             bar.className = 'online-connection-bar';
-            document.getElementById('connection-status-text').textContent = 'Connected';
+            document.getElementById('connection-status-text').textContent = t('connection.connected');
             document.getElementById('connection-role-text').textContent =
                 this.isHost ? 'Host' : 'Guest';
         }
@@ -1599,8 +1609,8 @@ class Game {
         // Initialize game
         this.playerCount = config.playerCount;
         this.showGameLog();
-        this.addLogEntry(`🌐 <strong>Online Game Started</strong> - ${config.playerCount} players`, 'round-start');
-        this.addLogEntry(`🔄 <strong>Round ${this.currentRound || 1} Started</strong>`, 'round-start');
+        this.addLogEntryT('log.onlineGameStarted', [config.playerCount], 'round-start');
+        this.addLogEntryT('log.roundStarted', [this.currentRound || 1], 'round-start');
 
         this.updateLocationRewards();
         this.setupDummyTokens(config.playerCount);
@@ -1682,8 +1692,8 @@ class Game {
         // Initialize game
         this.playerCount = config.playerCount;
         this.showGameLog();
-        this.addLogEntry(`🌐 <strong>Online Game Started</strong> - ${config.playerCount} players`, 'round-start');
-        this.addLogEntry(`🔄 <strong>Round 1 Started</strong>`, 'round-start');
+        this.addLogEntryT('log.onlineGameStarted', [config.playerCount], 'round-start');
+        this.addLogEntryT('log.roundStarted', [1], 'round-start');
 
         this.updateLocationRewards();
         this.setupDummyTokens(config.playerCount);
@@ -1766,19 +1776,21 @@ class Game {
 
         // Guest shows selection cards for their own selections
         this.createLocationCards();
-        document.getElementById('status-message').textContent = 'Select locations for your Hunter and Apprentice';
+        document.getElementById('status-message').textContent = t('status.selectLocationsBare');
         const confirmBtn = document.getElementById('confirm-selection');
-        if (confirmBtn) confirmBtn.textContent = 'Select Both Locations';
+        if (confirmBtn) confirmBtn.textContent = t('status.selectBothLocations');
     }
 
     showRulebook() {
         const modal = document.getElementById('rules-modal');
         if (modal) {
             modal.style.display = 'flex';
-            // Reload iframe to reset scroll position
+            // Pick the rulebook file matching the current language and reload the iframe
             const iframe = modal.querySelector('iframe');
             if (iframe) {
-                iframe.src = iframe.src;
+                const lang = (typeof getLanguage === 'function') ? getLanguage() : 'en';
+                const targetFile = (lang === 'zh') ? 'Rules_ZH.htm' : 'Rules_EN.htm';
+                iframe.src = targetFile;
             }
         }
     }
@@ -1788,6 +1800,130 @@ class Game {
         if (modal) {
             modal.style.display = 'none';
         }
+    }
+
+    showLanguageModal() {
+        const modal = document.getElementById('language-modal');
+        if (modal) {
+            modal.style.display = 'flex';
+            modal.style.alignItems = 'center';
+            modal.style.justifyContent = 'center';
+            modal.style.position = 'fixed';
+            modal.style.top = '0';
+            modal.style.left = '0';
+            modal.style.width = '100%';
+            modal.style.height = '100%';
+            modal.style.background = 'rgba(0,0,0,0.5)';
+            modal.style.zIndex = '9999';
+        }
+    }
+
+    hideLanguageModal() {
+        const modal = document.getElementById('language-modal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    }
+
+    selectLanguage(lang) {
+        if (typeof setLanguage === 'function') {
+            setLanguage(lang);
+        }
+        this.hideLanguageModal();
+        // Refresh static text on the page
+        this.applyTranslationsToDOM();
+    }
+
+    /**
+     * Walk all elements with data-i18n / data-i18n-title attributes
+     * and update their textContent / title to the current language.
+     * Also fires onLanguageChanged hook for runtime UI refresh.
+     */
+    applyTranslationsToDOM() {
+        if (typeof t !== 'function') return;
+
+        // textContent
+        const textNodes = document.querySelectorAll('[data-i18n]');
+        textNodes.forEach(function (el) {
+            const key = el.getAttribute('data-i18n');
+            if (!key) return;
+            const value = t(key);
+            // If the value contains HTML tags, use innerHTML; otherwise textContent (safer)
+            if (/<[a-z][^>]*>/i.test(value)) {
+                el.innerHTML = value;
+            } else {
+                el.textContent = value;
+            }
+        });
+
+        // title (tooltip)
+        const titleNodes = document.querySelectorAll('[data-i18n-title]');
+        titleNodes.forEach(function (el) {
+            const key = el.getAttribute('data-i18n-title');
+            if (key) el.title = t(key);
+        });
+
+        // placeholder
+        const placeholderNodes = document.querySelectorAll('[data-i18n-placeholder]');
+        placeholderNodes.forEach(function (el) {
+            const key = el.getAttribute('data-i18n-placeholder');
+            if (key) el.placeholder = t(key);
+        });
+    }
+
+    /**
+     * Hook called by i18n.js when the language is switched at runtime.
+     * Re-renders any dynamic UI that doesn't use data-i18n.
+     */
+    onLanguageChanged(lang) {
+        this.applyTranslationsToDOM();
+        // If we're in mid-game, refresh the dynamic displays
+        try {
+            // Re-render every player board so weapon names, labels, and tooltips update
+            if (typeof this.refreshPlayerBoard === 'function' && this.players && this.players.length > 0) {
+                this.players.forEach(p => {
+                    try { this.refreshPlayerBoard(p.id); } catch (e) { /* ignore individual board errors */ }
+                });
+            }
+            if (typeof this.updateResourceDisplay === 'function' && this.players && this.players.length > 0) {
+                this.updateResourceDisplay();
+            }
+            if (typeof this.refreshAllPlayerButtonStates === 'function' && this.players && this.players.length > 0) {
+                this.refreshAllPlayerButtonStates();
+            }
+            // Re-render the location reward info (overrides data-i18n with player-count specific text)
+            if (typeof this.forceLocationDisplayUpdate === 'function' && this.playerCount > 0) {
+                this.forceLocationDisplayUpdate();
+            }
+            // Re-render player config slot UI if visible
+            const setupScreen = document.getElementById('player-count-selection');
+            if (setupScreen && setupScreen.style.display !== 'none' && typeof this.updateSoloPlayerSlotsDisplay === 'function') {
+                try { this.updateSoloPlayerSlotsDisplay(); } catch (e) { /* ignore */ }
+            }
+            // Re-render battle item buttons if a battle is in progress
+            if (this.currentBattle && typeof this.updateBattleItemButtons === 'function') {
+                this.updateBattleItemButtons();
+            }
+            // Re-render battle phase / monster rewards if a battle is in progress
+            if (this.currentBattle) {
+                if (typeof this.updateBattlePhase === 'function') {
+                    try { this.updateBattlePhase(); } catch (e) { /* ignore */ }
+                }
+                if (typeof this.updateMonsterRewards === 'function' && this.currentBattle.monster) {
+                    try { this.updateMonsterRewards(this.currentBattle.monster); } catch (e) { /* ignore */ }
+                }
+            }
+            // Re-render capacity overflow modal if visible
+            const capacityModal = document.getElementById('capacity-modal');
+            if (capacityModal && capacityModal.style.display !== 'none' && this.currentOverflowPlayer != null && typeof this.showCapacityOverflowModal === 'function') {
+                try { this.showCapacityOverflowModal(this.currentOverflowPlayer); } catch (e) { /* ignore */ }
+            }
+            // Re-render game stats if visible
+            const statsOverlay = document.getElementById('game-stats-overlay');
+            if (statsOverlay && statsOverlay.style.display !== 'none' && typeof this.showGameStats === 'function') {
+                try { this.showGameStats(); } catch (e) { /* ignore */ }
+            }
+        } catch (e) { /* ignore */ }
     }
 
     backToModeSelection() {
@@ -1825,10 +1961,10 @@ class Game {
         this.showGameLog();
         
         // Log game start
-        this.addLogEntry(`🎮 <strong>New Game Started</strong> - ${playerCount} players`, 'round-start');
+        this.addLogEntryT('log.gameStarted', [playerCount], 'round-start');
         
         // Log first round start
-        this.addLogEntry(`🔄 <strong>Round ${this.currentRound} Started</strong>`, 'round-start');
+        this.addLogEntryT('log.roundStarted', [this.currentRound], 'round-start');
         
         // Update location rewards based on player count
         this.updateLocationRewards();
@@ -2004,28 +2140,28 @@ class Game {
             }
             
             let displayText = '';
-            
+
             switch (location.id) {
                 case 1: // Work Site
-                    displayText = this.getRewardDisplayText('$', location.rewards);
+                    displayText = this.getRewardDisplayText(t('common.money'), location.rewards);
                     break;
-                case 2: // Bar  
-                    displayText = this.getRewardDisplayText('Beer', location.rewards);
+                case 2: // Bar
+                    displayText = this.getRewardDisplayText(t('common.beer'), location.rewards);
                     break;
                 case 3: // Station
-                    displayText = 'Wild Card';
+                    displayText = t('location.station.reward');
                     break;
                 case 4: // Hospital
-                    displayText = this.getRewardDisplayText('Blood', location.rewards);
+                    displayText = this.getRewardDisplayText(t('common.bloodBag'), location.rewards);
                     break;
                 case 5: // Dojo
-                    displayText = this.getRewardDisplayText('EXP', location.rewards);
+                    displayText = this.getRewardDisplayText(t('common.exp'), location.rewards);
                     break;
                 case 6: // Plaza
-                    displayText = this.getRewardDisplayText('Score', location.rewards);
+                    displayText = this.getRewardDisplayText(t('common.score'), location.rewards);
                     break;
                 case 7: // Forest
-                    displayText = 'Monster Hunt';
+                    displayText = t('location.forest.reward');
                     break;
             }
             
@@ -2048,11 +2184,11 @@ class Game {
         
         // Direct element updates with more aggressive selectors
         const updates = [
-            { selector: '[data-location="1"] .reward-info', text: this.getRewardDisplayText('$', this.locations.find(l => l.id === 1)?.rewards || [6, 4]) },
-            { selector: '[data-location="2"] .reward-info', text: this.getRewardDisplayText('Beer', this.locations.find(l => l.id === 2)?.rewards || [6, 4]) },
-            { selector: '[data-location="4"] .reward-info', text: this.getRewardDisplayText('Blood', this.locations.find(l => l.id === 4)?.rewards || [4, 2]) },
-            { selector: '[data-location="5"] .reward-info', text: this.getRewardDisplayText('EXP', this.locations.find(l => l.id === 5)?.rewards || [4, 2]) },
-            { selector: '[data-location="6"] .reward-info', text: this.getRewardDisplayText('Score', this.locations.find(l => l.id === 6)?.rewards || [4, 2]) }
+            { selector: '[data-location="1"] .reward-info', text: this.getRewardDisplayText(t('common.money'), this.locations.find(l => l.id === 1)?.rewards || [6, 4]) },
+            { selector: '[data-location="2"] .reward-info', text: this.getRewardDisplayText(t('common.beer'), this.locations.find(l => l.id === 2)?.rewards || [6, 4]) },
+            { selector: '[data-location="4"] .reward-info', text: this.getRewardDisplayText(t('common.bloodBag'), this.locations.find(l => l.id === 4)?.rewards || [4, 2]) },
+            { selector: '[data-location="5"] .reward-info', text: this.getRewardDisplayText(t('common.exp'), this.locations.find(l => l.id === 5)?.rewards || [4, 2]) },
+            { selector: '[data-location="6"] .reward-info', text: this.getRewardDisplayText(t('common.score'), this.locations.find(l => l.id === 6)?.rewards || [4, 2]) }
         ];
         
         updates.forEach(update => {
@@ -2313,17 +2449,9 @@ class Game {
         console.log(`Bot ${playerId + 1} selected: Hunter→${hunterLocation}, Apprentice→${apprenticeLocation}`);
 
         // Store bot selection for batch logging
-        const locationNames = {
-            1: 'Work Site',
-            2: 'Bar',
-            3: 'Station',
-            4: 'Hospital',
-            5: 'Dojo',
-            6: 'Plaza',
-            7: 'Forest'
-        };
         this.pendingSelectionLogs.push({
-            message: `📍 <strong>${player.name}</strong> selected: Hunter → ${locationNames[hunterLocation]}, Apprentice → ${locationNames[apprenticeLocation]}`,
+            key: 'log.playerSelected',
+            args: [player, this.locationTArg(hunterLocation), this.locationTArg(apprenticeLocation)],
             type: 'selection',
             player: player
         });
@@ -2346,7 +2474,11 @@ class Game {
                 console.log('All players completed selections (simultaneous mode)');
                 // Add all pending logs
                 this.pendingSelectionLogs.forEach(log => {
-                    this.addLogEntry(log.message, log.type, log.player);
+                    if (log.key) {
+                        this.addLogEntryT(log.key, log.args || [], log.type, log.player);
+                    } else {
+                        this.addLogEntry(log.message, log.type, log.player);
+                    }
                 });
                 this.pendingSelectionLogs = [];
 
@@ -2531,7 +2663,7 @@ class Game {
 
             const nameSpan = document.createElement('span');
             nameSpan.className = 'player-name';
-            nameSpan.textContent = player.name;
+            nameSpan.textContent = this.getPlayerDisplayName(player);
             nameSpan.style.color = playerColors.background; // Set player color for name
 
             const iconSpan = document.createElement('span');
@@ -2559,6 +2691,128 @@ class Game {
         if (titleEl) {
             titleEl.textContent = text;
         }
+    }
+
+    /**
+     * Translate an internal English location name to the current language.
+     * Internal names are used as identifiers throughout the code; this helper
+     * is for display purposes only.
+     */
+    getLocationDisplayName(internalName) {
+        const map = {
+            'Work Site': 'location.workSite',
+            'Bar': 'location.bar',
+            'Station': 'location.station',
+            'Hospital': 'location.hospital',
+            'Dojo': 'location.dojo',
+            'Plaza': 'location.plaza',
+            'Forest': 'location.forest'
+        };
+        const key = map[internalName];
+        return key ? t(key) : internalName;
+    }
+
+    /**
+     * Translate an internal English weapon name to the current language.
+     */
+    getWeaponDisplayName(internalName) {
+        if (!internalName) return '';
+        const key = 'weapon.' + internalName.toLowerCase() + '.name';
+        const translated = t(key);
+        // If missing, fall back to internal name
+        return (translated && translated.indexOf('[MISSING') !== 0) ? translated : internalName;
+    }
+
+    /**
+     * Translate a monster's effect description from its effectId or fallback to its raw text.
+     */
+    getMonsterEffectDisplay(monster) {
+        if (!monster) return '';
+        // Map effect text to translation key (the existing Chinese text in monster.effect)
+        const textToKey = {
+            '無': 'monster.effect.none',
+            '血減半時，攻擊力+1': 'monster.effect.attackUpHalfHP',
+            '偷走玩家2金幣': 'monster.effect.stealMoney',
+            '死亡時，玩家及在森林裡的玩家-1血(不會導致玩家血歸零)': 'monster.effect.deathDamageAll',
+            '玩家受傷無法獲得經驗': 'monster.effect.noExpFromDamage',
+            '玩家無法一次給予怪獸超過2點傷害': 'monster.effect.damageCap2',
+            '玩家防禦力1以上先攻': 'monster.effect.firstStrike1',
+            '這回合其他怪獸+1血': 'monster.effect.otherMonstersPlus1HP',
+            '不在森林的玩家-1血(不會導致玩家血歸零)': 'monster.effect.damageNonForest1HP',
+            '每次玩家攻擊-1體力': 'monster.effect.drainEP',
+            '遭受攻擊後若沒有死亡+1血': 'monster.effect.healAfterSurviving',
+            '不怕手榴彈': 'monster.effect.immuneGrenades',
+            '玩家無法一次給予怪獸超過4點傷害': 'monster.effect.damageCap4',
+            '不怕手榴彈、炸彈、炸藥': 'monster.effect.immuneAllExplosives',
+            '玩家防禦力3以上先攻': 'monster.effect.firstStrike3',
+            '玩家防禦力2以上先攻': 'monster.effect.firstStrike2',
+            '需要+1體力收服': 'monster.effect.extraTamingCost',
+            '玩家受傷最多獲得3經驗': 'monster.effect.maxExp3',
+            '不在森林的玩家-2經驗': 'monster.effect.reduceNonForestExp',
+            '不在森林的玩家-2血': 'monster.effect.damageNonForest2HP',
+            '不在森林的玩家-2分': 'monster.effect.reduceNonForestPts',
+            '玩家無法一次給予怪獸超過6點傷害': 'monster.effect.damageCap6',
+            '玩家防禦力4以上先攻': 'monster.effect.firstStrike4',
+            '玩家受傷最多獲得4經驗': 'monster.effect.maxExp4'
+        };
+        const key = textToKey[monster.effect];
+        if (!key) return monster.effect || '';
+        const translated = t(key);
+        return (translated && translated.indexOf('[MISSING') !== 0 && translated.indexOf('[UNTRANSLATED') !== 0) ? translated : monster.effect;
+    }
+
+    /**
+     * Translate a weapon power description (Lv1/Lv2/Lv3) to the current language.
+     */
+    getWeaponPowerDesc(weaponName, level) {
+        if (!weaponName || !level) return '';
+        const key = 'weapon.' + weaponName.toLowerCase() + '.lv' + level;
+        const translated = t(key);
+        return (translated && translated.indexOf('[MISSING') !== 0) ? translated : '';
+    }
+
+    /**
+     * Translate an internal English item name to the current language.
+     */
+    getItemDisplayName(internalName) {
+        if (!internalName) return '';
+        const map = {
+            'Beer': 'item.beer.name',
+            'Blood Bag': 'item.bloodBag.name',
+            'Grenade': 'item.grenade.name',
+            'Bomb': 'item.bomb.name',
+            'Dynamite': 'item.dynamite.name',
+            'Fake Blood': 'item.fakeBlood.name',
+            'Bullet': 'item.bullet.name',
+            'Battery': 'item.battery.name'
+        };
+        const key = map[internalName];
+        return key ? t(key) : internalName;
+    }
+
+    /**
+     * Translate a raw player name string (e.g. "Player 1" or "Bot 2") into the
+     * localized display form. Used when only the string is available, not the
+     * full player object.
+     */
+    _translatePlayerName(rawName) {
+        if (!rawName) return '';
+        return this.getPlayerDisplayName({ name: rawName });
+    }
+
+    /**
+     * Translate a player's display name. Internal names are stored as
+     * "Player N" / "Bot N" — this swaps "Player" / "Bot" for the localized
+     * version while keeping the number.
+     */
+    getPlayerDisplayName(player) {
+        if (!player || !player.name) return '';
+        const parts = player.name.split(' ');
+        if (parts.length >= 2 && (parts[0] === 'Player' || parts[0] === 'Bot')) {
+            const prefix = parts[0] === 'Bot' ? t('common.bot') : t('common.player');
+            return prefix + ' ' + parts.slice(1).join(' ');
+        }
+        return player.name;
     }
 
     showPlayerStatusIndicators(titleOnly = false) {
@@ -2751,7 +3005,7 @@ class Game {
         const currentPlayer = this.players[this.currentPlayerIndex];
         
         // Update current player display
-        document.getElementById('current-player-name').textContent = currentPlayer.name;
+        document.getElementById('current-player-name').textContent = this.getPlayerDisplayName(currentPlayer);
         
         // Update selection status
         const hunterSelection = currentPlayer.selectedCards.hunter;
@@ -2771,9 +3025,9 @@ class Game {
         confirmButton.disabled = !isComplete;
         
         if (isComplete) {
-            confirmButton.textContent = 'Confirm Selection';
+            confirmButton.textContent = t('status.confirmSelection');
         } else {
-            confirmButton.textContent = 'Select Both Locations';
+            confirmButton.textContent = t('status.selectBothLocations');
         }
     }
     
@@ -2794,7 +3048,7 @@ class Game {
 
         // Show status indicators
         this.showPlayerStatusIndicators();
-        this.setPhaseTitle('Location Selection Phase');
+        this.setPhaseTitle(t('phase.selection'));
 
         // Reset completion status
         this.resetPlayerCompletionStatus();
@@ -2830,7 +3084,7 @@ class Game {
         // Show status indicators (for first player only)
         if (this.currentPlayerIndex === 0 && this.roundPhase === 'selection') {
             this.showPlayerStatusIndicators();
-            this.setPhaseTitle('Location Selection Phase');
+            this.setPhaseTitle(t('phase.selection'));
             this.resetPlayerCompletionStatus();
         }
 
@@ -2878,7 +3132,7 @@ class Game {
         // Show a message that bot is selecting
         const statusElement = document.getElementById('status-message');
         if (statusElement) {
-            statusElement.innerHTML = `<strong>${this.players[this.currentPlayerIndex].name}</strong> is thinking...`;
+            statusElement.innerHTML = t('status.botThinking', this.getPlayerDisplayName(this.players[this.currentPlayerIndex]));
         }
     }
     
@@ -2901,9 +3155,9 @@ class Game {
         
         if (statusElement) {
             if (currentPlayer.isBot) {
-                statusElement.textContent = `${currentPlayer.name} (Bot) is selecting locations...`;
+                statusElement.textContent = t('status.botSelecting', this.getPlayerDisplayName(currentPlayer));
             } else {
-                statusElement.textContent = `${currentPlayer.name}: Select locations for your Hunter and Apprentice`;
+                statusElement.textContent = t('status.selectLocationsPrompt', this.getPlayerDisplayName(currentPlayer));
             }
         }
     }
@@ -3009,13 +3263,13 @@ class Game {
 
         const hpUpgradeBtn = collapsedBoard.querySelector('.collapsed-hp-section .upgrade-btn');
         if (hpUpgradeBtn) {
-            hpUpgradeBtn.textContent = `Upgrade: ${player.upgradeProgress.hp}/3`;
+            hpUpgradeBtn.textContent = t('board.upgradeProgress', player.upgradeProgress.hp, 3);
             hpUpgradeBtn.disabled = buttonsDisabled || hpMaxed || !player.inventory.some(item => item.name === 'Blood Bag');
         }
 
         const epUpgradeBtn = collapsedBoard.querySelector('.collapsed-ep-section .upgrade-btn');
         if (epUpgradeBtn) {
-            epUpgradeBtn.textContent = `Upgrade: ${player.upgradeProgress.ep}/4`;
+            epUpgradeBtn.textContent = t('board.upgradeProgress', player.upgradeProgress.ep, 4);
             epUpgradeBtn.disabled = buttonsDisabled || epMaxed || !player.inventory.some(item => item.name === 'Beer');
         }
 
@@ -3133,7 +3387,7 @@ class Game {
         // For now, just show a message that selection is complete
         const statusElement = document.getElementById('status-message');
         if (statusElement) {
-            statusElement.textContent = 'All players have selected locations! Game proceeding...';
+            statusElement.textContent = t('status.allPlayersSelected');
         }
         
         // Hide location selection UI
@@ -3216,31 +3470,31 @@ class Game {
 
     getAllColorOptions() {
         return [
-            { value: 'random', label: 'Random', bg: 'linear-gradient(90deg, #e67e22, #27ae60, #3498db, #9b59b6)', border: '#666' },
-            { value: 'orange', label: 'Orange', bg: '#e67e22', border: '#d35400' },
-            { value: 'green', label: 'Green', bg: '#27ae60', border: '#229954' },
-            { value: 'blue', label: 'Blue', bg: '#3498db', border: '#2980b9' },
-            { value: 'purple', label: 'Purple', bg: '#9b59b6', border: '#8e44ad' },
-            { value: 'red', label: 'Red', bg: '#e74c3c', border: '#c0392b' },
-            { value: 'yellow', label: 'Yellow', bg: '#f5f50a', border: '#828205' },
-            { value: 'black', label: 'Black', bg: '#000000', border: '#333333' }
+            { value: 'random', label: t('color.random'), bg: 'linear-gradient(90deg, #e67e22, #27ae60, #3498db, #9b59b6)', border: '#666' },
+            { value: 'orange', label: t('color.orange'), bg: '#e67e22', border: '#d35400' },
+            { value: 'green', label: t('color.green'), bg: '#27ae60', border: '#229954' },
+            { value: 'blue', label: t('color.blue'), bg: '#3498db', border: '#2980b9' },
+            { value: 'purple', label: t('color.purple'), bg: '#9b59b6', border: '#8e44ad' },
+            { value: 'red', label: t('color.red'), bg: '#e74c3c', border: '#c0392b' },
+            { value: 'yellow', label: t('color.yellow'), bg: '#f5f50a', border: '#828205' },
+            { value: 'black', label: t('color.black'), bg: '#000000', border: '#333333' }
         ];
     }
 
     getAllWeaponOptions() {
         return [
-            { value: 'random', label: 'Random' },
-            { value: 'Bat', label: 'Bat' },
-            { value: 'Katana', label: 'Katana' },
-            { value: 'Rifle', label: 'Rifle' },
-            { value: 'Plasma', label: 'Plasma' },
-            { value: 'Chain', label: 'Chain' },
-            { value: 'Axe', label: 'Axe' },
-            { value: 'Whip', label: 'Whip' },
-            { value: 'Bow', label: 'Bow' },
-            { value: 'Sword', label: 'Sword' },
-            { value: 'Knife', label: 'Knife' },
-            { value: 'Gloves', label: 'Gloves' }
+            { value: 'random', label: t('weaponSelect.random') },
+            { value: 'Bat', label: t('weapon.bat.name') },
+            { value: 'Katana', label: t('weapon.katana.name') },
+            { value: 'Rifle', label: t('weapon.rifle.name') },
+            { value: 'Plasma', label: t('weapon.plasma.name') },
+            { value: 'Chain', label: t('weapon.chain.name') },
+            { value: 'Axe', label: t('weapon.axe.name') },
+            { value: 'Whip', label: t('weapon.whip.name') },
+            { value: 'Bow', label: t('weapon.bow.name') },
+            { value: 'Sword', label: t('weapon.sword.name') },
+            { value: 'Knife', label: t('weapon.knife.name') },
+            { value: 'Gloves', label: t('weapon.gloves.name') }
         ];
     }
 
@@ -3254,19 +3508,19 @@ class Game {
         const allColorOptions = this.getAllColorOptions();
         const allWeaponOptions = this.getAllWeaponOptions();
 
-        const defaultName = role === 'host' ? 'Host' : 'Player' + (this.onlineManager.localJoinOrder + 1);
+        const defaultName = role === 'host' ? t('preferences.host') : t('common.player') + (this.onlineManager.localJoinOrder + 1);
         const selectedColor = allColorOptions.find(opt => opt.value === 'random');
         container.innerHTML = `
-            <h3>Your Preferences</h3>
+            <h3>${t('preferences.title')}</h3>
             <div class="online-preference-row">
                 <div class="slot-option">
-                    <label>Name:</label>
+                    <label>${t('preferences.name')}</label>
                     <input type="text" class="slot-name-input" id="${role}-pref-name"
                            value="${defaultName}" maxlength="12"
                            onchange="game.updateOnlinePreference('name', this.value, '${role}')">
                 </div>
                 <div class="slot-option">
-                    <label>Color:</label>
+                    <label>${t('preferences.color')}</label>
                     <div class="color-select-wrapper">
                         <span class="color-indicator" id="${role}-pref-color-indicator" style="background: ${selectedColor.bg}; border: 2px solid ${selectedColor.border};"></span>
                         <select class="slot-color-select" id="${role}-pref-color" onchange="game.updateOnlinePreference('color', this.value, '${role}')">
@@ -3277,7 +3531,7 @@ class Game {
                     </div>
                 </div>
                 <div class="slot-option">
-                    <label>Weapon:</label>
+                    <label>${t('preferences.weapon')}</label>
                     <select class="slot-weapon-select" id="${role}-pref-weapon" onchange="game.updateOnlinePreference('weapon', this.value, '${role}')">
                         ${allWeaponOptions.map(opt =>
                             `<option value="${opt.value}">${opt.label}</option>`
@@ -3299,20 +3553,20 @@ class Game {
         const prefSection = document.getElementById('guest-preference-selectors');
         if (this.guestIsReady) {
             if (readyBtn) {
-                readyBtn.textContent = 'Not Ready';
+                readyBtn.textContent = t('preferences.notReady');
                 readyBtn.classList.add('ready-active');
             }
-            if (statusText) statusText.textContent = 'Waiting for host to start...';
+            if (statusText) statusText.textContent = t('preferences.waitingHost');
             // Lock preference inputs
             if (prefSection) {
                 prefSection.querySelectorAll('input, select').forEach(el => el.disabled = true);
             }
         } else {
             if (readyBtn) {
-                readyBtn.textContent = 'Ready';
+                readyBtn.textContent = t('lobby.guest.ready');
                 readyBtn.classList.remove('ready-active');
             }
-            if (statusText) statusText.textContent = 'Set your preferences, then click Ready';
+            if (statusText) statusText.textContent = t('lobby.guest.statusText');
             // Unlock preference inputs
             if (prefSection) {
                 prefSection.querySelectorAll('input, select').forEach(el => el.disabled = false);
@@ -3384,7 +3638,7 @@ class Game {
             const currentColor = colorSelect.value;
             colorSelect.innerHTML = allColorOptions.map(opt => {
                 const taken = opt.value !== 'random' && opt.value !== currentColor && takenColors.includes(opt.value);
-                return `<option value="${opt.value}" ${taken ? 'disabled' : ''} ${opt.value === myColor ? 'selected' : ''}>${opt.label}${taken ? ' (taken)' : ''}</option>`;
+                return `<option value="${opt.value}" ${taken ? 'disabled' : ''} ${opt.value === myColor ? 'selected' : ''}>${opt.label}${taken ? ' ' + t('preferences.takenSuffix') : ''}</option>`;
             }).join('');
         }
 
@@ -3394,7 +3648,7 @@ class Game {
             const currentWeapon = weaponSelect.value;
             weaponSelect.innerHTML = allWeaponOptions.map(opt => {
                 const taken = opt.value !== 'random' && opt.value !== currentWeapon && takenWeapons.includes(opt.value);
-                return `<option value="${opt.value}" ${taken ? 'disabled' : ''} ${opt.value === myWeapon ? 'selected' : ''}>${opt.label}${taken ? ' (taken)' : ''}</option>`;
+                return `<option value="${opt.value}" ${taken ? 'disabled' : ''} ${opt.value === myWeapon ? 'selected' : ''}>${opt.label}${taken ? ' ' + t('preferences.takenSuffix') : ''}</option>`;
             }).join('');
         }
 
@@ -3423,8 +3677,8 @@ class Game {
                 const [playerId, data] = sortedPlayers[i];
                 const isHost = data.joinOrder === 0;
                 const isSelf = playerId === this.onlineManager.localId;
-                let label = data.preferredName || (isHost ? 'Host' : `Player ${i + 1}`);
-                if (isSelf) label += ' (you)';
+                let label = data.preferredName || (isHost ? t('preferences.host') : t('common.player') + ' ' + (i + 1));
+                if (isSelf) label += ' ' + t('preferences.youSuffix');
 
                 li.className = 'player-slot connected';
 
@@ -3435,15 +3689,15 @@ class Game {
                 const colorDot = colorOpt
                     ? `<span class="slot-color-dot" style="background: ${colorOpt.bg}; border: 1px solid ${colorOpt.border};"></span>`
                     : `<span class="slot-color-dot" style="background: linear-gradient(90deg, #e67e22, #27ae60, #3498db, #9b59b6); border: 1px solid #666;"></span>`;
-                const colorLabel = colorOpt ? colorOpt.label : 'Random';
-                const weaponLabel = prefWeapon !== 'random' ? prefWeapon : 'Random';
+                const colorLabel = colorOpt ? colorOpt.label : t('color.random');
+                const weaponLabel = prefWeapon !== 'random' ? this.getWeaponDisplayName(prefWeapon) : t('weaponSelect.random');
                 const picksHtml = `<span class="slot-picks">${colorDot} ${colorLabel} · ${weaponLabel}</span>`;
 
                 const readyIcon = data.isReady ? '&#x2705;' : '&#x1F534;';
                 li.innerHTML = `${label} <span class="slot-status">${readyIcon}</span>${picksHtml}`;
             } else {
                 li.className = 'player-slot pending';
-                li.innerHTML = `Slot ${i + 1} (open) <span class="slot-status">&#x23F3;</span>`;
+                li.innerHTML = `${t('preferences.slotOpenSimple', i + 1)} <span class="slot-status">&#x23F3;</span>`;
             }
             slotList.appendChild(li);
         }
@@ -3596,47 +3850,47 @@ class Game {
                 slotElement.innerHTML = `
                     <div class="slot-header">
                         <span class="slot-number">${index + 1}</span>
-                        <span class="slot-type">${slot.type === 'player' ? 'Player' : 'Bot'}</span>
+                        <span class="slot-type">${slot.type === 'player' ? t('common.player') : t('common.bot')}</span>
                     </div>
                     <div class="slot-options">
                         <div class="slot-option">
-                            <label>Color:</label>
+                            <label>${t('preferences.color')}</label>
                             ${colorDropdown}
                         </div>
                         <div class="slot-option">
-                            <label>Weapon:</label>
+                            <label>${t('preferences.weapon')}</label>
                             ${weaponDropdown}
                         </div>
                     </div>
                     <div class="slot-buttons">
                         <button class="slot-toggle" onclick="game.toggleSlotType(${index})">
-                            Change to ${slot.type === 'player' ? 'Bot' : 'Player'}
+                            ${slot.type === 'player' ? t('setup.changeToBot') : t('setup.changeToPlayer')}
                         </button>
-                        ${index > 0 ? `<button class="slot-activate" onclick="game.activateSlot(${index})">Remove</button>` : ''}
+                        ${index > 0 ? `<button class="slot-activate" onclick="game.activateSlot(${index})">${t('setup.remove')}</button>` : ''}
                     </div>
                 `;
             } else {
                 slotElement.classList.add('closed');
-                
+
                 // Update content for closed slot
                 slotElement.innerHTML = `
                     <span class="slot-number">${index + 1}</span>
-                    <span class="slot-status">Closed</span>
-                    <button class="slot-activate" onclick="game.activateSlot(${index})">Add Player</button>
+                    <span class="slot-status">${t('setup.slot.closed')}</span>
+                    <button class="slot-activate" onclick="game.activateSlot(${index})">${t('setup.addPlayer')}</button>
                 `;
             }
         });
-        
+
         // Update ready button state
         const activeSlots = this.soloModeSlots.filter(slot => slot.active);
         const readyButton = document.getElementById('solo-ready-btn');
-        
+
         if (activeSlots.length >= 2) {
             readyButton.disabled = false;
-            readyButton.textContent = `Ready (${activeSlots.length} Players)`;
+            readyButton.textContent = t('setup.readyWithCount', activeSlots.length);
         } else {
             readyButton.disabled = true;
-            readyButton.textContent = 'Ready (Need at least 2 players)';
+            readyButton.textContent = t('setup.readyNeedMore');
         }
     }
     
@@ -3672,8 +3926,8 @@ class Game {
         
         // Log game start
         if (!this.isAutomatedMode) {
-            this.addLogEntry(`🎮 <strong>New Game Started</strong> - ${playerCount} players`, 'round-start');
-            this.addLogEntry(`🔄 <strong>Round ${this.currentRound || 1} Started</strong>`, 'round-start');
+            this.addLogEntryT('log.gameStarted', [playerCount], 'round-start');
+            this.addLogEntryT('log.roundStarted', [this.currentRound || 1], 'round-start');
         }
         
         // Update location rewards based on player count
@@ -3744,8 +3998,8 @@ class Game {
         this.playerCount = playerCount;
         
         // Log game start (same as initializeGame)
-        this.addLogEntry(`🎮 <strong>New Game Started</strong> - ${playerCount} players`, 'round-start');
-        this.addLogEntry(`🔄 <strong>Round ${this.currentRound || 1} Started</strong>`, 'round-start');
+        this.addLogEntryT('log.gameStarted', [playerCount], 'round-start');
+        this.addLogEntryT('log.roundStarted', [this.currentRound || 1], 'round-start');
         
         // Update location rewards based on player count
         this.updateLocationRewards();
@@ -3824,18 +4078,18 @@ class Game {
         // Check if buttons should be disabled
         const buttonsDisabled = this.shouldDisablePlayerButtons(player.id);
         const disabledAttr = buttonsDisabled ? ' disabled' : '';
-        const disabledTitle = buttonsDisabled ? ' title="Cannot interact with this player board"' : '';
+        const disabledTitle = buttonsDisabled ? ` title="${t('tooltip.botBoard')}"` : '';
 
         // Check if upgrade buttons should be disabled (max reached or no items)
         const hpUpgradeDisabled = buttonsDisabled || player.maxResources.hp >= 10 || !player.inventory.some(item => item.name === 'Blood Bag');
         const hpUpgradeAttr = hpUpgradeDisabled ? ' disabled' : '';
         const hpUpgradeTitle = hpUpgradeDisabled ?
-            (player.maxResources.hp >= 10 ? ' title="HP is at maximum (10)"' : ' title="Cannot interact with this player board"') : '';
+            (player.maxResources.hp >= 10 ? ` title="${t('tooltip.hpMax10')}"` : ` title="${t('tooltip.botBoard')}"`) : '';
 
         const epUpgradeDisabled = buttonsDisabled || player.maxResources.ep >= 10 || !player.inventory.some(item => item.name === 'Beer');
         const epUpgradeAttr = epUpgradeDisabled ? ' disabled' : '';
         const epUpgradeTitle = epUpgradeDisabled ?
-            (player.maxResources.ep >= 10 ? ' title="EP is at maximum (10)"' : ' title="Cannot interact with this player board"') : '';
+            (player.maxResources.ep >= 10 ? ` title="${t('tooltip.epMax10')}"` : ` title="${t('tooltip.botBoard')}"`) : '';
 
         // Check if restore buttons should be disabled (no items or already full)
         const hpRestoreDisabled = buttonsDisabled || player.resources.hp >= player.maxResources.hp || !player.inventory.some(item => item.name === 'Blood Bag');
@@ -3864,14 +4118,14 @@ class Game {
                     </div>
                     <div class="upgrade-section">
                         <div class="upgrade-bar">
-                            <span>Upgrade:</span>
+                            <span>${t('board.upgrade')}</span>
                             <span id="p${player.id}-hp-progress">${player.upgradeProgress.hp}/3</span>
-                            <button class="small-btn" onclick="game.addToUpgrade(${player.id}, 'hp')"${hpUpgradeAttr}${hpUpgradeTitle}>Max⬆️</button>
+                            <button class="small-btn" onclick="game.addToUpgrade(${player.id}, 'hp')"${hpUpgradeAttr}${hpUpgradeTitle}>${t('board.maxUpgrade')}</button>
                         </div>
                         <div class="milestones">
-                            <label><input type="checkbox" id="p${player.id}-hp-milestone-6" disabled> 6(+2pts)</label>
-                            <label><input type="checkbox" id="p${player.id}-hp-milestone-8" disabled> 8(+3pts)</label>
-                            <label><input type="checkbox" id="p${player.id}-hp-milestone-10" disabled> 10(+4pts)</label>
+                            <label><input type="checkbox" id="p${player.id}-hp-milestone-6" disabled> ${t('board.milestone6Hp')}</label>
+                            <label><input type="checkbox" id="p${player.id}-hp-milestone-8" disabled> ${t('board.milestone8Hp')}</label>
+                            <label><input type="checkbox" id="p${player.id}-hp-milestone-10" disabled> ${t('board.milestone10Hp')}</label>
                         </div>
                     </div>
                 </div>
@@ -3886,13 +4140,13 @@ class Game {
                     </div>
                     <div class="upgrade-section">
                         <div class="upgrade-bar">
-                            <span>Upgrade:</span>
+                            <span>${t('board.upgrade')}</span>
                             <span id="p${player.id}-ep-progress">${player.upgradeProgress.ep}/4</span>
-                            <button class="small-btn" onclick="game.addToUpgrade(${player.id}, 'ep')"${epUpgradeAttr}${epUpgradeTitle}>Max⬆️</button>
+                            <button class="small-btn" onclick="game.addToUpgrade(${player.id}, 'ep')"${epUpgradeAttr}${epUpgradeTitle}>${t('board.maxUpgrade')}</button>
                         </div>
                         <div class="milestones">
-                            <label><input type="checkbox" id="p${player.id}-ep-milestone-8" disabled> 8(+2pts)</label>
-                            <label><input type="checkbox" id="p${player.id}-ep-milestone-10" disabled> 10(+4pts)</label>
+                            <label><input type="checkbox" id="p${player.id}-ep-milestone-8" disabled> ${t('board.milestone8Ep')}</label>
+                            <label><input type="checkbox" id="p${player.id}-ep-milestone-10" disabled> ${t('board.milestone10Ep')}</label>
                         </div>
                     </div>
                 </div>
@@ -3909,14 +4163,14 @@ class Game {
                 <!-- Capacity Section -->
                 <div class="resources-compact">
                     <div class="resource-row">
-                        <span class="resource-label">Capacity</span>
+                        <span class="resource-label">${t('common.capacity')}</span>
                         <span id="p${player.id}-capacity">${player.weapon.capacity}</span>
                     </div>
                 </div>
 
                 <!-- Inventory Section -->
                 <div class="inventory-compact">
-                    <h4>Inventory</h4>
+                    <h4>${t('common.inventory')}</h4>
                     <div class="inventory-items" id="p${player.id}-inventory">
                         <!-- Inventory items will be displayed here -->
                     </div>
@@ -3925,7 +4179,7 @@ class Game {
             <!-- Center Column: Weapon Section -->
             <div class="board-center-section">
                 <div class="weapon-header">
-                    <h3 id="p${player.id}-weapon-name">${player.weapon.name}</h3>
+                    <h3 id="p${player.id}-weapon-name">${this.getWeaponDisplayName(player.weapon.name)}</h3>
                     <img id="p${player.id}-weapon-image" class="weapon-image" src="${player.weapon.name.toLowerCase()}.png" alt="${player.weapon.name}">
                     <div class="damage-grid" id="p${player.id}-damage-grid">
                         <!-- Damage grid will be populated by JavaScript -->
@@ -3940,13 +4194,13 @@ class Game {
                         <span class="stat-max">/15</span>
                     </div>
                     <div class="dice-stat">
-                        <span>Attack Dice</span>
+                        <span>${t('board.attackDice')}</span>
                         <span id="p${player.id}-attack-dice">${player.weapon.currentAttackDice}</span>
                         <button class="small-btn" onclick="game.upgradeWeapon(${player.id}, 'attack')"${attackUpgradeAttr}${disabledTitle}>⚔️</button>
                         <span class="cost">(<span id="p${player.id}-req-exp-attack">${player.weapon.reqExpAttack}</span>EXP)</span>
                     </div>
                     <div class="dice-stat">
-                        <span>Defense Dice</span>
+                        <span>${t('board.defenseDice')}</span>
                         <span id="p${player.id}-defense-dice">${player.weapon.currentDefenseDice}</span>
                         <button class="small-btn" onclick="game.upgradeWeapon(${player.id}, 'defense')"${defenseUpgradeAttr}${disabledTitle}>🛡️</button>
                         <span class="cost">(<span id="p${player.id}-req-exp-defense">3</span>EXP)</span>
@@ -3955,17 +4209,17 @@ class Game {
 
                 <div class="weapon-ammo" style="display: ${player.weapon.name === 'Rifle' || player.weapon.name === 'Plasma' ? 'block' : 'none'};">
                     <div class="stat rifle-bullets" id="p${player.id}-bullets-stat" style="display: ${player.weapon.name === 'Rifle' ? 'block' : 'none'};">
-                        <span>Bullets:</span>
+                        <span>${t('battle.bullets')}</span>
                         <span id="p${player.id}-bullet-count">0/6</span>
                     </div>
                     <div class="stat plasma-batteries" id="p${player.id}-batteries-stat" style="display: ${player.weapon.name === 'Plasma' ? 'block' : 'none'};">
-                        <span>Batteries:</span>
+                        <span>${t('battle.batteries')}</span>
                         <span id="p${player.id}-battery-count">0/6</span>
                     </div>
                 </div>
 
                 <div class="weapon-power-section">
-                    <h4>Weapon Power Track</h4>
+                    <h4>${t('board.weaponPowerTrack')}</h4>
                     <div class="weapon-power-track">
                         <div class="track-space" data-position="1"></div>
                         <div class="track-space" data-position="2"></div>
@@ -3977,17 +4231,17 @@ class Game {
                         <div class="track-token" id="p${player.id}-power-token"></div>
                     </div>
                     <div class="power-levels">
-                        <div class="power-level active" id="p${player.id}-power-lv1" data-tooltip="${player.weapon.lv1Power}">
-                            <div class="power-title">Lv1</div>
-                            <div class="power-desc" id="p${player.id}-power-desc-1">${player.weapon.lv1Power}</div>
+                        <div class="power-level active" id="p${player.id}-power-lv1" data-tooltip="${this.getWeaponPowerDesc(player.weapon.name, 1)}">
+                            <div class="power-title">${t('board.lv1')}</div>
+                            <div class="power-desc" id="p${player.id}-power-desc-1">${this.getWeaponPowerDesc(player.weapon.name, 1)}</div>
                         </div>
-                        <div class="power-level" id="p${player.id}-power-lv2" data-tooltip="${player.weapon.lv2Power}">
-                            <div class="power-title">Lv2</div>
-                            <div class="power-desc" id="p${player.id}-power-desc-2">${player.weapon.lv2Power}</div>
+                        <div class="power-level" id="p${player.id}-power-lv2" data-tooltip="${this.getWeaponPowerDesc(player.weapon.name, 2)}">
+                            <div class="power-title">${t('board.lv2')}</div>
+                            <div class="power-desc" id="p${player.id}-power-desc-2">${this.getWeaponPowerDesc(player.weapon.name, 2)}</div>
                         </div>
-                        <div class="power-level" id="p${player.id}-power-lv3" data-tooltip="${player.weapon.lv3Power}">
-                            <div class="power-title">Lv3</div>
-                            <div class="power-desc" id="p${player.id}-power-desc-3">${player.weapon.lv3Power}</div>
+                        <div class="power-level" id="p${player.id}-power-lv3" data-tooltip="${this.getWeaponPowerDesc(player.weapon.name, 3)}">
+                            <div class="power-title">${t('board.lv3')}</div>
+                            <div class="power-desc" id="p${player.id}-power-desc-3">${this.getWeaponPowerDesc(player.weapon.name, 3)}</div>
                         </div>
                     </div>
                 </div>
@@ -3998,34 +4252,34 @@ class Game {
                 <div class="player-info-compact">
                     <h3 id="player-${player.id}-name">
                         ${player.color ? `<span class="player-color-indicator" style="background-color: ${player.color.background}; border-color: ${player.color.border};"></span>` : ''}
-                        ${player.name}
+                        ${this.getPlayerDisplayName(player)}
                     </h3>
                     <div class="score-display">
-                        <span>Score:</span>
+                        <span>${t('board.score')}</span>
                         <span id="p${player.id}-score">${player.score}</span>
                     </div>
                 </div>
 
                 <div class="popularity-section">
-                    <h4>Popularity Track</h4>
+                    <h4>${t('board.popularityTrack')}</h4>
                     <div class="popularity-track-compact" id="p${player.id}-popularity-track">
                         <!-- Popularity track will be displayed here -->
                     </div>
                 </div>
 
                 <div class="pet-section-compact">
-                    <h4>Pet</h4>
+                    <h4>${t('board.pet')}</h4>
                     <div class="pet-display">
                         <div class="pet-row">
-                            <span>Lv1:</span>
+                            <span>${t('board.lv1')}:</span>
                             <span id="p${player.id}-pet-lv1">${player.pets?.level1 || 0}</span>
                         </div>
                         <div class="pet-row">
-                            <span>Lv2:</span>
+                            <span>${t('board.lv2')}:</span>
                             <span id="p${player.id}-pet-lv2">${player.pets?.level2 || 0}</span>
                         </div>
                         <div class="pet-row">
-                            <span>Lv3:</span>
+                            <span>${t('board.lv3')}:</span>
                             <span id="p${player.id}-pet-lv3">${player.pets?.level3 || 0}</span>
                         </div>
                     </div>
@@ -4051,29 +4305,29 @@ class Game {
         // Check if buttons should be disabled
         const buttonsDisabled = this.shouldDisablePlayerButtons(player.id);
         const disabledAttr = buttonsDisabled ? ' disabled' : '';
-        const disabledTitle = buttonsDisabled ? ' title="Cannot interact with this player board"' : '';
+        const disabledTitle = buttonsDisabled ? ` title="${t('tooltip.botBoard')}"` : '';
 
         // Check if upgrade buttons should be disabled (max reached or no items)
         const hpUpgradeDisabled = buttonsDisabled || player.maxResources.hp >= 10 || !player.inventory.some(item => item.name === 'Blood Bag');
         const hpUpgradeAttr = hpUpgradeDisabled ? ' disabled' : '';
         const hpUpgradeTitle = hpUpgradeDisabled ?
-            (player.maxResources.hp >= 10 ? ' title="HP is at maximum (10)"' : ' title="Cannot interact with this player board"') : '';
+            (player.maxResources.hp >= 10 ? ` title="${t('tooltip.hpMax10')}"` : ` title="${t('tooltip.botBoard')}"`) : '';
 
         const epUpgradeDisabled = buttonsDisabled || player.maxResources.ep >= 10 || !player.inventory.some(item => item.name === 'Beer');
         const epUpgradeAttr = epUpgradeDisabled ? ' disabled' : '';
         const epUpgradeTitle = epUpgradeDisabled ?
-            (player.maxResources.ep >= 10 ? ' title="EP is at maximum (10)"' : ' title="Cannot interact with this player board"') : '';
+            (player.maxResources.ep >= 10 ? ` title="${t('tooltip.epMax10')}"` : ` title="${t('tooltip.botBoard')}"`) : '';
 
         // Check if restore buttons should be disabled
         const hpRestoreDisabled = buttonsDisabled || player.resources.hp >= player.maxResources.hp || !player.inventory.some(item => item.name === 'Blood Bag');
         const hpRestoreAttr = hpRestoreDisabled ? ' disabled' : '';
         const hpRestoreTitle = hpRestoreDisabled ?
-            (player.resources.hp >= player.maxResources.hp ? ' title="HP is already full"' : !player.inventory.some(item => item.name === 'Blood Bag') ? ' title="No blood bag available"' : ' title="Cannot interact with this player board"') : ' title="Use blood bag to restore 1 HP"';
+            (player.resources.hp >= player.maxResources.hp ? ` title="${t('tooltip.hpFull')}"` : !player.inventory.some(item => item.name === 'Blood Bag') ? ` title="${t('tooltip.noBloodBag')}"` : ` title="${t('tooltip.botBoard')}"`) : ` title="${t('tooltip.restoreHP')}"`;
 
         const epRestoreDisabled = buttonsDisabled || player.resources.ep >= player.maxResources.ep || !player.inventory.some(item => item.name === 'Beer');
         const epRestoreAttr = epRestoreDisabled ? ' disabled' : '';
         const epRestoreTitle = epRestoreDisabled ?
-            (player.resources.ep >= player.maxResources.ep ? ' title="EP is already full"' : !player.inventory.some(item => item.name === 'Beer') ? ' title="No beer available"' : ' title="Cannot interact with this player board"') : ' title="Use beer to restore 1 EP"';
+            (player.resources.ep >= player.maxResources.ep ? ` title="${t('tooltip.epFull')}"` : !player.inventory.some(item => item.name === 'Beer') ? ` title="${t('tooltip.noBeer')}"` : ` title="${t('tooltip.botBoard')}"`) : ` title="${t('tooltip.restoreEP')}"`;
 
         // Check if weapon upgrade buttons should be disabled (not enough EXP or maxed)
         const attackMaxed = player.weapon.currentAttackDice >= 7;
@@ -4091,14 +4345,14 @@ class Game {
             <div class="collapsed-header">
                 <h3 class="collapsed-player-name">
                     ${player.color ? `<span class="player-color-indicator" style="background-color: ${player.color.background}; border-color: ${player.color.border};"></span>` : ''}
-                    ${player.name}
+                    ${this.getPlayerDisplayName(player)}
                 </h3>
                 <div class="collapsed-score">
-                    <span class="score-label">Score:</span>
+                    <span class="score-label">${t('board.score')}</span>
                     <span class="score-value" id="p${player.id}-score">${player.score}</span>
                 </div>
                 <div class="collapsed-weapon">
-                    <span id="p${player.id}-weapon-name">${player.weapon.name}</span>
+                    <span id="p${player.id}-weapon-name">${this.getWeaponDisplayName(player.weapon.name)}</span>
                 </div>
             </div>
 
@@ -4113,7 +4367,7 @@ class Game {
                         <span class="inventory-counter" id="p${player.id}-bloodbag-count">🩸 ${player.inventory.filter(item => item.name === 'Blood Bag').length}</span>
                     </div>
                     <div class="collapsed-buttons">
-                        <button class="collapsed-btn upgrade-btn" onclick="game.addToUpgrade(${player.id}, 'hp')"${hpUpgradeAttr}${hpUpgradeTitle}>Upgrade: ${player.upgradeProgress.hp}/3</button>
+                        <button class="collapsed-btn upgrade-btn" onclick="game.addToUpgrade(${player.id}, 'hp')"${hpUpgradeAttr}${hpUpgradeTitle}>${t('board.upgradeProgress', player.upgradeProgress.hp, 3)}</button>
                         <button class="collapsed-btn restore-btn hp-restore" onclick="game.restoreHP(${player.id})"${hpRestoreAttr}${hpRestoreTitle}>+🩸</button>
                     </div>
                 </div>
@@ -4127,7 +4381,7 @@ class Game {
                         <span class="inventory-counter" id="p${player.id}-beer-count">🍺 ${player.inventory.filter(item => item.name === 'Beer').length}</span>
                     </div>
                     <div class="collapsed-buttons">
-                        <button class="collapsed-btn upgrade-btn" onclick="game.addToUpgrade(${player.id}, 'ep')"${epUpgradeAttr}${epUpgradeTitle}>Upgrade: ${player.upgradeProgress.ep}/4</button>
+                        <button class="collapsed-btn upgrade-btn" onclick="game.addToUpgrade(${player.id}, 'ep')"${epUpgradeAttr}${epUpgradeTitle}>${t('board.upgradeProgress', player.upgradeProgress.ep, 4)}</button>
                         <button class="collapsed-btn restore-btn ep-restore" onclick="game.restoreEP(${player.id})"${epRestoreAttr}${epRestoreTitle}>+🍺</button>
                     </div>
                 </div>
@@ -4140,7 +4394,7 @@ class Game {
                         <span class="resource-max">/15</span>
                     </div>
                     <div class="collapsed-resource-row">
-                        <span class="resource-label">Capacity</span>
+                        <span class="resource-label">${t('common.capacity')}</span>
                         <span class="resource-value" id="p${player.id}-capacity">${currentInventorySize}/${player.maxInventoryCapacity}</span>
                     </div>
                 </div>
@@ -4159,29 +4413,29 @@ class Game {
                     <div class="collapsed-dice-row">
                         <span class="dice-icon">⚔️</span>
                         <span class="dice-value" id="p${player.id}-attack-dice">${player.weapon.currentAttackDice}</span>
-                        <button class="collapsed-btn upgrade-btn" onclick="game.upgradeWeapon(${player.id}, 'attack')"${attackUpgradeAttr}${disabledTitle}>Upgrade (<span id="p${player.id}-req-exp-attack">${player.weapon.reqExpAttack}</span>)</button>
+                        <button class="collapsed-btn upgrade-btn" onclick="game.upgradeWeapon(${player.id}, 'attack')"${attackUpgradeAttr}${disabledTitle}>${t('board.upgradeShort')} (<span id="p${player.id}-req-exp-attack">${player.weapon.reqExpAttack}</span>)</button>
                     </div>
                     <!-- Defense Dice -->
                     <div class="collapsed-dice-row">
                         <span class="dice-icon">🛡️</span>
                         <span class="dice-value" id="p${player.id}-defense-dice">${player.weapon.currentDefenseDice}</span>
-                        <button class="collapsed-btn upgrade-btn" onclick="game.upgradeWeapon(${player.id}, 'defense')"${defenseUpgradeAttr}${disabledTitle}>Upgrade (<span id="p${player.id}-req-exp-defense">${player.weapon.reqExpDefense || 3}</span>)</button>
+                        <button class="collapsed-btn upgrade-btn" onclick="game.upgradeWeapon(${player.id}, 'defense')"${defenseUpgradeAttr}${disabledTitle}>${t('board.upgradeShort')} (<span id="p${player.id}-req-exp-defense">${player.weapon.reqExpDefense || 3}</span>)</button>
                     </div>
                 </div>
 
                 <!-- Popularity Track -->
                 <div class="collapsed-popularity-section">
-                    <span class="popularity-label">Popularity:</span>
+                    <span class="popularity-label">${t('board.popularity')}</span>
                     <span class="popularity-value" id="p${player.id}-popularity-collapsed">${player.popularityTrack.pointToken}/${player.popularityTrack.rewardToken}</span>
                 </div>
 
                 <!-- Pet Display -->
                 <div class="collapsed-pet-section">
-                    <span class="pet-label">Pet:</span>
+                    <span class="pet-label">${t('board.petLabel')}</span>
                     <div class="collapsed-pet-counts">
-                        <span class="pet-count-item">Lv1: <span id="p${player.id}-pet-lv1">${player.pets?.level1 || 0}</span></span>
-                        <span class="pet-count-item">Lv2: <span id="p${player.id}-pet-lv2">${player.pets?.level2 || 0}</span></span>
-                        <span class="pet-count-item">Lv3: <span id="p${player.id}-pet-lv3">${player.pets?.level3 || 0}</span></span>
+                        <span class="pet-count-item">${t('board.lv1')}: <span id="p${player.id}-pet-lv1">${player.pets?.level1 || 0}</span></span>
+                        <span class="pet-count-item">${t('board.lv2')}: <span id="p${player.id}-pet-lv2">${player.pets?.level2 || 0}</span></span>
+                        <span class="pet-count-item">${t('board.lv3')}: <span id="p${player.id}-pet-lv3">${player.pets?.level3 || 0}</span></span>
                     </div>
                 </div>
             </div>
@@ -4209,21 +4463,21 @@ class Game {
 
         // Check if HP is already full
         if (player.resources.hp >= player.maxResources.hp) {
-            if (!this.suppressAlerts && (this.isHost || this.gameMode !== 'online')) alert('HP is already full!');
+            if (!this.suppressAlerts && (this.isHost || this.gameMode !== 'online')) alert(t('alert.hpFull'));
             return;
         }
 
         // Check if player has blood bag
         const bloodBagIndex = player.inventory.findIndex(item => item.name === 'Blood Bag');
         if (bloodBagIndex === -1) {
-            if (!this.suppressAlerts && (this.isHost || this.gameMode !== 'online')) alert('No blood bag available to restore HP!');
+            if (!this.suppressAlerts && (this.isHost || this.gameMode !== 'online')) alert(t('alert.noBloodBag'));
             return;
         }
 
         // Use blood bag to restore 1 HP
         player.inventory.splice(bloodBagIndex, 1);
         this.modifyResource(playerId, 'hp', 1);
-        this.addLogEntry(`${player.name} used blood bag to restore 1 HP (${player.resources.hp}/${player.maxResources.hp})`, player.color?.background);
+        this.addLogEntryT('log.usedBloodBag', [player, player.resources.hp, player.maxResources.hp], 'system', player);
 
         // Update displays
         this.updateResourceDisplay(playerId);
@@ -4273,21 +4527,21 @@ class Game {
 
         // Check if EP is already full
         if (player.resources.ep >= player.maxResources.ep) {
-            if (!this.suppressAlerts && (this.isHost || this.gameMode !== 'online')) alert('EP is already full!');
+            if (!this.suppressAlerts && (this.isHost || this.gameMode !== 'online')) alert(t('alert.epFull'));
             return;
         }
 
         // Check if player has beer
         const beerIndex = player.inventory.findIndex(item => item.name === 'Beer');
         if (beerIndex === -1) {
-            if (!this.suppressAlerts && (this.isHost || this.gameMode !== 'online')) alert('No beer available to restore EP!');
+            if (!this.suppressAlerts && (this.isHost || this.gameMode !== 'online')) alert(t('alert.noBeer'));
             return;
         }
 
         // Use beer to restore 1 EP
         player.inventory.splice(beerIndex, 1);
         this.modifyResource(playerId, 'ep', 1);
-        this.addLogEntry(`${player.name} used beer to restore 1 EP (${player.resources.ep}/${player.maxResources.ep})`, player.color?.background);
+        this.addLogEntryT('log.usedBeer', [player, player.resources.ep, player.maxResources.ep], 'system', player);
 
         // Update displays
         this.updateResourceDisplay(playerId);
@@ -4393,7 +4647,7 @@ class Game {
         // Update the toggle button text
         const toggleBtn = document.getElementById('toggle-boards-btn');
         if (toggleBtn) {
-            toggleBtn.textContent = this.boardsCollapsed ? 'Expand' : 'Collapse';
+            toggleBtn.textContent = this.boardsCollapsed ? t('status.toggleBoardsExpand') : t('status.toggleBoards');
         }
     }
 
@@ -4606,7 +4860,7 @@ class Game {
 
         // Add location name text
         const nameSpan = document.createElement('span');
-        nameSpan.textContent = location.name;
+        nameSpan.textContent = this.getLocationDisplayName(location.name);
         card.appendChild(nameSpan);
 
         // Force basic styling to ensure visibility, but allow CSS classes to override
@@ -4687,7 +4941,7 @@ class Game {
                 hasAmmo = bulletCount > 0 || this.currentPlayer.weapon.powerTrackPosition >= 7; // Rifle Lv3 has infinite ammo
             } else if (this.currentPlayer.weapon.name === 'Plasma') {
                 const batteryCount = this.currentPlayer.inventory.filter(inv => inv.name === 'Battery').length;
-                hasAmmo = batteryCount > 0 || this.currentPlayer.weapon.powerTrackPosition >= 7; // Plasma Lv3 has infinite ammo
+                hasAmmo = batteryCount > 0;
             }
             
             // Update card status
@@ -4920,7 +5174,17 @@ class Game {
     
     getLocationName(locationId) {
         const location = this.locations.find(loc => loc.id === locationId);
-        return location ? location.name : '';
+        return location ? this.getLocationDisplayName(location.name) : '';
+    }
+
+    /**
+     * Returns a translation-key marker for a location's translated display name.
+     * Used inside addLogEntryT args so guests re-translate locally.
+     */
+    locationTArg(locationId) {
+        const map = { 1: 'location.workSite', 2: 'location.bar', 3: 'location.station', 4: 'location.hospital', 5: 'location.dojo', 6: 'location.plaza', 7: 'location.forest' };
+        const key = map[locationId];
+        return key ? this.tArg(key) : '';
     }
     
     confirmSelection() {
@@ -4955,7 +5219,7 @@ class Game {
             
             // Check EP requirement
             if (humanPlayer.resources.ep < 2) {
-                warningMessages.push('• You need at least 2 EP to enter the Forest (you have ' + humanPlayer.resources.ep + ' EP)');
+                warningMessages.push(t('forestWarn.needEP', humanPlayer.resources.ep));
                 canGetInStore = true;
             }
 
@@ -4963,28 +5227,28 @@ class Game {
             if (!this.hasRequiredAmmunition(humanPlayer)) {
                 if (humanPlayer.weapon.name === 'Rifle') {
                     const bulletCount = humanPlayer.inventory.filter(item => item.name === 'Bullet').length;
-                    warningMessages.push('• Rifle needs bullets for combat (you have ' + bulletCount + ' bullets)');
+                    warningMessages.push(t('forestWarn.needBullets', bulletCount));
                     canGetInStore = true;
                 } else if (humanPlayer.weapon.name === 'Plasma') {
                     const batteryCount = humanPlayer.inventory.filter(item => item.name === 'Battery').length;
-                    warningMessages.push('• Plasma needs batteries for combat (you have ' + batteryCount + ' batteries)');
+                    warningMessages.push(t('forestWarn.needBatteries', batteryCount));
                     canGetInStore = true;
                 }
             }
 
             // Show warning if any requirements are missing
             if (warningMessages.length > 0) {
-                let fullMessage = '⚠️ Forest Entry Warning\n\n';
-                fullMessage += 'Your Hunter is entering the Forest but lacks the following:\n\n';
+                let fullMessage = t('forestWarn.title') + '\n\n';
+                fullMessage += t('forestWarn.intro') + '\n\n';
                 fullMessage += warningMessages.join('\n');
                 fullMessage += '\n\n';
 
                 if (canGetInStore) {
-                    fullMessage += 'You can still obtain these resources in the Store phase.\n';
-                    fullMessage += 'Combat items (Grenades, Bombs, Dynamite) can also be used to fight monsters.\n\n';
+                    fullMessage += t('forestWarn.canBuy') + '\n';
+                    fullMessage += t('forestWarn.canUseItems') + '\n\n';
                 }
 
-                fullMessage += 'Do you want to proceed with this selection?';
+                fullMessage += t('forestWarn.proceed');
 
                 if (!confirm(fullMessage)) {
                     console.log('Player canceled Forest entry during confirmation');
@@ -4994,10 +5258,9 @@ class Game {
         }
 
         // Store the selection message for batch logging later
-        const hunterLocationName = this.getLocationName(humanPlayer.selectedCards.hunter);
-        const apprenticeLocationName = this.getLocationName(humanPlayer.selectedCards.apprentice);
         this.pendingSelectionLogs.push({
-            message: `📍 <strong>${humanPlayer.name}</strong> selected: Hunter → ${hunterLocationName}, Apprentice → ${apprenticeLocationName}`,
+            key: 'log.playerSelected',
+            args: [humanPlayer, this.locationTArg(humanPlayer.selectedCards.hunter), this.locationTArg(humanPlayer.selectedCards.apprentice)],
             type: 'selection',
             player: humanPlayer
         });
@@ -5018,7 +5281,15 @@ class Game {
 
             // Add all pending selection logs to the game log
             for (const logEntry of this.pendingSelectionLogs) {
+                if (logEntry.key) {
+                    this.addLogEntryT(logEntry.key, logEntry.args || [], logEntry.type, logEntry.player);
+                } else {
+                    if (logEntry.key) {
+                this.addLogEntryT(logEntry.key, logEntry.args || [], logEntry.type, logEntry.player);
+            } else {
                 this.addLogEntry(logEntry.message, logEntry.type, logEntry.player);
+            }
+                }
             }
 
             // Clear pending logs for next round
@@ -5055,7 +5326,7 @@ class Game {
 
             // Check EP requirement
             if (this.currentPlayer.resources.ep < 2) {
-                warningMessages.push('• You need at least 2 EP to enter the Forest (you have ' + this.currentPlayer.resources.ep + ' EP)');
+                warningMessages.push(t('forestWarn.needEP', this.currentPlayer.resources.ep));
                 canGetInStore = true;
             }
 
@@ -5063,28 +5334,28 @@ class Game {
             if (!this.hasRequiredAmmunition(this.currentPlayer)) {
                 if (this.currentPlayer.weapon.name === 'Rifle') {
                     const bulletCount = this.currentPlayer.inventory.filter(item => item.name === 'Bullet').length;
-                    warningMessages.push('• Rifle needs bullets for combat (you have ' + bulletCount + ' bullets)');
+                    warningMessages.push(t('forestWarn.needBullets', bulletCount));
                     canGetInStore = true;
                 } else if (this.currentPlayer.weapon.name === 'Plasma') {
                     const batteryCount = this.currentPlayer.inventory.filter(item => item.name === 'Battery').length;
-                    warningMessages.push('• Plasma needs batteries for combat (you have ' + batteryCount + ' batteries)');
+                    warningMessages.push(t('forestWarn.needBatteries', batteryCount));
                     canGetInStore = true;
                 }
             }
 
             // Show warning if any requirements are missing
             if (warningMessages.length > 0) {
-                let fullMessage = '⚠️ Forest Entry Warning\n\n';
-                fullMessage += 'Your Hunter is entering the Forest but lacks the following:\n\n';
+                let fullMessage = t('forestWarn.title') + '\n\n';
+                fullMessage += t('forestWarn.intro') + '\n\n';
                 fullMessage += warningMessages.join('\n');
                 fullMessage += '\n\n';
 
                 if (canGetInStore) {
-                    fullMessage += 'You can still obtain these resources in the Store phase.\n';
-                    fullMessage += 'Combat items (Grenades, Bombs, Dynamite) can also be used to fight monsters.\n\n';
+                    fullMessage += t('forestWarn.canBuy') + '\n';
+                    fullMessage += t('forestWarn.canUseItems') + '\n\n';
                 }
 
-                fullMessage += 'Do you want to proceed with this selection?';
+                fullMessage += t('forestWarn.proceed');
 
                 if (!confirm(fullMessage)) {
                     console.log('Player canceled Forest entry during confirmation');
@@ -5095,10 +5366,9 @@ class Game {
 
         // Store the selection message for batch logging later (only for human players, bots already added theirs)
         if (!this.currentPlayer.isBot) {
-            const hunterLocationName = this.getLocationName(this.currentPlayer.selectedCards.hunter);
-            const apprenticeLocationName = this.getLocationName(this.currentPlayer.selectedCards.apprentice);
             this.pendingSelectionLogs.push({
-                message: `📍 <strong>${this.currentPlayer.name}</strong> selected: Hunter → ${hunterLocationName}, Apprentice → ${apprenticeLocationName}`,
+                key: 'log.playerSelected',
+                args: [this.currentPlayer, this.locationTArg(this.currentPlayer.selectedCards.hunter), this.locationTArg(this.currentPlayer.selectedCards.apprentice)],
                 type: 'selection',
                 player: this.currentPlayer
             });
@@ -5126,7 +5396,15 @@ class Game {
 
             // Add all pending selection logs to the game log
             for (const logEntry of this.pendingSelectionLogs) {
+                if (logEntry.key) {
+                    this.addLogEntryT(logEntry.key, logEntry.args || [], logEntry.type, logEntry.player);
+                } else {
+                    if (logEntry.key) {
+                this.addLogEntryT(logEntry.key, logEntry.args || [], logEntry.type, logEntry.player);
+            } else {
                 this.addLogEntry(logEntry.message, logEntry.type, logEntry.player);
+            }
+                }
             }
 
             // Clear pending logs for next round
@@ -5177,7 +5455,7 @@ class Game {
         // Update UI for resolution phase
         document.getElementById('confirm-selection').style.display = 'none';
         document.getElementById('next-player').style.display = 'block';
-        document.getElementById('status-message').textContent = 'Round complete! Resources have been distributed.';
+        document.getElementById('status-message').textContent = t('status.roundComplete');
         document.querySelector('.card-selection').style.display = 'none';
     }
     
@@ -5318,7 +5596,7 @@ class Game {
     
     resetGame() {
         // Confirm before restarting
-        if (confirm('Are you sure you want to start a new game? All progress will be lost.')) {
+        if (confirm(t('alert.confirmNewGame'))) {
             this.resetMilestoneCheckboxes();
             location.reload();
         }
@@ -5326,12 +5604,12 @@ class Game {
     
     updateUI() {
         // Update current player display
-        document.getElementById('current-player-name').textContent = this.currentPlayer.name;
+        document.getElementById('current-player-name').textContent = this.getPlayerDisplayName(this.currentPlayer);
         
         // Update status message
         if (this.roundPhase === 'selection') {
-            document.getElementById('status-message').textContent = 
-                `${this.currentPlayer.name}: Select locations for your Hunter and Apprentice`;
+            document.getElementById('status-message').textContent =
+                t('status.selectLocationsPrompt', this.getPlayerDisplayName(this.currentPlayer));
         }
         
         // Reset confirm button
@@ -5610,12 +5888,12 @@ class Game {
         
         // Get all possible items and their current counts
         const allItems = [
-            { name: 'Beer', icon: '🍺', description: 'Restores 1 EP / Upgrade EP max' },
-            { name: 'Blood Bag', icon: '🩸', description: 'Restores 1 HP / Upgrade HP max' },
-            { name: 'Grenade', icon: '💣', description: '+1 damage to monster' },
-            { name: 'Bomb', icon: '💥', description: '+2 damage to monster' },
-            { name: 'Dynamite', icon: '🧨', description: '+3 damage to monster' },
-            { name: 'Fake Blood', icon: '🩹', description: '+2 points when defeating monster' }
+            { name: 'Beer', icon: '🍺', descKey: 'inventory.beerDesc' },
+            { name: 'Blood Bag', icon: '🩸', descKey: 'inventory.bloodBagDesc' },
+            { name: 'Grenade', icon: '💣', descKey: 'inventory.grenadeDesc' },
+            { name: 'Bomb', icon: '💥', descKey: 'inventory.bombDesc' },
+            { name: 'Dynamite', icon: '🧨', descKey: 'inventory.dynamiteDesc' },
+            { name: 'Fake Blood', icon: '🩹', descKey: 'inventory.fakeBloodDesc' }
         ];
         
         // Count current items in inventory
@@ -5633,7 +5911,7 @@ class Game {
             .map(item => {
                 const count = itemCounts[item.name] || 0;
 
-                return `<div class="inventory-item-counter" title="${item.description}">
+                return `<div class="inventory-item-counter" title="${t(item.descKey)}">
                     <span class="item-icon">${item.icon}</span>
                     <span class="item-count" id="p${playerId}-${item.name.replace(' ', '')}-count">${count}</span>
                 </div>`;
@@ -5661,10 +5939,10 @@ class Game {
             const lostAmount = newValue - maxValue;
             console.log(`${player.name} lost ${lostAmount} ${resourceType} due to max cap of ${maxValue}`);
             if (resourceType === 'money' || resourceType === 'exp') {
-                this.addLogEntry(`⚠️ ${player.name} reached max ${resourceType} (${maxValue}). Lost ${lostAmount} ${resourceType}!`, 'system', player);
+                this.addLogEntryT('log.maxResourceReached', [player, resourceType, maxValue, lostAmount], 'system', player);
                 // Show alert for human players only
                 if (!player.isBot && !this.isAutomatedMode) {
-                    alert(`⚠️ Resource Cap Reached!\n\n${player.name} has reached the maximum ${resourceType} limit of ${maxValue}.\n\n${lostAmount} ${resourceType} was lost!`);
+                    alert(t('alert.maxResource', this.getPlayerDisplayName(player), resourceType, maxValue, lostAmount));
                 }
             }
         }
@@ -5746,7 +6024,7 @@ class Game {
 
         // Log the upgrade
         if (!this.isAutomatedMode) {
-            this.addLogEntry(`⬆️ <strong>${player.name}</strong>'s max ${resourceType.toUpperCase()} increased to ${player.maxResources[resourceType]}!`, 'system', player);
+            this.addLogEntryT('log.maxResourceUpgraded', [player, resourceType.toUpperCase(), player.maxResources[resourceType]], 'system', player);
         }
         
         // Make sure current doesn't exceed max (though it shouldn't with this logic)
@@ -5811,7 +6089,7 @@ class Game {
         const battlePlayer = this.players.find(p => p.id === this.currentMonsterPlayer);
         if (battlePlayer && !this.isAutomatedMode) {
             this.showPlayerStatusIndicators(true);
-            this.setPhaseTitle(`Battle Phase: ${battlePlayer.name}`);
+            this.setPhaseTitle(t('phase.battle', this.getPlayerDisplayName(battlePlayer)));
         }
 
         // Reset shown monsters pool for this player (fresh start for each player)
@@ -5825,7 +6103,7 @@ class Game {
             return;
         }
         
-        document.getElementById('monster-modal-title').textContent = `${player.name}: Choose Monster to Fight`;
+        document.getElementById('monster-modal-title').textContent = t('monster.chooseTitle', this.getPlayerDisplayName(player));
 
         // Reset selected pets, beer consumption, overflow EP, and monster level
         this.selectedMonsterLevel = null;
@@ -6063,16 +6341,12 @@ class Game {
         
         // Log bot's selection
         const petInfo = [];
-        if (this.selectedPets.level1 > 0) petInfo.push(`${this.selectedPets.level1} Level 1 Pet`);
-        if (this.selectedPets.level2 > 0) petInfo.push(`${this.selectedPets.level2} Level 2 Pet`);
-        if (this.selectedPets.level3 > 0) petInfo.push(`${this.selectedPets.level3} Level 3 Pet`);
-        
-        const petText = petInfo.length > 0 ? ` with ${petInfo.join(', ')}` : '';
-        this.addLogEntry(
-            `⚔️ <strong>${player.name}</strong> (Bot) chose Level ${selectedLevel} Monster${petText} (${totalEPCost} EP)`,
-            'battle',
-            player
-        );
+        if (this.selectedPets.level1 > 0) petInfo.push(t('battle.petCount', this.selectedPets.level1, 1));
+        if (this.selectedPets.level2 > 0) petInfo.push(t('battle.petCount', this.selectedPets.level2, 2));
+        if (this.selectedPets.level3 > 0) petInfo.push(t('battle.petCount', this.selectedPets.level3, 3));
+
+        const petText = petInfo.length > 0 ? t('battle.withPetsSuffix', petInfo.join(', ')) : '';
+        this.addLogEntryT('log.botChoseMonster', [player, selectedLevel, petText, totalEPCost], 'battle', player);
         
         // Deduct EP
         this.modifyResource(player.id, 'ep', -totalEPCost);
@@ -6096,20 +6370,12 @@ class Game {
                player.resources.ep > 0) {
             // Monster would attack first — spend 1 EP to try another
             this.modifyResource(player.id, 'ep', -1);
-            this.addLogEntry(
-                `🔄 <strong>${player.name}</strong> (Bot) spent 1 EP to change monster (monster attacks first, defense: ${defenseCount})`,
-                'battle',
-                player
-            );
+            this.addLogEntryT('log.botChangedMonster', [player, defenseCount], 'battle', player);
 
             const newMonster = this.selectRandomAvailableMonster(selectedLevel, player.id);
             if (!newMonster) {
                 // No more monsters available — must fight current one
-                this.addLogEntry(
-                    `⚠️ <strong>${player.name}</strong> (Bot) no more monsters available, must fight current monster`,
-                    'battle',
-                    player
-                );
+                this.addLogEntryT('log.botNoMoreMonsters', [player], 'battle', player);
                 break;
             }
 
@@ -6162,15 +6428,11 @@ class Game {
         // Show status message
         const statusElement = document.getElementById('status-message');
         if (statusElement) {
-            statusElement.innerHTML = `<strong>${player.name}</strong> (Bot) is battling Level ${battle.monster.level} Monster...`;
+            statusElement.innerHTML = t('status.botBattling', this.getPlayerDisplayName(player), battle.monster.level);
         }
         
         // Log battle start
-        this.addLogEntry(
-            `⚔️ <strong>${player.name}</strong> (Bot) enters battle vs Level ${battle.monster.level} Monster (${battle.monster.hp} HP, ${battle.monster.att} ATT)`,
-            'battle',
-            player
-        );
+        this.addLogEntryT('log.botEntersBattle', [player, battle.monster.level, battle.monster.hp, battle.monster.att], 'battle', player);
         
         console.log('About to start executeBotBattle with 1000ms delay');
         // Auto-battle with delay for visualization
@@ -6271,18 +6533,16 @@ class Game {
             this.applyBotVictoryRewards(player, monster, battle, battleActions);
             console.log('Victory rewards applied.');
             
-            // Log all battle actions
+            // Log all battle actions (entries are either {k,a} structured or plain strings)
             battleActions.forEach(action => {
-                if (!action.includes('---')) {
-                    this.addLogEntry(`⚔️ ${action}`, 'battle', player);
-                }
+                this.flushBattleAction(action, player);
             });
-            
+
             // Update displays after all battle changes
             this.updateResourceDisplay();
             this.updateInventoryDisplayOld();
             this.updateInventoryDisplay(player.id);
-            
+
             // Force a complete UI refresh for bot players
             if (player.isBot) {
                 setTimeout(() => {
@@ -6340,31 +6600,31 @@ class Game {
                 const bulletIndex = player.inventory.findIndex(item => item.name === 'Bullet');
                 if (bulletIndex === -1) {
                     canAttack = false;
-                    battleActions.push(`${player.name} has no bullets for battle!`);
+                    battleActions.push({k:'battle.noBullets', a:[this.getPlayerDisplayName(player)]});
                     currentPlayerHP = 0;
-                    battleActions.push(`${player.name} defeated due to lack of ammunition!`);
+                    battleActions.push({k:'battle.defeatedNoAmmo', a:[this.getPlayerDisplayName(player)]});
                 } else {
                     // Consume one bullet as entrance fee
                     player.inventory.splice(bulletIndex, 1);
                     battle.ammunitionConsumed = true;
-                    battleActions.push(`${player.name} uses 1 bullet as entrance fee for this battle!`);
+                    battleActions.push({k:'battle.usesBullet', a:[this.getPlayerDisplayName(player)]});
                 }
             }
             // If ammunitionConsumed is true, bot can attack freely
-        } else if (player.weapon.name === 'Plasma' && player.weapon.powerTrackPosition >= 1 && player.weapon.powerTrackPosition < 7) {
+        } else if (player.weapon.name === 'Plasma' && player.weapon.powerTrackPosition >= 1) {
             // If ammunition not consumed yet, check and consume
             if (!battle.ammunitionConsumed) {
                 const batteryIndex = player.inventory.findIndex(item => item.name === 'Battery');
                 if (batteryIndex === -1) {
                     canAttack = false;
-                    battleActions.push(`${player.name} has no batteries for battle!`);
+                    battleActions.push({k:'battle.noBatteries', a:[this.getPlayerDisplayName(player)]});
                     currentPlayerHP = 0;
-                    battleActions.push(`${player.name} defeated due to lack of ammunition!`);
+                    battleActions.push({k:'battle.defeatedNoAmmo', a:[this.getPlayerDisplayName(player)]});
                 } else {
                     // Consume one battery as entrance fee
                     player.inventory.splice(batteryIndex, 1);
                     battle.ammunitionConsumed = true;
-                    battleActions.push(`${player.name} uses 1 battery as entrance fee for this battle!`);
+                    battleActions.push({k:'battle.usesBattery', a:[this.getPlayerDisplayName(player)]});
                 }
             }
             // If ammunitionConsumed is true, bot can attack freely
@@ -6405,23 +6665,23 @@ class Game {
                         if (expGained > 0) {
                             player.resources.exp = Math.min(player.maxResources.exp, player.resources.exp + expGained);
                         }
-                        battleActions.push(`Monster attacks first for ${monsterDamage} damage. ${player.name} defends: [${defenseRolls.join(', ')}] = ${defense} defense. Final damage: ${finalDamage} (+${expGained} EXP, Axe -1)`);
+                        battleActions.push({k:'battle.monsterFirstAttackAxe', a:[monsterDamage, this.getPlayerDisplayName(player), defenseRolls.join(', '), defense, finalDamage, expGained]});
                     } else {
                     const damageEffect = this.applyBattleEffect(monster, 'playerDamaged', player);
                     if (damageEffect && damageEffect.noEXP) {
-                        battleActions.push(`Monster attacks first for ${monsterDamage} damage. ${player.name} defends: [${defenseRolls.join(', ')}] = ${defense} defense. Final damage: ${finalDamage} (no EXP from monster effect)`);
+                        battleActions.push({k:'battle.monsterFirstAttackNoExp', a:[monsterDamage, this.getPlayerDisplayName(player), defenseRolls.join(', '), defense, finalDamage]});
                     } else if (damageEffect && damageEffect.maxEXP) {
                         expGained = Math.min(finalDamage, damageEffect.maxEXP);
                         player.resources.exp = Math.min(player.maxResources.exp, player.resources.exp + expGained);
-                        battleActions.push(`Monster attacks first for ${monsterDamage} damage. ${player.name} defends: [${defenseRolls.join(', ')}] = ${defense} defense. Final damage: ${finalDamage} (+${expGained} EXP, capped by monster effect)`);
+                        battleActions.push({k:'battle.monsterFirstAttackCapped', a:[monsterDamage, this.getPlayerDisplayName(player), defenseRolls.join(', '), defense, finalDamage, expGained]});
                     } else {
                         expGained = finalDamage;
                         player.resources.exp = Math.min(player.maxResources.exp, player.resources.exp + expGained);
-                        battleActions.push(`Monster attacks first for ${monsterDamage} damage. ${player.name} defends: [${defenseRolls.join(', ')}] = ${defense} defense. Final damage: ${finalDamage} (+${expGained} EXP)`);
+                        battleActions.push({k:'battle.monsterFirstAttack', a:[monsterDamage, this.getPlayerDisplayName(player), defenseRolls.join(', '), defense, finalDamage, expGained]});
                     }
                     }
                 } else {
-                    battleActions.push(`Monster attacks first for ${monsterDamage} damage. ${player.name} defends: [${defenseRolls.join(', ')}] = ${defense} defense. Final damage: ${finalDamage}`);
+                    battleActions.push({k:'battle.monsterFirstAttackPlain', a:[monsterDamage, this.getPlayerDisplayName(player), defenseRolls.join(', '), defense, finalDamage]});
                 }
 
                 // Axe retaliation (if player survives)
@@ -6429,10 +6689,10 @@ class Game {
                     let retaliationDamage;
                     if (player.weapon.powerTrackPosition >= 7) {
                         retaliationDamage = finalDamage;
-                        battleActions.push(`${player.name}'s Axe Lv3 Power: retaliates for ${retaliationDamage} damage!`);
+                        battleActions.push({k:'battle.axeLv3Counter', a:[this.getPlayerDisplayName(player), retaliationDamage]});
                     } else {
                         retaliationDamage = 1;
-                        battleActions.push(`${player.name}'s Axe Lv1 Power: retaliates for ${retaliationDamage} damage!`);
+                        battleActions.push({k:'battle.axeLv1Counter', a:[this.getPlayerDisplayName(player), retaliationDamage]});
                     }
                     const axeDamageCap = this.applyBattleEffect(monster, 'damageCap');
                     if (axeDamageCap !== null) {
@@ -6440,13 +6700,13 @@ class Game {
                     }
                     currentMonsterHP -= retaliationDamage;
                     if (currentMonsterHP <= 0) {
-                        battleActions.push(`Monster defeated by Axe retaliation!`);
+                        battleActions.push({k:'battle.axeKill', a:[]});
                         break;
                     }
                 }
 
                 if (currentPlayerHP <= 0) {
-                    battleActions.push(`${player.name} defeated by monster!`);
+                    battleActions.push({k:'battle.playerDefeated', a:[this.getPlayerDisplayName(player)]});
                     break;
                 }
             }
@@ -6479,7 +6739,7 @@ class Game {
                 const originalDamage = totalDamage;
                 totalDamage = Math.min(totalDamage, damageCap);
                 if (originalDamage > damageCap) {
-                    battleActions.push(`Monster effect limits damage to ${damageCap} (would have dealt ${originalDamage})`);
+                    battleActions.push({k:'battle.damageCap', a:[damageCap, originalDamage]});
                 }
             }
             
@@ -6495,17 +6755,9 @@ class Game {
                 currentMonsterHP = monster.hp;  // read back after effect
             }
 
-            battleActions.push(`${player.name} attacks: [${attackRolls.join(', ')}] = ${playerDamage} damage${petDamage > 0 ? ` + ${petDamage} pet damage` : ''} = ${totalDamage} total`);
-            
-            // Sword Level 3 Power: +1 point if at least one attack die shows 1
-            if (player.weapon.name === 'Sword' && player.weapon.powerTrackPosition >= 7) {
-                const hasOnes = attackRolls.includes(1);
-                if (hasOnes) {
-                    this.addScore(player.id, 1, 'other'); // Sword Lv3 power
-                    battleActions.push(`Sword Lv3 Power: +1 point for rolling at least one 1 on attack!`);
-                }
-            }
-            
+            battleActions.push({k:'battle.playerAttacks', a:[this.getPlayerDisplayName(player), attackRolls.join(', '), playerDamage, petDamage > 0 ? t('battle.petDamageSuffix', petDamage) : '', totalDamage]});
+
+
             // Tactical item usage: Check if bot can finish monster with items
             if (currentMonsterHP > 0) {
                 const itemCombination = this.findOptimalItemCombination(player, currentMonsterHP, monster);
@@ -6530,19 +6782,19 @@ class Game {
                     if (itemDamageCap !== null) {
                         finalItemDamage = Math.min(itemDamage, itemDamageCap);
                         if (itemDamage > itemDamageCap) {
-                            battleActions.push(`${player.name} uses items: ${itemsUsed.join(', ')} for ${finalItemDamage} damage (capped from ${itemDamage})!`);
+                            battleActions.push({k:'battle.itemsUsedCapped', a:[this.getPlayerDisplayName(player), itemsUsed.join(', '), finalItemDamage, itemDamage]});
                         } else {
-                            battleActions.push(`${player.name} uses items: ${itemsUsed.join(', ')} for ${finalItemDamage} damage!`);
+                            battleActions.push({k:'battle.itemsUsedDamage', a:[this.getPlayerDisplayName(player), itemsUsed.join(', '), finalItemDamage]});
                         }
                     } else {
-                        battleActions.push(`${player.name} uses items: ${itemsUsed.join(', ')} for ${finalItemDamage} damage!`);
+                        battleActions.push({k:'battle.itemsUsedDamage', a:[this.getPlayerDisplayName(player), itemsUsed.join(', '), finalItemDamage]});
                     }
                     currentMonsterHP -= finalItemDamage;
                 }
             }
             
             if (currentMonsterHP <= 0) {
-                battleActions.push(`Monster defeated!`);
+                battleActions.push({k:'battle.monsterDefeatedSimple', a:[]});
                 break;
             }
 
@@ -6578,23 +6830,23 @@ class Game {
                     if (expGained > 0) {
                         player.resources.exp = Math.min(player.maxResources.exp, player.resources.exp + expGained);
                     }
-                    battleActions.push(`Monster attacks for ${monsterDamage} damage. ${player.name} defends: [${defenseRolls.join(', ')}] = ${defense} defense. Final damage: ${finalDamage} (+${expGained} EXP, Axe -1)`);
+                    battleActions.push({k:'battle.monsterAttackAxe', a:[monsterDamage, this.getPlayerDisplayName(player), defenseRolls.join(', '), defense, finalDamage, expGained]});
                 } else {
                 const damageEffect = this.applyBattleEffect(monster, 'playerDamaged', player);
                 if (damageEffect && damageEffect.noEXP) {
-                    battleActions.push(`Monster attacks for ${monsterDamage} damage. ${player.name} defends: [${defenseRolls.join(', ')}] = ${defense} defense. Final damage: ${finalDamage} (no EXP from monster effect)`);
+                    battleActions.push({k:'battle.monsterAttackNoExp', a:[monsterDamage, this.getPlayerDisplayName(player), defenseRolls.join(', '), defense, finalDamage]});
                 } else if (damageEffect && damageEffect.maxEXP) {
                     expGained = Math.min(finalDamage, damageEffect.maxEXP);
                     player.resources.exp = Math.min(player.maxResources.exp, player.resources.exp + expGained);
-                    battleActions.push(`Monster attacks for ${monsterDamage} damage. ${player.name} defends: [${defenseRolls.join(', ')}] = ${defense} defense. Final damage: ${finalDamage} (+${expGained} EXP, capped by monster effect)`);
+                    battleActions.push({k:'battle.monsterAttackCapped', a:[monsterDamage, this.getPlayerDisplayName(player), defenseRolls.join(', '), defense, finalDamage, expGained]});
                 } else {
                     expGained = finalDamage;
                     player.resources.exp = Math.min(player.maxResources.exp, player.resources.exp + expGained);
-                    battleActions.push(`Monster attacks for ${monsterDamage} damage. ${player.name} defends: [${defenseRolls.join(', ')}] = ${defense} defense. Final damage: ${finalDamage} (+${expGained} EXP)`);
+                    battleActions.push({k:'battle.monsterAttackExp', a:[monsterDamage, this.getPlayerDisplayName(player), defenseRolls.join(', '), defense, finalDamage, expGained]});
                 }
                 }
             } else {
-                battleActions.push(`Monster attacks for ${monsterDamage} damage. ${player.name} defends: [${defenseRolls.join(', ')}] = ${defense} defense. Final damage: ${finalDamage}`);
+                battleActions.push({k:'battle.monsterAttackPlain', a:[monsterDamage, this.getPlayerDisplayName(player), defenseRolls.join(', '), defense, finalDamage]});
             }
             
             // Sword Level 3 Power nerfed: only works on attack dice, not defense
@@ -6605,11 +6857,11 @@ class Game {
                 if (player.weapon.powerTrackPosition >= 7) {
                     // Level 3: Deal same damage to monster (overrides Level 1)
                     retaliationDamage = finalDamage;
-                    battleActions.push(`${player.name}'s Axe Lv3 Power: retaliates for ${retaliationDamage} damage!`);
+                    battleActions.push({k:'battle.axeLv3Counter', a:[this.getPlayerDisplayName(player), retaliationDamage]});
                 } else {
                     // Level 1: Deal 1 damage to monster when HP decreases
                     retaliationDamage = 1;
-                    battleActions.push(`${player.name}'s Axe Lv1 Power: retaliates for ${retaliationDamage} damage!`);
+                    battleActions.push({k:'battle.axeLv1Counter', a:[this.getPlayerDisplayName(player), retaliationDamage]});
                 }
                 // Apply damage cap to Axe retaliation
                 const retaliationCap = this.applyBattleEffect(monster, 'damageCap');
@@ -6617,13 +6869,13 @@ class Game {
                     const originalRetaliation = retaliationDamage;
                     retaliationDamage = Math.min(retaliationDamage, retaliationCap);
                     if (originalRetaliation > retaliationCap && player.weapon.powerTrackPosition >= 7) {
-                        battleActions.push(`Axe retaliation capped at ${retaliationCap}!`);
+                        battleActions.push({k:'battle.axeCounterCapped', a:[retaliationCap]});
                     }
                 }
                 currentMonsterHP -= retaliationDamage;
                 
                 if (currentMonsterHP <= 0) {
-                    battleActions.push(`Monster defeated by retaliation!`);
+                    battleActions.push({k:'battle.axeKill', a:[]});
                     break;
                 }
             }
@@ -6633,7 +6885,7 @@ class Game {
             
             // Safety break to prevent infinite battles
             if (battleRound > 20) {
-                battleActions.push(`Battle timeout - monster wins`);
+                battleActions.push({k:'battle.timeout', a:[]});
                 currentPlayerHP = 0;
                 break;
             }
@@ -6643,18 +6895,16 @@ class Game {
         if (currentPlayerHP <= 0) {
             // Bot lost
             player.resources.hp = 1; // Set HP to 1 on defeat
-            battleActions.push(`${player.name} was defeated but survives with 1 HP`);
+            battleActions.push({k:'battle.survivedWith1HP', a:[this.getPlayerDisplayName(player)]});
         } else {
             // Bot won - update HP after battle
             player.resources.hp = currentPlayerHP;
             this.applyBotVictoryRewards(player, monster, battle, battleActions);
         }
         
-        // Log all battle actions
+        // Log all battle actions (entries are either {k,a} structured or plain strings)
         battleActions.forEach(action => {
-            if (!action.includes('---')) {
-                this.addLogEntry(`⚔️ ${action}`, 'battle', player);
-            }
+            this.flushBattleAction(action, player);
         });
         
         // Update displays after all battle changes
@@ -6698,12 +6948,19 @@ class Game {
         }
         
         player.monstersDefeated[`level${monster.level}`]++;
-        battleActions.push(`${player.name} has defeated ${player.monstersDefeated.level1} Lv1, ${player.monstersDefeated.level2} Lv2, ${player.monstersDefeated.level3} Lv3 monsters`);
+        battleActions.push({k:'battle.totalDefeated', a:[this.getPlayerDisplayName(player), player.monstersDefeated.level1, player.monstersDefeated.level2, player.monstersDefeated.level3]});
         
+        // Knife Lv1 Power: defeating a monster doubles non-point rewards
+        const knifeMultiplier = (player.weapon.name === 'Knife' && player.weapon.powerTrackPosition >= 1) ? 2 : 1;
+
         // Apply monster rewards
-        const finalMoney = monster.money;
-        const finalEnergy = monster.energy;
-        const finalBlood = monster.blood;
+        const finalMoney = monster.money * knifeMultiplier;
+        const finalEnergy = monster.energy * knifeMultiplier;
+        const finalBlood = monster.blood * knifeMultiplier;
+
+        if (knifeMultiplier === 2 && (monster.money + monster.energy + monster.blood) > 0) {
+            battleActions.push({k:'battle.knifeLv1Doubled', a:[]});
+        }
 
         // Apply resource caps (money max 15, others handled by items)
         player.resources.money = Math.min(player.maxResources.money, player.resources.money + finalMoney);
@@ -6713,6 +6970,12 @@ class Game {
         this.addScore(player.id, monster.pts, 'monster');
         if (battle.bonusPts > 0) {
             this.addScore(player.id, battle.bonusPts, 'fakeblood');
+        }
+
+        // Sword Lv3 Power: +X bonus points where X = monster level (categorized as 'other')
+        if (player.weapon.name === 'Sword' && player.weapon.powerTrackPosition >= 7) {
+            this.addScore(player.id, monster.level, 'other');
+            battleActions.push({k:'battle.swordLv3Bonus', a:[monster.level]});
         }
         
         // Add items to inventory
@@ -6727,11 +6990,11 @@ class Game {
             }
         }
         
-        let rewardText = `Victory! Gained: ${finalMoney}$`;
-        if (finalEnergy > 0) rewardText += `, ${finalEnergy} beer`;
-        if (finalBlood > 0) rewardText += `, ${finalBlood} blood bags`;
-        rewardText += `, ${monster.pts + battle.bonusPts} points`;
-        
+        let rewardText = t('battle.victoryGained', finalMoney);
+        if (finalEnergy > 0) rewardText += t('battle.victoryGainedBeer', finalEnergy);
+        if (finalBlood > 0) rewardText += t('battle.victoryGainedBlood', finalBlood);
+        rewardText += t('battle.victoryGainedPoints', monster.pts + battle.bonusPts);
+
         battleActions.push(rewardText);
         
         // Advance weapon power track based on monster level
@@ -6747,7 +7010,7 @@ class Game {
                 player.pets = { level1: 0, level2: 0, level3: 0 };
             }
             player.pets[`level${monster.level}`]++;
-            battleActions.push(`${player.name} tamed the Level ${monster.level} monster as a pet!`);
+            battleActions.push({k:'battle.tameAsPet', a:[this.getPlayerDisplayName(player), monster.level]});
             
             // Update pet display to show new pet
             this.updatePetDisplay();
@@ -6767,12 +7030,12 @@ class Game {
                 player.inventory.splice(bloodBagIndex, 1);
                 player.resources.bloodBag = Math.max(0, player.resources.bloodBag - 1);
                 player.resources.hp = Math.min(player.maxResources.hp, player.resources.hp + 1);
-                actions.push('used Blood Bag (+1 HP)');
+                actions.push(t('botAction.usedBloodBag', 1));
             } else {
                 break;
             }
         }
-        
+
         // Priority 2: Recover EP with beer
         while (player.resources.ep < player.maxResources.ep) {
             const beerIndex = player.inventory.findIndex(item => item.name === 'Beer');
@@ -6780,7 +7043,7 @@ class Game {
                 player.inventory.splice(beerIndex, 1);
                 player.resources.beer = Math.max(0, player.resources.beer - 1);
                 player.resources.ep = Math.min(player.maxResources.ep, player.resources.ep + 1);
-                actions.push('used Beer (+1 EP)');
+                actions.push(t('botAction.usedBeer', 1));
             } else {
                 break;
             }
@@ -6809,7 +7072,7 @@ class Game {
                     const checkbox = document.getElementById(`p${player.id}-hp-milestone-6`);
                     if (checkbox) checkbox.checked = true;
                 }
-                actions.push(`upgraded max HP to ${player.maxResources.hp} (+2 milestone points)`);
+                actions.push(t('botAction.upgradedHpMilestone', player.maxResources.hp, 2));
             } else if (player.maxResources.hp === 8 && !player.milestones.hp8) {
                 this.addScore(player.id, 3, 'milestone');
                 player.milestones.hp8 = true;
@@ -6817,7 +7080,7 @@ class Game {
                     const checkbox = document.getElementById(`p${player.id}-hp-milestone-8`);
                     if (checkbox) checkbox.checked = true;
                 }
-                actions.push(`upgraded max HP to ${player.maxResources.hp} (+3 milestone points)`);
+                actions.push(t('botAction.upgradedHpMilestone', player.maxResources.hp, 3));
             } else if (player.maxResources.hp === 10 && !player.milestones.hp10) {
                 this.addScore(player.id, 4, 'milestone');
                 player.milestones.hp10 = true;
@@ -6825,9 +7088,9 @@ class Game {
                     const checkbox = document.getElementById(`p${player.id}-hp-milestone-10`);
                     if (checkbox) checkbox.checked = true;
                 }
-                actions.push(`upgraded max HP to ${player.maxResources.hp} (+4 milestone points)`);
+                actions.push(t('botAction.upgradedHpMilestone', player.maxResources.hp, 4));
             } else {
-                actions.push(`upgraded max HP to ${player.maxResources.hp}`);
+                actions.push(t('botAction.upgradedHp', player.maxResources.hp));
             }
             
             bloodBags.splice(0, 3); // Update local array
@@ -6856,7 +7119,7 @@ class Game {
                     const checkbox = document.getElementById(`p${player.id}-ep-milestone-8`);
                     if (checkbox) checkbox.checked = true;
                 }
-                actions.push(`upgraded max EP to ${player.maxResources.ep} (+2 milestone points)`);
+                actions.push(t('botAction.upgradedEpMilestone', player.maxResources.ep, 2));
             } else if (player.maxResources.ep === 10 && !player.milestones.ep10) {
                 this.addScore(player.id, 4, 'milestone');
                 player.milestones.ep10 = true;
@@ -6864,9 +7127,9 @@ class Game {
                     const checkbox = document.getElementById(`p${player.id}-ep-milestone-10`);
                     if (checkbox) checkbox.checked = true;
                 }
-                actions.push(`upgraded max EP to ${player.maxResources.ep} (+4 milestone points)`);
+                actions.push(t('botAction.upgradedEpMilestone', player.maxResources.ep, 4));
             } else {
-                actions.push(`upgraded max EP to ${player.maxResources.ep}`);
+                actions.push(t('botAction.upgradedEp', player.maxResources.ep));
             }
             
             beers.splice(0, 4); // Update local array
@@ -6878,7 +7141,7 @@ class Game {
         
         // Log all actions
         if (actions.length > 0) {
-            battleActions.push(`Auto-managed resources: ${actions.join(', ')}`);
+            battleActions.push({k:'battle.autoManaged', a:[actions.join(', ')]});
         }
     }
     
@@ -6940,7 +7203,7 @@ class Game {
         document.getElementById('bloodBag-amount').textContent = bloodBagAmount;
         document.getElementById('exp-amount').textContent = expAmount;
         
-        document.getElementById('station-modal-title').textContent = `${player.name}: Choose Station Resource`;
+        document.getElementById('station-modal-title').textContent = t('station.modalTitle', this.getPlayerDisplayName(player));
         document.getElementById('station-modal').style.display = 'flex';
         this.pendingStationPlayer = playerId;
     }
@@ -6994,21 +7257,13 @@ class Game {
         if (preferredResource) {
             // Choose the same resource as the bot's preferred location
             selectedResource = preferredResource;
-            this.addLogEntry(
-                `💰 <strong>${player.name}</strong> (Bot) chose ${preferredResource} at Station (weapon preference)`,
-                'resource-gain',
-                player
-            );
+            this.addLogEntryT('log.botStationPreferred', [player, preferredResource], 'resource-gain', player);
         } else {
             // Choose randomly from available options
             const availableResources = ['money', 'beer', 'bloodBag', 'exp'];
             const randomIndex = Math.floor(Math.random() * availableResources.length);
             selectedResource = availableResources[randomIndex];
-            this.addLogEntry(
-                `💰 <strong>${player.name}</strong> (Bot) chose ${selectedResource} at Station (random)`,
-                'resource-gain',
-                player
-            );
+            this.addLogEntryT('log.botStationRandom', [player, selectedResource], 'resource-gain', player);
         }
         
         // Apply the selection
@@ -7061,12 +7316,12 @@ class Game {
             console.log(`  - Location rewards array: [${locationRewards}]`);
             console.log(`  - Calculated reward amount: ${rewardAmount}`);
             
-            const playerType = player.isBot ? ' (Bot)' : '';
             if (resourceType === 'money' || resourceType === 'exp') {
                 this.modifyResource(parseInt(playerId), resourceType, rewardAmount);
-                const resourceName = resourceType === 'money' ? 'money' : 'EXP';
-                this.addLogEntry(
-                    `💰 <strong>${player.name}</strong>${playerType} received ${rewardAmount} ${resourceName} from Station`,
+                const resourceKey = resourceType === 'money' ? 'common.money' : 'common.exp';
+                this.addLogEntryT(
+                    'log.receivedFromLocation',
+                    [player, rewardAmount, this.tArg(resourceKey), this.tArg('location.station')],
                     'resource-gain',
                     player
                 );
@@ -7075,8 +7330,10 @@ class Game {
                 // Also add items to inventory
                 const itemName = resourceType === 'beer' ? 'Beer' : 'Blood Bag';
                 this.addItemToInventory(parseInt(playerId), itemName, rewardAmount);
-                this.addLogEntry(
-                    `💰 <strong>${player.name}</strong>${playerType} received ${rewardAmount} ${itemName} from Station`,
+                const itemKey = resourceType === 'beer' ? 'item.beer.name' : 'item.bloodBag.name';
+                this.addLogEntryT(
+                    'log.receivedFromLocation',
+                    [player, rewardAmount, this.tArg(itemKey), this.tArg('location.station')],
                     'resource-gain',
                     player
                 );
@@ -7256,14 +7513,12 @@ class Game {
                     }
                 }
 
-                // Knife Level 2/3 Power: +2 points when hunter is alone (stacks at lv3 for +4 total)
+                // Knife Lv2 Power: +2 points when hunter is alone at location
                 if (player.weapon.name === 'Knife' && player.weapon.powerTrackPosition >= 3) {
-                    const knifePts = player.weapon.powerTrackPosition >= 7 ? 4 : 2;
-                    this.addScore(player.id, knifePts, 'other');
+                    this.addScore(player.id, 2, 'other');
                     if (!this.isAutomatedMode) {
-                        const lvLabel = player.weapon.powerTrackPosition >= 7 ? 'Lv2+Lv3' : 'Lv2';
-                        console.log(`Knife ${lvLabel} Power: ${player.name} receives +${knifePts} points for being alone at location`);
-                        this.addLogEntry(`🔪 ${player.name} receives +${knifePts} points from Knife ${lvLabel} Power`, 'power', player);
+                        console.log(`Knife Lv2 Power: ${player.name} receives +2 points for being alone at location`);
+                        this.addLogEntryT('log.knifeLv2Alone', [player], 'power', player);
                     }
                 }
                 
@@ -7320,12 +7575,7 @@ class Game {
                     this.addScore(player.id, points, 'popularity'); // Add correct point value for level
 
                     // Add log entry for level up
-                    const playerType = player.isBot ? ' (Bot)' : '';
-                    this.addLogEntry(
-                        `📈 <strong>${player.name}</strong>${playerType} reached Popularity Level ${newRewardLevel} (+${points} points)`,
-                        'level-up',
-                        player
-                    );
+                    this.addLogEntryT('log.popularityLevelUp', [player, newRewardLevel, points], 'level-up', player);
                 }
             }
         });
@@ -7360,14 +7610,14 @@ class Game {
             
             trackHTML += `
                 <div class="track-level">
-                    <div class="level-number">Lv.${level.level}</div>
+                    <div class="level-number">${t('popularity.lvShort', level.level)}</div>
                     <div class="level-section">
-                        ${level.level === 5 ? '<div class="section-label">Points</div>' : ''}
+                        ${level.level === 5 ? `<div class="section-label">${t('popularity.points')}</div>` : ''}
                         <div class="section-value">${level.level === 0 ? '' : level.points}</div>
                         ${hasPointToken ? `<div class="track-token point-token" style="background-color: ${player.color?.background || '#f39c12'}; border-color: ${player.color?.border || '#f39c12'}; left: 35%;"></div>` : ''}
                     </div>
                     <div class="level-section">
-                        ${level.level === 5 ? '<div class="section-label">Reward</div>' : ''}
+                        ${level.level === 5 ? `<div class="section-label">${t('popularity.reward')}</div>` : ''}
                         <div class="section-value">${level.reward}</div>
                         ${hasRewardToken ? `<div class="track-token reward-token" style="background-color: ${player.color?.background || '#27ae60'}; border-color: ${player.color?.border || '#27ae60'}; left: 65%;"></div>` : ''}
                     </div>
@@ -7473,7 +7723,7 @@ class Game {
 
         // Check if already at maximum
         if (player.maxResources[upgradeType] >= 10) {
-            if (!this.suppressAlerts && (this.isHost || this.gameMode !== 'online')) alert(`Cannot upgrade ${upgradeType.toUpperCase()} - already at maximum (10)`);
+            if (!this.suppressAlerts && (this.isHost || this.gameMode !== 'online')) alert(t('alert.maxUpgrade', upgradeType.toUpperCase()));
             return;
         }
 
@@ -7545,9 +7795,9 @@ class Game {
                 this.players.forEach(p => {
                     this.updateInventoryDisplay(p.id);
                 });
-                alert(`${player.name} used beer and recovered 1 EP!`);
+                alert(t('alert.usedBeer', player.name));
             } else {
-                alert(`${player.name}'s EP is already at maximum!`);
+                alert(t('alert.epAlreadyMax', player.name));
             }
         } else if (itemType === 'bloodBag' && player.resources.bloodBag > 0) {
             // Recover 1 HP
@@ -7558,13 +7808,13 @@ class Game {
                 this.players.forEach(p => {
                     this.updateInventoryDisplay(p.id);
                 });
-                alert(`${player.name} used blood bag and recovered 1 HP!`);
+                alert(t('alert.usedBloodBag', player.name));
             } else {
-                alert(`${player.name}'s HP is already at maximum!`);
+                alert(t('alert.hpAlreadyMax', player.name));
             }
         } else {
             if (player.resources[itemType] === 0) {
-                alert(`${player.name} doesn't have any ${itemType === 'bloodBag' ? 'blood bags' : itemType}!`);
+                alert(t('alert.noItemType', player.name, itemType === 'bloodBag' ? 'blood bags' : itemType));
             }
         }
     }
@@ -7683,7 +7933,7 @@ class Game {
         if (upgradeType === 'attack') {
             // Check if already at max attack dice (7)
             if (player.weapon.currentAttackDice >= 7) {
-                if (!this.suppressAlerts && (this.isHost || this.gameMode !== 'online')) alert(`${player.name}'s attack dice is already at maximum (7)!`);
+                if (!this.suppressAlerts && (this.isHost || this.gameMode !== 'online')) alert(t('alert.attackDiceMax', player.name));
                 return false;
             }
 
@@ -7703,7 +7953,7 @@ class Game {
         } else if (upgradeType === 'defense') {
             // Check if already at max defense dice (6)
             if (player.weapon.currentDefenseDice >= 6) {
-                if (!this.suppressAlerts && (this.isHost || this.gameMode !== 'online')) alert(`${player.name}'s defense dice is already at maximum (6)!`);
+                if (!this.suppressAlerts && (this.isHost || this.gameMode !== 'online')) alert(t('alert.defenseDiceMax', player.name));
                 return false;
             }
 
@@ -7887,7 +8137,7 @@ class Game {
                 this.players.forEach(p => {
                     if (!this.forestPlayersThisRound.has(p.id)) {
                         p.score = Math.max(0, p.score - 2);
-                        this.addLogEntry(`📉 ${p.name} loses 2 points (not in forest)`, 'effect', p);
+                        this.addLogEntryT('log.lostPoints', [p], 'effect', p);
                     }
                 });
                 break;
@@ -7950,7 +8200,7 @@ class Game {
                         const epLoss = Math.min(player.resources.ep, 1);
                         if (epLoss > 0) {
                             this.modifyResource(player.id, 'ep', -epLoss);
-                            this.logBattleAction(`${player.name} loses 1 EP from monster effect`, player);
+                            this.logBattleActionT('battle.monsterEffectDrainEP', [player], player);
                         }
                     }
                     break;
@@ -7959,7 +8209,7 @@ class Game {
                     if (contextStr === 'monsterDamaged' && monster.hp > 0) {
                         monster.hp += 1;
                         monster.maxHp = Math.max(monster.maxHp, monster.hp);
-                        this.logBattleAction(`Monster gains +1 HP from its effect (${monster.hp} HP)`, player);
+                        this.logBattleActionT('battle.monsterEffectHeal', [monster.hp], player);
                     }
                     break;
 
@@ -8026,7 +8276,7 @@ class Game {
                     const epLoss = Math.min(player.resources.ep, 1);
                     if (epLoss > 0) {
                         this.modifyResource(player.id, 'ep', -epLoss);
-                        this.logBattleAction(`${player.name} loses 1 EP from monster effect`, player);
+                        this.logBattleActionT('battle.monsterEffectDrainEP', [player], player);
                     }
                 }
                 break;
@@ -8035,7 +8285,7 @@ class Game {
                 if (context === 'monsterDamaged' && monster.hp > 0) {
                     monster.hp += 1;
                     monster.maxHp = Math.max(monster.maxHp, monster.hp);
-                    this.logBattleAction(`Monster gains +1 HP from its effect (${monster.hp} HP)`, player);
+                    this.logBattleActionT('battle.monsterEffectHeal', [monster.hp], player);
                 }
                 break;
                 
@@ -8082,8 +8332,8 @@ class Game {
                 });
                 if (affectedPlayers.length > 0) {
                     this.showEffectNotification(
-                        `Monster's death curse! Forest players lose 1 HP: ${affectedPlayers.join(', ')}`,
-                        `Upon death, this monster releases a curse that damages all hunters in the forest (won't reduce HP below 1).`
+                        t('effect.deathCurse', affectedPlayers.join(', ')),
+                        t('effect.deathCurseTooltip')
                     );
                 }
                 break;
@@ -8111,7 +8361,7 @@ class Game {
         
         // Add to log (but skip in automated mode for performance)
         if (!this.isAutomatedMode) {
-            this.addLogEntry(`⚡ <strong>Monster Effect:</strong> ${message}`, 'effect');
+            this.addLogEntryT('battle.monsterEffectMessage', [message], 'effect');
         }
     }
 
@@ -8179,7 +8429,7 @@ class Game {
         document.getElementById('monster-energy-display').textContent = monster.energy;
         document.getElementById('monster-blood-display').textContent = monster.blood;
         document.getElementById('monster-pts-display').textContent = monster.pts;
-        document.getElementById('monster-effect-display').textContent = monster.effect;
+        document.getElementById('monster-effect-display').textContent = this.getMonsterEffectDisplay(monster);
 
         // Initialize beer consumption section
         const beerSection = document.getElementById('monster-select-beer-section');
@@ -8264,11 +8514,7 @@ class Game {
             // Update resource display to show EP reduction
             this.updateResourceDisplay();
 
-            this.addLogEntry(
-                `${player.name} spent 1 EP to change monster`,
-                'system',
-                player
-            );
+            this.addLogEntryT('log.spentEpChangeMonster', [player], 'system', player);
         } else {
             // No monsters left in available pool - refund EP
             player.resources.ep += 1;
@@ -8281,14 +8527,10 @@ class Game {
             this.showMonsterSelectionUI(this.currentSelectedMonster, playerId);
 
             if (!this.isAutomatedMode) {
-                alert('No more monsters available at this level! All remaining monsters have been shown to you.');
+                alert(t('alert.noMoreMonsters'));
             }
 
-            this.addLogEntry(
-                `${player.name} tried to change monster but no more available (EP refunded)`,
-                'system',
-                player
-            );
+            this.addLogEntryT('log.changeRefunded', [player], 'system', player);
         }
     }
 
@@ -8318,13 +8560,13 @@ class Game {
         const changeButton = document.getElementById('change-monster-btn');
         if (effectiveEP <= 0) {
             changeButton.disabled = true;
-            changeButton.textContent = `Change (No EP)`;
+            changeButton.textContent = t('monster.changeNoEP');
         } else if (availableCount === 0) {
             changeButton.disabled = true;
-            changeButton.textContent = `Change (No More Monsters)`;
+            changeButton.textContent = t('monster.changeNoMore');
         } else {
             changeButton.disabled = false;
-            changeButton.textContent = `Change (-1 EP)`;
+            changeButton.textContent = t('monster.changeButton');
         }
     }
 
@@ -8406,7 +8648,7 @@ class Game {
                 type: 'battle_fight',
                 playerId: this.localPlayerId
             });
-            document.getElementById('status-message').textContent = 'Starting battle...';
+            document.getElementById('status-message').textContent = t('status.startingBattle');
             return;
         }
 
@@ -8438,7 +8680,7 @@ class Game {
             } else {
                 // Player can't afford extra EP - cannot fight this monster
                 if (!this.isAutomatedMode) {
-                    alert(`You need ${extraEPCost} extra EP to fight this monster! Choose a different monster or cancel.`);
+                    alert(t('alert.needExtraEP', extraEPCost));
                     // Show the monster selection modal again
                     document.getElementById('monster-selection-modal').style.display = 'flex';
                 }
@@ -8511,7 +8753,7 @@ class Game {
         const effectiveEP = player.resources.ep + (this.overflowEP || 0);
         if (effectiveEP < totalEPCost) {
             if (!this.isAutomatedMode) {
-                alert(`${player.name} needs ${totalEPCost} EP for this battle!`);
+                alert(t('alert.needTotalEP', player.name, totalEPCost));
             }
             return;
         }
@@ -8528,7 +8770,7 @@ class Game {
                 }
             });
             document.getElementById('monster-modal').style.display = 'none';
-            document.getElementById('status-message').textContent = 'Waiting for battle to start...';
+            document.getElementById('status-message').textContent = t('status.waitingForBattle');
             return;
         }
 
@@ -8548,7 +8790,7 @@ class Game {
         const selectedMonster = this.selectRandomAvailableMonster(monsterLevel, playerId);
         if (!selectedMonster) {
             if (!this.isAutomatedMode) {
-                alert(`No available monsters at level ${monsterLevel}!`);
+                alert(t('alert.noMonstersLevel', monsterLevel));
             }
             return;
         }
@@ -8646,7 +8888,7 @@ class Game {
             glovesPowerLevel: 0, // Track Gloves power level (damage taken)
             hasAttacked: false, // Track if player has attacked this battle
             doubleDamageUsed: false, // Track if Knife Lv1 double damage was used
-            canUseDoubleDamage: false, // Track if Knife Lv1 double damage is available
+            canUseDoubleDamage: false, // Track if Knife Lv3 double damage is available
             lastAttackDamage: 0, // Track last attack damage for double damage calculation
             ammunitionConsumed: false // Track if ammunition was consumed for this battle
         };
@@ -8663,30 +8905,30 @@ class Game {
                 // Consume one bullet as entrance fee for Forest
                 player.inventory.splice(bulletIndex, 1);
                 this.currentBattle.ammunitionConsumed = true;
-                this.addLogEntry(`${player.name} pays 1 bullet as Forest entrance fee (unlimited attacks)!`, 'battle', player);
+                this.addLogEntryT('battle.bulletEntranceFee', [player], 'battle', player);
                 
                 // Update bullet displays
                 this.updateBulletDisplay(player.id);
             } else {
                 // No bullets available - battle will fail
-                this.addLogEntry(`${player.name} has no bullets for battle!`, 'battle', player);
+                this.addLogEntryT('battle.noBullets', [player], 'battle', player);
             }
         }
         
         // Check and consume ammunition for Plasma (unless Level 3 infinite)
-        if (player.weapon.name === 'Plasma' && player.weapon.powerTrackPosition >= 1 && player.weapon.powerTrackPosition < 7) {
+        if (player.weapon.name === 'Plasma' && player.weapon.powerTrackPosition >= 1) {
             const batteryIndex = player.inventory.findIndex(item => item.name === 'Battery');
             if (batteryIndex >= 0) {
                 // Consume one battery as entrance fee for Forest
                 player.inventory.splice(batteryIndex, 1);
                 this.currentBattle.ammunitionConsumed = true;
-                this.addLogEntry(`${player.name} pays 1 battery as Forest entrance fee (unlimited attacks)!`, 'battle', player);
+                this.addLogEntryT('battle.batteryEntranceFee', [player], 'battle', player);
                 
                 // Update battery displays
                 this.updateBatteryDisplay(player.id);
             } else {
                 // No batteries available - battle will fail
-                this.addLogEntry(`${player.name} has no batteries for battle!`, 'battle', player);
+                this.addLogEntryT('battle.noBatteries', [player], 'battle', player);
             }
         }
         
@@ -8749,7 +8991,7 @@ class Game {
         console.log('Player is human, showing battle UI');
         
         document.getElementById('monster-battle').style.display = 'flex';
-        document.getElementById('battle-player-name').textContent = player.name;
+        document.getElementById('battle-player-name').textContent = this.getPlayerDisplayName(player);
         document.getElementById('battle-player-hp').textContent = `${player.resources.hp}/${player.maxResources.hp}`;
         document.getElementById('battle-player-ep').textContent = `${player.resources.ep}/${player.maxResources.ep}`;
         
@@ -8809,7 +9051,7 @@ class Game {
         }
         
         if (petDisplay.length > 0) {
-            petInfo.innerHTML = `<p>Pets: ${petDisplay.join(', ')}</p>`;
+            petInfo.innerHTML = `<p>${t('battle.petsLabel')} ${petDisplay.join(', ')}</p>`;
         } else {
             petInfo.innerHTML = '';
         }
@@ -8846,7 +9088,7 @@ class Game {
         if (monster.blood > 0) rewards.push(`🩸${monster.blood}`);
 
         // Weapon power — text only, always shown
-        rewards.push(`+${monster.level} Weapon Power`);
+        rewards.push(t('battle.weaponPowerReward', monster.level));
 
         document.getElementById('battle-monster-rewards').textContent = rewards.join(' ');
     }
@@ -8890,29 +9132,26 @@ class Game {
         const bullets = player.inventory.filter(item => item.name === 'Bullet').length;
         const batteries = player.inventory.filter(item => item.name === 'Battery').length;
         
-        // Plasma Level 3 has infinite batteries
-        const hasPlasmaInfiniteAmmo = player.weapon.name === 'Plasma' && player.weapon.powerTrackPosition >= 7;
-        
         // Can attack if:
         // 1. Not using Rifle/Plasma, OR
         // 2. Entrance fee already paid (ammunitionConsumed), OR
         // 3. Has ammunition to pay entrance fee
-        const canAttack = (!isRifle || battle.ammunitionConsumed || bullets > 0) && 
-                         (!isPlasma || battle.ammunitionConsumed || batteries > 0 || hasPlasmaInfiniteAmmo);
-        
+        const canAttack = (!isRifle || battle.ammunitionConsumed || bullets > 0) &&
+                         (!isPlasma || battle.ammunitionConsumed || batteries > 0);
+
         // Check if player has combat items (grenade, bomb, dynamite)
         const combatItems = ['Grenade', 'Bomb', 'Dynamite'];
-        const hasCombatItems = combatItems.some(itemName => 
+        const hasCombatItems = combatItems.some(itemName =>
             player.inventory.some(item => item.name === itemName)
         );
-        
+
         // Check if needs ammo but has none AND hasn't paid entrance fee yet
-        const needsAmmoButHasNone = ((isRifle && bullets === 0 && !battle.ammunitionConsumed) || 
-                                     (isPlasma && batteries === 0 && !hasPlasmaInfiniteAmmo && !battle.ammunitionConsumed));
+        const needsAmmoButHasNone = ((isRifle && bullets === 0 && !battle.ammunitionConsumed) ||
+                                     (isPlasma && batteries === 0 && !battle.ammunitionConsumed));
         
         if (battle.turn === 'monster_attack_first') {
             // Monster attacks first due to effect
-            turnText.textContent = 'Monster attacks first!';
+            turnText.textContent = t('battle.monsterAttacksFirst');
             attackBtn.style.display = 'none';
             tameBtn.style.display = 'none';
             defenseBtn.style.display = 'none';
@@ -8931,12 +9170,12 @@ class Game {
                 // Change the turn to player_items so defense button works
                 battle.turn = 'player_items';
             } else if (canTame) {
-                turnText.textContent = 'Monster weakened! Attack or Tame?';
+                turnText.textContent = t('battle.monsterWeakened');
                 attackBtn.style.display = 'block';
                 tameBtn.style.display = 'block';
-                tameBtn.textContent = `Tame! (${requiredEP} EP)`;
+                tameBtn.textContent = t('battle.tameWithCost', requiredEP);
             } else {
-                turnText.textContent = 'Your turn to attack!';
+                turnText.textContent = t('battle.yourTurn');
                 attackBtn.style.display = 'block';
                 tameBtn.style.display = 'none';
             }
@@ -8971,24 +9210,24 @@ class Game {
                     tameBtn.style.display = 'none';
                     defenseBtn.style.display = 'block';
                 } else if (canTame) {
-                    turnText.textContent = 'Use items, attack, or tame the monster!';
+                    turnText.textContent = t('battle.useItemsAttackOrTame');
                     attackBtn.style.display = 'block';
                     tameBtn.style.display = 'block';
-                    tameBtn.textContent = `Tame! (${requiredEP} EP)`;
+                    tameBtn.textContent = t('battle.tameWithCost', requiredEP);
                     defenseBtn.style.display = 'none';
                 } else {
-                    turnText.textContent = 'Use items or attack the monster!';
+                    turnText.textContent = t('battle.useItemsOrAttack');
                     attackBtn.style.display = 'block';
                     tameBtn.style.display = 'none';
                     defenseBtn.style.display = 'none';
                 }
             } else {
-                turnText.textContent = 'You can use items or proceed to defense!';
+                turnText.textContent = t('battle.useItemsOrDefend');
                 attackBtn.style.display = 'none';
                 tameBtn.style.display = 'none';
                 defenseBtn.style.display = 'block';
                 
-                // Knife Level 1 Power: Show 2x damage button after attack
+                // Knife Level 3 Power: Show 2x damage button after attack
                 if (battle.canUseDoubleDamage) {
                     doubleDamageBtn.style.display = 'block';
                     doubleDamageBtn.textContent = `2x Damage (+${battle.lastAttackDamage} extra)`;
@@ -8998,7 +9237,7 @@ class Game {
                 }
             }
         } else if (battle.turn === 'monster') {
-            turnText.textContent = 'Monster attacks!';
+            turnText.textContent = t('battle.monsterAttacksTurn');
             attackBtn.style.display = 'none';
             tameBtn.style.display = 'none';
             defenseBtn.style.display = 'none';
@@ -9018,18 +9257,18 @@ class Game {
                 defenseBtn.style.display = 'none';
                 // Automatically end turn after a short delay
                 setTimeout(() => {
-                    this.logBattleAction(`${player.name} cannot attack without ammo!`, player);
+                    this.logBattleActionT('battle.cannotAttackNoAmmo', [player], player);
                     battle.turn = 'player';
                     this.updateBattlePhase();
                 }, this.getDelay(1500));
             } else if (canTame) {
-                turnText.textContent = 'Use items, attack, or tame the monster!';
+                turnText.textContent = t('battle.useItemsAttackOrTame');
                 attackBtn.style.display = 'block';
                 tameBtn.style.display = 'block';
-                tameBtn.textContent = `Tame! (${requiredEP} EP)`;
+                tameBtn.textContent = t('battle.tameWithCost', requiredEP);
                 defenseBtn.style.display = 'none';
             } else {
-                turnText.textContent = 'Use items or attack the monster!';
+                turnText.textContent = t('battle.useItemsOrAttack');
                 attackBtn.style.display = 'block';
                 tameBtn.style.display = 'none';
                 defenseBtn.style.display = 'none';
@@ -9108,7 +9347,7 @@ class Game {
             }
             
             monster.hp = Math.max(0, monster.hp);
-            this.logBattleAction(`${player.name} uses items: ${itemsUsed.join(', ')} - Monster HP now: ${monster.hp}`, player);
+            this.logBattleActionT('battle.itemsUsed', [player, itemsUsed.join(', '), monster.hp], player);
             
             // Update displays
             this.updateResourceDisplay();
@@ -9117,7 +9356,7 @@ class Game {
             
             // Check if monster is defeated
             if (monster.hp <= 0) {
-                this.logBattleAction(`Monster defeated by items!`, player);
+                this.logBattleActionT('battle.monsterDefeatedByItems', [], player);
                 this.monsterDefeated();
                 return;
             }
@@ -9136,7 +9375,7 @@ class Game {
                 }
             }
             if (fakeBloodCount > 0) {
-                this.logBattleAction(`${player.name} uses ${fakeBloodCount} Fake Blood for +${fakeBloodCount * monster.level} bonus points`, player);
+                this.logBattleActionT('battle.fakeBloodBonus', [player, fakeBloodCount, fakeBloodCount * monster.level], player);
                 this.updateResourceDisplay();
                 this.updateInventoryDisplayOld();
                 this.updateInventoryDisplay(player.id);
@@ -9190,7 +9429,7 @@ class Game {
         }
         
         if (itemsUsed.length > 0) {
-            this.logBattleAction(`${player.name} uses recovery items: ${itemsUsed.join(', ')}`, player);
+            this.logBattleActionT('battle.recoveryItemsUsed', [player, itemsUsed.join(', ')], player);
             this.updateResourceDisplay();
             this.updateInventoryDisplayOld();
             this.updateInventoryDisplay(player.id);
@@ -9218,20 +9457,20 @@ class Game {
         
         // Define usable battle items
         const battleItems = [
-            { name: 'Beer', icon: '🍺', effect: 'Recover 1 EP' },
-            { name: 'Blood Bag', icon: '🩸', effect: 'Recover 1 HP' },
-            { name: 'Grenade', icon: '💣', effect: 'Monster -1 HP' },
-            { name: 'Bomb', icon: '💥', effect: 'Monster -2 HP' },
-            { name: 'Dynamite', icon: '🧨', effect: 'Monster -3 HP' },
-            { name: 'Fake Blood', icon: '🩹', effect: 'Bonus +2 PTS' }
+            { name: 'Beer', icon: '🍺', effectKey: 'item.beer.battleEffect' },
+            { name: 'Blood Bag', icon: '🩸', effectKey: 'item.bloodBag.battleEffect' },
+            { name: 'Grenade', icon: '💣', effectKey: 'item.grenade.battleEffect' },
+            { name: 'Bomb', icon: '💥', effectKey: 'item.bomb.battleEffect' },
+            { name: 'Dynamite', icon: '🧨', effectKey: 'item.dynamite.battleEffect' },
+            { name: 'Fake Blood', icon: '🩹', effectKey: 'item.fakeBlood.battleEffect' }
         ];
 
         battleItems.forEach(item => {
             const itemCount = player.inventory.filter(inv => inv.name === item.name).length;
             const button = document.createElement('button');
             button.className = 'battle-item-btn';
-            button.innerHTML = `${item.icon} ${item.name} (${itemCount})`;
-            button.title = item.effect;
+            button.innerHTML = `${item.icon} ${this.getItemDisplayName(item.name)} (${itemCount})`;
+            button.title = t(item.effectKey);
 
             // Check if button should be disabled
             let isDisabled = itemCount === 0 || (battle.turn !== 'player_items' && battle.turn !== 'player_items_after_monster');
@@ -9239,13 +9478,13 @@ class Game {
             // Special case for Beer - disable if player is at max EP
             if (item.name === 'Beer' && player.resources.ep >= player.maxResources.ep) {
                 isDisabled = true;
-                button.title = 'EP is already at maximum';
+                button.title = t('tooltip.epFull');
             }
 
             // Special case for Blood Bag - disable if player is at max HP
             if (item.name === 'Blood Bag' && player.resources.hp >= player.maxResources.hp) {
                 isDisabled = true;
-                button.title = 'HP is already at maximum';
+                button.title = t('tooltip.hpFull');
             }
 
             button.disabled = isDisabled;
@@ -9268,13 +9507,13 @@ class Game {
                 const bulletIndex = player.inventory.findIndex(item => item.name === 'Bullet');
                 if (bulletIndex === -1) {
                     // No bullets available
-                    alert('No bullets available for attack!');
+                    alert(t('alert.noBullets'));
                     return;
                 }
                 // Consume ammunition on first attack if not consumed at battle start
                 player.inventory.splice(bulletIndex, 1);
                 battle.ammunitionConsumed = true;
-                this.addLogEntry(`${player.name} uses 1 bullet as entrance fee for this battle!`, 'battle', player);
+                this.addLogEntryT('battle.usesBullet', [player], 'battle', player);
             }
             // Update bullet display (in case it changed from items)
             if (this.currentBattle && this.currentBattle.playerId === player.id) {
@@ -9285,20 +9524,20 @@ class Game {
         }
         
         // Check if Plasma player has paid entrance fee (ammunition) - unless infinite at Level 3
-        if (player.weapon.name === 'Plasma' && player.weapon.powerTrackPosition >= 1 && player.weapon.powerTrackPosition < 7) {
+        if (player.weapon.name === 'Plasma' && player.weapon.powerTrackPosition >= 1) {
             // If ammunition was already consumed (entrance fee paid), allow attack
             // If not consumed yet, check for and consume ammunition
             if (!battle.ammunitionConsumed) {
                 const batteryIndex = player.inventory.findIndex(item => item.name === 'Battery');
                 if (batteryIndex === -1) {
                     // No batteries available
-                    alert('No batteries available for attack!');
+                    alert(t('alert.noBatteries'));
                     return;
                 }
                 // Consume ammunition on first attack if not consumed at battle start
                 player.inventory.splice(batteryIndex, 1);
                 battle.ammunitionConsumed = true;
-                this.addLogEntry(`${player.name} uses 1 battery as entrance fee for this battle!`, 'battle', player);
+                this.addLogEntryT('battle.usesBattery', [player], 'battle', player);
             }
             // Update battery display (in case it changed from items)
             if (this.currentBattle && this.currentBattle.playerId === player.id) {
@@ -9339,9 +9578,9 @@ class Game {
                 playerDamage += bonusDamage;
                 totalDicePips += bonusRolls.reduce((sum, roll) => sum + roll, 0);
                 
-                this.logBattleAction(`Bat Lv3 Power: ${hitCount} dice hit - rolled ${hitCount} bonus dice (${bonusDamage} bonus damage)`, player);
+                this.logBattleActionT('battle.batLv3Hits', [hitCount, bonusDamage], player);
             } else {
-                this.logBattleAction(`Bat Lv3 Power: No hits - no bonus dice`, player);
+                this.logBattleActionT('battle.batLv3NoHits', [], player);
             }
         } else {
             // Normal attack
@@ -9356,21 +9595,12 @@ class Game {
         // Bow Level 3 Power: Double player damage
         if (player.weapon.name === 'Bow' && player.weapon.powerTrackPosition >= 7 && playerDamage > 0) {
             playerDamage *= 2;
-            this.logBattleAction(`Bow Lv3 Power: Damage doubled!`, player);
-        }
-        
-        // Sword Level 3 Power: +1 point if at least one attack die shows 1
-        if (player.weapon.name === 'Sword' && player.weapon.powerTrackPosition >= 7) {
-            const hasOnes = allAttackRolls.includes(1);
-            if (hasOnes) {
-                this.addScore(player.id, 1);
-                this.logBattleAction(`Sword Lv3 Power: +1 point for rolling at least one 1!`, player);
-            }
+            this.logBattleActionT('battle.bowLv3Doubled', [], player);
         }
         
         // Check for Katana Level 3 instant kill (27+ dice pips)
         if (player.weapon.name === 'Katana' && player.weapon.powerTrackPosition >= 7 && totalDicePips >= 27) {
-            this.logBattleAction(`Katana Lv3 Power: Instant kill! (${totalDicePips} total dice pips >= 27)`, player);
+            this.logBattleActionT('battle.katanaLv3Kill', [totalDicePips], player);
             battle.monster.hp = 0; // Instant kill
             this.monsterDefeated();
             return;
@@ -9384,7 +9614,7 @@ class Game {
         // Chain Level 3 Power: Double pet damage
         if (player.weapon.name === 'Chain' && player.weapon.powerTrackPosition >= 7 && petDamage > 0) {
             petDamage *= 2;
-            this.logBattleAction(`Chain Lv3 Power: Pet damage doubled!`, player);
+            this.logBattleActionT('battle.chainLv3Doubled', [], player);
         }
         
         const totalDamage = playerDamage + petDamage;
@@ -9395,7 +9625,7 @@ class Game {
         if (damageCap !== null) {
             finalDamage = Math.min(totalDamage, damageCap);
             if (totalDamage > damageCap) {
-                this.logBattleAction(`Monster effect: Damage capped at ${damageCap}! (Would have dealt ${totalDamage})`, player);
+                this.logBattleActionT('battle.damageCap', [damageCap, totalDamage], player);
             }
         }
         
@@ -9417,9 +9647,9 @@ class Game {
         }
 
         // Log attack
-        let attackMessage = `${player.name} attacks! Rolls: ${allRolls.join(' → ')} = ${playerDamage} damage`;
+        let attackMessage = t('battle.attackRolls', this.getPlayerDisplayName(player), allRolls.join(' → '), playerDamage);
         if (petDamage > 0) {
-            attackMessage += ` + ${petDamage} pet damage = ${totalDamage} total damage`;
+            attackMessage += t('battle.attackPetSuffix', petDamage, totalDamage);
         }
         this.logBattleAction(attackMessage, player);
         
@@ -9430,8 +9660,8 @@ class Game {
             // Move to item usage phase (post-attack)
             battle.turn = 'player_items';
             
-            // Knife Level 1 Power: Show 2x damage button after attack if damage was dealt
-            if (player.weapon.name === 'Knife' && player.weapon.powerTrackPosition >= 1 && 
+            // Knife Level 3 Power: Show 2x damage button after attack if damage was dealt
+            if (player.weapon.name === 'Knife' && player.weapon.powerTrackPosition >= 7 &&
                 !battle.doubleDamageUsed && playerDamage > 0) {
                 battle.lastAttackDamage = playerDamage; // Store the damage for 2x calculation
                 battle.canUseDoubleDamage = true;
@@ -9499,27 +9729,27 @@ class Game {
             // Recover 1 EP
             if (player.resources.ep < player.maxResources.ep) {
                 player.resources.ep = Math.min(player.resources.ep + 1, player.maxResources.ep);
-                this.logBattleAction(`${player.name} uses Beer! EP restored to ${player.resources.ep}`, player);
+                this.logBattleActionT('battle.usesBeer', [player, player.resources.ep], player);
                 // Update player EP display
                 document.getElementById('battle-player-ep').textContent = `${player.resources.ep}/${player.maxResources.ep}`;
             } else {
-                this.logBattleAction(`${player.name} uses Beer but EP is already at maximum!`, player);
+                this.logBattleActionT('battle.beerMaxEP', [player], player);
             }
         } else if (itemName === 'Blood Bag') {
             // Recover 1 HP
             if (player.resources.hp < player.maxResources.hp) {
                 player.resources.hp = Math.min(player.resources.hp + 1, player.maxResources.hp);
-                this.logBattleAction(`${player.name} uses Blood Bag! HP restored to ${player.resources.hp}`, player);
+                this.logBattleActionT('battle.usesBloodBag', [player, player.resources.hp], player);
                 // Update player HP display
                 document.getElementById('battle-player-hp').textContent = `${player.resources.hp}/${player.maxResources.hp}`;
             } else {
-                this.logBattleAction(`${player.name} uses Blood Bag but HP is already at maximum!`, player);
+                this.logBattleActionT('battle.bloodBagMaxHP', [player], player);
             }
         } else if (itemName === 'Grenade') {
             // Check if monster is immune to grenades
             const restriction = this.applyBattleEffect(battle.monster.effectId, battle, 'checkItemRestriction');
             if (restriction && restriction.restrictedItems && restriction.restrictedItems.includes('Grenade')) {
-                this.logBattleAction(`${player.name} uses Grenade but it has no effect! Monster is immune to grenades`, player);
+                this.logBattleActionT('battle.grenadeImmune', [player], player);
             } else {
                 // Monster -1 HP
                 let grenadeDamage = 1;
@@ -9528,13 +9758,13 @@ class Game {
                     grenadeDamage = Math.min(grenadeDamage, damageCap);
                 }
                 battle.monster.hp -= grenadeDamage;
-                this.logBattleAction(`${player.name} uses Grenade! Monster takes ${grenadeDamage} damage`, player);
+                this.logBattleActionT('battle.usesGrenade', [player, grenadeDamage], player);
             }
         } else if (itemName === 'Bomb') {
             // Check if monster is immune to bombs
             const restriction = this.applyBattleEffect(battle.monster.effectId, battle, 'checkItemRestriction');
             if (restriction && restriction.restrictedItems && restriction.restrictedItems.includes('Bomb')) {
-                this.logBattleAction(`${player.name} uses Bomb but it has no effect! Monster is immune to bombs`, player);
+                this.logBattleActionT('battle.bombImmune', [player], player);
             } else {
                 // Monster -2 HP
                 let bombDamage = 2;
@@ -9543,12 +9773,12 @@ class Game {
                     const originalDamage = bombDamage;
                     bombDamage = Math.min(bombDamage, damageCap);
                     if (originalDamage > damageCap) {
-                        this.logBattleAction(`${player.name} uses Bomb! Monster takes ${bombDamage} damage (capped from ${originalDamage})`, player);
+                        this.logBattleActionT('battle.bombCapped', [player, bombDamage, originalDamage], player);
                     } else {
-                        this.logBattleAction(`${player.name} uses Bomb! Monster takes ${bombDamage} damage`, player);
+                        this.logBattleActionT('battle.usesBomb', [player, bombDamage], player);
                     }
                 } else {
-                    this.logBattleAction(`${player.name} uses Bomb! Monster takes ${bombDamage} damage`, player);
+                    this.logBattleActionT('battle.usesBomb', [player, bombDamage], player);
                 }
                 battle.monster.hp -= bombDamage;
             }
@@ -9556,7 +9786,7 @@ class Game {
             // Check if monster is immune to dynamite
             const restriction = this.applyBattleEffect(battle.monster.effectId, battle, 'checkItemRestriction');
             if (restriction && restriction.restrictedItems && restriction.restrictedItems.includes('Dynamite')) {
-                this.logBattleAction(`${player.name} uses Dynamite but it has no effect! Monster is immune to dynamite`, player);
+                this.logBattleActionT('battle.dynamiteImmune', [player], player);
             } else {
                 // Monster -3 HP
                 let dynamiteDamage = 3;
@@ -9565,12 +9795,12 @@ class Game {
                     const originalDamage = dynamiteDamage;
                     dynamiteDamage = Math.min(dynamiteDamage, damageCap);
                     if (originalDamage > damageCap) {
-                        this.logBattleAction(`${player.name} uses Dynamite! Monster takes ${dynamiteDamage} damage (capped from ${originalDamage})`, player);
+                        this.logBattleActionT('battle.dynamiteCapped', [player, dynamiteDamage, originalDamage], player);
                     } else {
-                        this.logBattleAction(`${player.name} uses Dynamite! Monster takes ${dynamiteDamage} damage`, player);
+                        this.logBattleActionT('battle.usesDynamite', [player, dynamiteDamage], player);
                     }
                 } else {
-                    this.logBattleAction(`${player.name} uses Dynamite! Monster takes ${dynamiteDamage} damage`, player);
+                    this.logBattleActionT('battle.usesDynamite', [player, dynamiteDamage], player);
                 }
                 battle.monster.hp -= dynamiteDamage;
             }
@@ -9578,7 +9808,7 @@ class Game {
             // Increase PTS by 2 (store in battle for later use)
             if (!battle.bonusPts) battle.bonusPts = 0;
             battle.bonusPts += 2;
-            this.logBattleAction(`${player.name} uses Fake Blood! Will gain +2 bonus points when monster is defeated`, player);
+            this.logBattleActionT('battle.usesFakeBlood', [player], player);
         }
         
         // Check if monster is defeated by item
@@ -9656,7 +9886,7 @@ class Game {
         const finalDamage = Math.max(0, monsterAttack - totalDefense);
         
         // Log attack
-        this.logBattleAction(`Monster attacks for ${monsterAttack} damage! ${player.name} defends: [${defenseRolls.join(', ')}] = ${totalDefense} defense. Final damage: ${finalDamage}`, player);
+        this.logBattleActionT('battle.monsterAttack', [monsterAttack, player, defenseRolls.join(', '), totalDefense, finalDamage], player);
         
         // Sword Level 3 Power nerfed: only works on attack dice, not defense
         
@@ -9672,18 +9902,18 @@ class Game {
                 if (axeEXP > 0) {
                     this.modifyResource(battle.playerId, 'exp', axeEXP);
                 }
-                this.logBattleAction(`${player.name} gains ${axeEXP} EXP from taking damage (Axe: -1 EXP)!`, player);
+                this.logBattleActionT('battle.gainExpAxe', [player, axeEXP], player);
             } else {
                 const damageEffect = this.applyBattleEffect(battle.monster, 'playerDamaged', player);
                 if (damageEffect && damageEffect.noEXP) {
-                    this.logBattleAction(`${player.name} gains no EXP (monster effect)!`, player);
+                    this.logBattleActionT('battle.gainExpNone', [player], player);
                 } else if (damageEffect && damageEffect.maxEXP) {
                     const cappedEXP = Math.min(finalDamage, damageEffect.maxEXP);
                     this.modifyResource(battle.playerId, 'exp', cappedEXP);
-                    this.logBattleAction(`${player.name} gains ${cappedEXP} EXP from taking damage (capped by monster effect)!`, player);
+                    this.logBattleActionT('battle.gainExpCapped', [player, cappedEXP], player);
                 } else {
                     this.modifyResource(battle.playerId, 'exp', finalDamage);
-                    this.logBattleAction(`${player.name} gains ${finalDamage} EXP from taking damage!`, player);
+                    this.logBattleActionT('battle.gainExp', [player, finalDamage], player);
                 }
             }
             
@@ -9691,14 +9921,14 @@ class Game {
             if (player.weapon.name === 'Gloves' && player.weapon.powerTrackPosition >= 7 && finalDamage > 0) {
                 // Level 3: +1 attack for each time damaged (cumulative)
                 battle.glovesPowerLevel += 1;
-                this.logBattleAction(`Gloves Lv3 Power: Attack increased! (+${battle.glovesPowerLevel} total attack bonus)`, player);
+                this.logBattleActionT('battle.glovesLv3Bonus', [battle.glovesPowerLevel], player);
             }
         }
         
         // Check if player survives
         if (player.resources.hp <= 0) {
             // Player defeated!
-            this.logBattleAction(`${player.name} has been defeated!`, player);
+            this.logBattleActionT('battle.playerDefeated', [player], player);
             this.playerDefeated(battle.playerId);
         } else {
             // Player survived - check for Axe retaliation
@@ -9707,11 +9937,11 @@ class Game {
                 if (player.weapon.powerTrackPosition >= 7) {
                     // Level 3: Deal same damage to monster (overrides Level 1)
                     axeDamageToMonster = finalDamage;
-                    this.logBattleAction(`Axe Lv3 Power: ${player.name} fights back for ${axeDamageToMonster} damage!`, player);
+                    this.logBattleActionT('battle.axeLv3Counter', [player, axeDamageToMonster], player);
                 } else {
                     // Level 1: Deal 1 damage to monster when HP decreases
                     axeDamageToMonster = 1;
-                    this.logBattleAction(`Axe Lv1 Power: ${player.name} fights back for ${axeDamageToMonster} damage!`, player);
+                    this.logBattleActionT('battle.axeLv1Counter', [player, axeDamageToMonster], player);
                 }
                 
                 // Apply damage cap to Axe counter damage
@@ -9719,7 +9949,7 @@ class Game {
                 if (damageCap !== null) {
                     axeDamageToMonster = Math.min(axeDamageToMonster, damageCap);
                     if (axeDamageToMonster < finalDamage && player.weapon.powerTrackPosition >= 7) {
-                        this.logBattleAction(`Axe counter damage capped at ${damageCap}!`, player);
+                        this.logBattleActionT('battle.axeCounterCapped', [damageCap], player);
                     }
                 }
                 
@@ -9730,7 +9960,7 @@ class Game {
                 
                 // Check if monster is defeated by axe retaliation
                 if (battle.monster.hp <= 0) {
-                    this.logBattleAction(`Monster defeated by Axe retaliation!`, player);
+                    this.logBattleActionT('battle.axeKill', [], player);
                     this.monsterDefeated();
                     return;
                 }
@@ -9738,7 +9968,7 @@ class Game {
             // Allow item usage before player's next attack
             battle.turn = 'player_items_after_monster';
 
-            // Hide Knife Lv1 2x damage button after monster attack
+            // Hide Knife Lv3 2x damage button after monster attack
             if (battle.canUseDoubleDamage) {
                 battle.canUseDoubleDamage = false;
                 const doubleDamageBtn = document.getElementById('battle-double-damage-btn');
@@ -9779,7 +10009,7 @@ class Game {
             const remainingCap = Math.max(0, damageCap - alreadyDealt);
             finalExtraDamage = Math.min(extraDamage, remainingCap);
             if (finalExtraDamage < extraDamage) {
-                this.addLogEntry(`Double damage limited by monster's damage cap of ${damageCap}`, 'battle');
+                this.addLogEntryT('battle.doubleDamageCap', [damageCap], 'battle');
             }
         }
         battle.monster.hp -= finalExtraDamage;
@@ -9788,7 +10018,7 @@ class Game {
         battle.doubleDamageUsed = true;
         battle.canUseDoubleDamage = false;
         
-        this.logBattleAction(`${player.name} activates Knife Lv1 Power: 2x damage! ${extraDamage} extra damage dealt!`, player);
+        this.logBattleActionT('battle.knifeLv3Activate', [player, extraDamage], player);
         
         // Update monster HP display
         document.getElementById('battle-monster-hp').textContent = `${Math.max(0, battle.monster.hp)}/${battle.monster.maxHp}`;
@@ -9853,7 +10083,7 @@ class Game {
             player.pets.level3++;
         }
         
-        this.logBattleAction(`${player.name} tames the Level ${monster.level} monster! Spent ${requiredEP} EP`, player);
+        this.logBattleActionT('battle.tameSuccess', [player, monster.level, requiredEP], player);
         
         // Update pet display
         this.updatePetDisplay();
@@ -9867,7 +10097,7 @@ class Game {
         const player = this.players.find(p => p.id === battle.playerId);
         const monster = battle.monster;
 
-        this.logBattleAction(`${player.name} defeats the Level ${monster.level} monster!`, player);
+        this.logBattleActionT('battle.defeatMonster', [player, monster.level], player);
 
         // Track monsters defeated for statistics
         if (!player.monstersDefeated) {
@@ -9877,21 +10107,30 @@ class Game {
 
         // Mark monster as defeated so it can't be selected again
         this.markMonsterDefeated(monster);
-        
+
+        // Knife Lv1 Power: defeating a monster doubles non-point rewards
+        const knifeMultiplier = (player.weapon.name === 'Knife' && player.weapon.powerTrackPosition >= 1) ? 2 : 1;
+        const finalMoney = monster.money * knifeMultiplier;
+        const finalEnergy = monster.energy * knifeMultiplier;
+        const finalBlood = monster.blood * knifeMultiplier;
+        if (knifeMultiplier === 2 && (monster.money + monster.energy + monster.blood) > 0) {
+            this.logBattleActionT('battle.knifeLv1Doubled', [], player);
+        }
+
         // Award rewards
-        if (monster.money > 0) {
-            this.modifyResource(battle.playerId, 'money', monster.money);
-            this.logBattleAction(`+${monster.money} money`, player);
+        if (finalMoney > 0) {
+            this.modifyResource(battle.playerId, 'money', finalMoney);
+            this.logBattleActionT('battle.gainMoney', [finalMoney], player);
         }
-        if (monster.energy > 0) {
-            player.resources.beer += monster.energy;
-            this.addItemToInventory(battle.playerId, 'Beer', monster.energy);
-            this.logBattleAction(`+${monster.energy} beer`, player);
+        if (finalEnergy > 0) {
+            player.resources.beer += finalEnergy;
+            this.addItemToInventory(battle.playerId, 'Beer', finalEnergy);
+            this.logBattleActionT('battle.gainBeer', [finalEnergy], player);
         }
-        if (monster.blood > 0) {
-            player.resources.bloodBag += monster.blood;
-            this.addItemToInventory(battle.playerId, 'Blood Bag', monster.blood);
-            this.logBattleAction(`+${monster.blood} blood bags`, player);
+        if (finalBlood > 0) {
+            player.resources.bloodBag += finalBlood;
+            this.addItemToInventory(battle.playerId, 'Blood Bag', finalBlood);
+            this.logBattleActionT('battle.gainBlood', [finalBlood], player);
         }
         if (monster.pts > 0) {
             let totalScore = monster.pts;
@@ -9902,9 +10141,9 @@ class Game {
             }
             
             if (battle.bonusPts) {
-                this.logBattleAction(`+${monster.pts} base score + ${battle.bonusPts} Fake Blood bonus = ${totalScore} total score`, player);
+                this.logBattleActionT('battle.gainScoreFakeBlood', [monster.pts, battle.bonusPts, totalScore], player);
             } else {
-                this.logBattleAction(`+${monster.pts} score`, player);
+                this.logBattleActionT('battle.gainScoreSimple', [monster.pts], player);
             }
             
             // Score from monster battle (already split if fake blood was used)
@@ -9916,7 +10155,13 @@ class Game {
                 this.addScore(battle.playerId, battle.bonusPts, 'fakeblood');
             }
         }
-        
+
+        // Sword Lv3 Power: +X bonus points where X = monster level (categorized as 'other')
+        if (player.weapon.name === 'Sword' && player.weapon.powerTrackPosition >= 7) {
+            this.addScore(battle.playerId, monster.level, 'other');
+            this.logBattleActionT('battle.swordLv3Bonus', [monster.level], player);
+        }
+
         // Advance weapon power track based on monster level
         this.advanceWeaponPowerTrack(battle.playerId, monster.level);
 
@@ -9940,11 +10185,11 @@ class Game {
         if (!player) return;
         
         // No score penalty (removed)
-        this.logBattleAction(`${player.name} was defeated by the monster`, player);
+        this.logBattleActionT('battle.defeatedByMonster', [player], player);
         
         // Set HP to 1
         player.resources.hp = 1;
-        this.logBattleAction(`${player.name}'s HP set to 1`, player);
+        this.logBattleActionT('battle.playerHPSet1', [player], player);
         
         // EP doesn't change (no log message needed)
         
@@ -10036,14 +10281,14 @@ class Game {
                 this.activateWeaponPower(playerId, 3, battleActions);
             }
             
-            const message = `${player.name}'s weapon power advances ${actualMoved} space${actualMoved > 1 ? 's' : ''} to position ${player.weapon.powerTrackPosition}!`;
+            const message = t('battle.weaponPowerAdvance', this.getPlayerDisplayName(player), actualMoved, player.weapon.powerTrackPosition);
             if (battleActions) {
                 battleActions.push(message);
             } else {
                 this.logBattleAction(message, player);
             }
         } else {
-            const message = `${player.name}'s weapon power is already at maximum position!`;
+            const message = t('battle.weaponPowerMaxed', this.getPlayerDisplayName(player));
             if (battleActions) {
                 battleActions.push(message);
             } else {
@@ -10273,14 +10518,78 @@ class Game {
     
     logBattleAction(message, player = null) {
         const log = document.getElementById('battle-log');
-        const logEntry = document.createElement('div');
-        logEntry.className = 'battle-log-entry';
-        logEntry.textContent = message;
-        log.appendChild(logEntry);
-        log.scrollTop = log.scrollHeight;
+        if (log) {
+            const logEntry = document.createElement('div');
+            logEntry.className = 'battle-log-entry';
+            logEntry.textContent = message;
+            log.appendChild(logEntry);
+            log.scrollTop = log.scrollHeight;
+        }
 
         // Also add to main game log
         this.addLogEntry(`⚔️ ${message}`, 'battle', player);
+    }
+
+    /**
+     * Render a single bot-battle "action" entry. Entries can be:
+     *  - { k, a }   structured i18n key + args (preferred — survives network sync)
+     *  - 'string'   legacy plain text (host-only display)
+     */
+    flushBattleAction(action, player = null) {
+        if (action == null) return;
+        if (typeof action === 'object' && action.k) {
+            // Push as a battleT-wrapped entry through logBattleActionT (without writing to battle modal)
+            // We pass through addLogEntryT-style serialization so guests can re-translate.
+            this.addLogEntryT('__battlePrefix__', [{ __t__: action.k, args: action.a || [] }], 'battle', player);
+            return;
+        }
+        if (typeof action === 'string') {
+            if (action.includes('---')) return;
+            this.addLogEntry(`⚔️ ${action}`, 'battle', player);
+        }
+    }
+
+    /**
+     * Translation-aware battle log action. Uses a structured key + args so the
+     * entry can be synced across the network and translated locally.
+     */
+    logBattleActionT(key, args, player = null) {
+        if (!Array.isArray(args)) args = [];
+
+        // Render to local battle modal
+        const localText = t.apply(null, [key].concat(args));
+        const log = document.getElementById('battle-log');
+        if (log) {
+            const logEntry = document.createElement('div');
+            logEntry.className = 'battle-log-entry';
+            logEntry.textContent = localText;
+            log.appendChild(logEntry);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        // Render to local main game log with the ⚔️ prefix
+        if (!this.isAutomatedMode) {
+            this.addLogEntry(`⚔️ ${localText}`, 'battle', player);
+        }
+
+        // Push structured entry for network sync; convert player-objects in args
+        const argsForNet = args.map(function (a) {
+            if (a && typeof a === 'object' && typeof a.id === 'number' && typeof a.name === 'string') {
+                return { __player__: true, name: a.name };
+            }
+            return a;
+        });
+        if (!this.structuredLog) this.structuredLog = [];
+        this.structuredLog.push({
+            key: '__battleT__',
+            args: [key, argsForNet],
+            category: 'battle',
+            playerId: player && typeof player.id === 'number' ? player.id : -1,
+            playerColor: player && player.color && player.color.background ? player.color.background : null
+        });
+        if (this.structuredLog.length > 50) {
+            this.structuredLog.shift();
+        }
     }
     
     loadStoreItems() {
@@ -10319,7 +10628,7 @@ class Game {
 
         // Show status indicators and reset completion status
         this.showPlayerStatusIndicators();
-        this.setPhaseTitle('Store Phase');
+        this.setPhaseTitle(t('phase.store'));
         this.resetPlayerCompletionStatus();
 
         // Trigger all bots to shop immediately
@@ -10347,7 +10656,7 @@ class Game {
 
         // Show status indicators
         this.showPlayerStatusIndicators();
-        this.setPhaseTitle('Store Phase');
+        this.setPhaseTitle(t('phase.store'));
         this.resetPlayerCompletionStatus();
 
         // Show store for first player (turn-based)
@@ -10375,7 +10684,7 @@ class Game {
         document.getElementById('confirm-selection').style.display = 'none';
         
         // Update store header info
-        document.getElementById('store-current-player').textContent = player.name;
+        document.getElementById('store-current-player').textContent = this.getPlayerDisplayName(player);
         document.getElementById('store-player-money').textContent = player.resources.money;
         document.getElementById('store-current-capacity').textContent = this.getInventorySize(player);
         document.getElementById('store-max-capacity').textContent = player.maxInventoryCapacity;
@@ -10402,11 +10711,11 @@ class Game {
             availableItems.unshift(bulletItem); // Add bullets at the beginning
         }
 
-        // Add batteries for Plasma players (Level 1-2 power, not Level 3 infinite battery)
-        if (player.weapon.name === 'Plasma' && player.weapon.powerTrackPosition >= 1 && player.weapon.powerTrackPosition < 7) {
+        // Add batteries for Plasma players (purchasable from Lv1+)
+        if (player.weapon.name === 'Plasma' && player.weapon.powerTrackPosition >= 1) {
             const batteryItem = {
                 name: 'Battery',
-                size: 1,
+                size: 0,
                 price: 2, // Level 1 power: batteries cost $2 instead of $3
                 effect: 'plasma_power',
                 icon: '🔋',
@@ -10416,7 +10725,7 @@ class Game {
             };
             availableItems.unshift(batteryItem); // Add batteries at the beginning
         }
-        
+
         availableItems.forEach((item, index) => {
             const itemElement = document.createElement('div');
             itemElement.className = 'store-item-card';
@@ -10443,28 +10752,28 @@ class Game {
             if (item.name === 'Bullet') {
                 const bulletCount = player.inventory.filter(inv => inv.name === 'Bullet').length;
                 hasMaxSpecialItems = bulletCount >= 6;
-                maxWarning = 'Max bullets!';
+                maxWarning = t('store.maxBullets');
             } else if (item.name === 'Battery') {
                 const batteryCount = player.inventory.filter(inv => inv.name === 'Battery').length;
                 hasMaxSpecialItems = batteryCount >= 6;
-                maxWarning = 'Max batteries!';
+                maxWarning = t('store.maxBatteries');
             }
-            
+
             const isDisabled = !canAfford || hasMaxSpecialItems;
-            const priceDisplay = actualPrice !== item.price ? 
-                `<span class="original-price">$${item.price}</span> $${actualPrice}` : 
+            const priceDisplay = actualPrice !== item.price ?
+                `<span class="original-price">$${item.price}</span> $${actualPrice}` :
                 `$${actualPrice}`;
-            
+
             itemElement.innerHTML = `
                 <div class="item-icon-large">${item.icon || '❓'}</div>
-                <h4 class="item-name">${item.name}</h4>
+                <h4 class="item-name">${this.getItemDisplayName(item.name)}</h4>
                 <div class="item-price">${priceDisplay}</div>
-                <div class="item-size">Size: ${item.size}</div>
-                ${(item.name === 'Bullet' || item.name === 'Battery') ? `<div class="bullet-count">Max: 6</div>` : ''}
-                ${exceedsCapacity ? '<div class="capacity-warning">⚠️ Over capacity!</div>' : ''}
+                <div class="item-size">${t('store.size')} ${item.size}</div>
+                ${(item.name === 'Bullet' || item.name === 'Battery') ? `<div class="bullet-count">${t('store.maxLabel')} 6</div>` : ''}
+                ${exceedsCapacity ? `<div class="capacity-warning">${t('store.overCapacity')}</div>` : ''}
                 ${hasMaxSpecialItems ? `<div class="capacity-warning">⚠️ ${maxWarning}</div>` : ''}
                 <button class="buy-btn" onclick="game.buyStoreItem('${item.name}', ${actualPrice}, ${item.size})" ${isDisabled ? 'disabled' : ''}>
-                    Buy
+                    ${t('store.buy')}
                 </button>
             `;
             storeContainer.appendChild(itemElement);
@@ -10486,7 +10795,7 @@ class Game {
         document.getElementById('confirm-selection').style.display = 'none';
 
         // Update store header info
-        document.getElementById('store-current-player').textContent = player.name;
+        document.getElementById('store-current-player').textContent = this.getPlayerDisplayName(player);
         document.getElementById('store-player-money').textContent = player.resources.money;
         document.getElementById('store-current-capacity').textContent = this.getInventorySize(player);
         document.getElementById('store-max-capacity').textContent = player.maxInventoryCapacity;
@@ -10513,11 +10822,11 @@ class Game {
             availableItems.unshift(bulletItem); // Add bullets at the beginning
         }
 
-        // Add batteries for Plasma players (Level 1-2 power, not Level 3 infinite battery)
-        if (player.weapon.name === 'Plasma' && player.weapon.powerTrackPosition >= 1 && player.weapon.powerTrackPosition < 7) {
+        // Add batteries for Plasma players (purchasable from Lv1+)
+        if (player.weapon.name === 'Plasma' && player.weapon.powerTrackPosition >= 1) {
             const batteryItem = {
                 name: 'Battery',
-                size: 1,
+                size: 0,
                 price: 2, // Level 1 power: batteries cost $2 instead of $3
                 effect: 'plasma_power',
                 icon: '🔋',
@@ -10554,11 +10863,11 @@ class Game {
             if (item.name === 'Bullet') {
                 const bulletCount = player.inventory.filter(inv => inv.name === 'Bullet').length;
                 hasMaxSpecialItems = bulletCount >= 6;
-                maxWarning = 'Max bullets!';
+                maxWarning = t('store.maxBullets');
             } else if (item.name === 'Battery') {
                 const batteryCount = player.inventory.filter(inv => inv.name === 'Battery').length;
                 hasMaxSpecialItems = batteryCount >= 6;
-                maxWarning = 'Max batteries!';
+                maxWarning = t('store.maxBatteries');
             }
 
             const isDisabled = !canAfford || hasMaxSpecialItems;
@@ -10568,14 +10877,14 @@ class Game {
 
             itemElement.innerHTML = `
                 <div class="item-icon-large">${item.icon || '❓'}</div>
-                <h4 class="item-name">${item.name}</h4>
+                <h4 class="item-name">${this.getItemDisplayName(item.name)}</h4>
                 <div class="item-price">${priceDisplay}</div>
-                <div class="item-size">Size: ${item.size}</div>
-                ${(item.name === 'Bullet' || item.name === 'Battery') ? `<div class="bullet-count">Max: 6</div>` : ''}
-                ${exceedsCapacity ? '<div class="capacity-warning">⚠️ Over capacity!</div>' : ''}
+                <div class="item-size">${t('store.size')} ${item.size}</div>
+                ${(item.name === 'Bullet' || item.name === 'Battery') ? `<div class="bullet-count">${t('store.maxLabel')} 6</div>` : ''}
+                ${exceedsCapacity ? `<div class="capacity-warning">${t('store.overCapacity')}</div>` : ''}
                 ${hasMaxSpecialItems ? `<div class="capacity-warning">⚠️ ${maxWarning}</div>` : ''}
                 <button class="buy-btn" onclick="game.buyStoreItem('${item.name}', ${actualPrice}, ${item.size})" ${isDisabled ? 'disabled' : ''}>
-                    Buy
+                    ${t('store.buy')}
                 </button>
             `;
             storeContainer.appendChild(itemElement);
@@ -10605,7 +10914,7 @@ class Game {
                 // Show status message that bot is shopping
                 const statusElement = document.getElementById('status-message');
                 if (statusElement) {
-                    statusElement.innerHTML = `<strong>${player.name}</strong> is shopping...`;
+                    statusElement.innerHTML = t('status.botShopping', this.getPlayerDisplayName(player));
                 }
             }
             // In simultaneous mode, no UI changes needed - bots shop silently
@@ -10741,10 +11050,10 @@ class Game {
         
         // Check what changed and create action messages
         if (player.weapon.currentAttackDice > attackDiceBefore) {
-            managementActions.push(`upgraded attack dice to ${player.weapon.currentAttackDice} (-${botForEXP.weapon.reqExpAttack} EXP)`);
+            managementActions.push(this.tArg('botAction.upgradedAttackDice', player.weapon.currentAttackDice, botForEXP.weapon.reqExpAttack));
         }
         if (player.weapon.currentDefenseDice > defenseDiceBefore) {
-            managementActions.push(`upgraded defense dice to ${player.weapon.currentDefenseDice} (-3 EXP)`);
+            managementActions.push(this.tArg('botAction.upgradedDefenseDice', player.weapon.currentDefenseDice));
         }
         
         // 2. HP/EP Recovery and Upgrades
@@ -10757,12 +11066,12 @@ class Game {
                 player.inventory.splice(bloodBagIndex, 1);
                 player.resources.bloodBag = Math.max(0, player.resources.bloodBag - 1);
                 player.resources.hp = Math.min(player.maxResources.hp, player.resources.hp + 1);
-                hpEpActions.push('used Blood Bag (+1 HP)');
+                hpEpActions.push(this.tArg('botAction.usedBloodBag', 1));
             } else {
                 break;
             }
         }
-        
+
         // EP Recovery: Use beer to restore EP if not at max
         while (player.resources.ep < player.maxResources.ep) {
             const beerIndex = player.inventory.findIndex(item => item.name === 'Beer');
@@ -10770,7 +11079,7 @@ class Game {
                 player.inventory.splice(beerIndex, 1);
                 player.resources.beer = Math.max(0, player.resources.beer - 1);
                 player.resources.ep = Math.min(player.maxResources.ep, player.resources.ep + 1);
-                hpEpActions.push('used Beer (+1 EP)');
+                hpEpActions.push(this.tArg('botAction.usedBeer', 1));
             } else {
                 break;
             }
@@ -10791,7 +11100,7 @@ class Game {
                 }
                 player.maxResources.hp += 1;
                 player.resources.hp += 1; // Also increase current HP
-                hpEpActions.push('upgraded max HP (+1)');
+                hpEpActions.push(this.tArg('botAction.upgradedHpPlus1'));
                 
                 // Check for milestone bonuses
                 if (player.maxResources.hp === 6 && !player.milestones.hp6) {
@@ -10801,7 +11110,7 @@ class Game {
                         const checkbox = document.getElementById(`p${player.id}-hp-milestone-6`);
                         if (checkbox) checkbox.checked = true;
                     }
-                    hpEpActions.push('HP milestone bonus (+2 points)');
+                    hpEpActions.push(this.tArg('botAction.hpMilestone', 2));
                 } else if (player.maxResources.hp === 8 && !player.milestones.hp8) {
                     this.addScore(player.id, 3, 'milestone');
                     player.milestones.hp8 = true;
@@ -10809,7 +11118,7 @@ class Game {
                         const checkbox = document.getElementById(`p${player.id}-hp-milestone-8`);
                         if (checkbox) checkbox.checked = true;
                     }
-                    hpEpActions.push('HP milestone bonus (+3 points)');
+                    hpEpActions.push(this.tArg('botAction.hpMilestone', 3));
                 } else if (player.maxResources.hp === 10 && !player.milestones.hp10) {
                     this.addScore(player.id, 4, 'milestone');
                     player.milestones.hp10 = true;
@@ -10817,7 +11126,7 @@ class Game {
                         const checkbox = document.getElementById(`p${player.id}-hp-milestone-10`);
                         if (checkbox) checkbox.checked = true;
                     }
-                    hpEpActions.push('HP milestone bonus (+4 points)');
+                    hpEpActions.push(this.tArg('botAction.hpMilestone', 4));
                 }
             }
         }
@@ -10837,7 +11146,7 @@ class Game {
                 }
                 player.maxResources.ep += 1;
                 player.resources.ep += 1; // Also increase current EP
-                hpEpActions.push('upgraded max EP (+1)');
+                hpEpActions.push(this.tArg('botAction.upgradedEpPlus1'));
                 
                 // Check for milestone bonuses
                 if (player.maxResources.ep === 8 && !player.milestones.ep8) {
@@ -10847,7 +11156,7 @@ class Game {
                         const checkbox = document.getElementById(`p${player.id}-ep-milestone-8`);
                         if (checkbox) checkbox.checked = true;
                     }
-                    hpEpActions.push('EP milestone bonus (+2 points)');
+                    hpEpActions.push(this.tArg('botAction.epMilestone', 2));
                 } else if (player.maxResources.ep === 10 && !player.milestones.ep10) {
                     this.addScore(player.id, 4, 'milestone');
                     player.milestones.ep10 = true;
@@ -10855,7 +11164,7 @@ class Game {
                         const checkbox = document.getElementById(`p${player.id}-ep-milestone-10`);
                         if (checkbox) checkbox.checked = true;
                     }
-                    hpEpActions.push('EP milestone bonus (+4 points)');
+                    hpEpActions.push(this.tArg('botAction.epMilestone', 4));
                 }
             }
         }
@@ -10882,34 +11191,40 @@ class Game {
                 });
 
                 const itemList = Object.entries(itemCounts)
-                    .map(([item, count]) => count > 1 ? `${item} x${count}` : item)
+                    .map(([item, count]) => count > 1 ? `${this.getItemDisplayName(item)} x${count}` : this.getItemDisplayName(item))
                     .join(', ');
 
-                statusMessages.push(`bought: ${itemList}`);
-                logMessages.push({ msg: `🛒 <strong>${player.name}</strong> (Bot) bought: ${itemList}`, player: player });
+                statusMessages.push(t('botStore.boughtSuffix', itemList));
+                logMessages.push({ key: 'log.botBought', args: [player, itemList], player: player });
             } else {
-                statusMessages.push(`didn't buy anything`);
-                logMessages.push({ msg: `🛒 <strong>${player.name}</strong> (Bot) bought nothing`, player: player });
+                statusMessages.push(t('botStore.boughtNothingSuffix'));
+                logMessages.push({ key: 'log.botBoughtNothing', args: [player], player: player });
             }
 
             // Handle resource management actions
             if (managementActions.length > 0) {
-                const managementList = managementActions.join(', ');
-                statusMessages.push(`managed: ${managementList}`);
-                logMessages.push({ msg: `💰 <strong>${player.name}</strong> (Bot) auto-managed: ${managementList}`, player: player });
+                // managementActions is an array of __t__ markers; resolve to local strings for the status display,
+                // but pass the raw array as the log arg so guests re-translate locally.
+                const localManagementList = managementActions.map((a) => this._resolveLogArg(a)).join(', ');
+                statusMessages.push(t('botStore.managedSuffix', localManagementList));
+                logMessages.push({ key: 'log.botAutoManaged', args: [player, managementActions], player: player });
             }
 
             // Update status element (skip in automated mode)
             if (!this.isAutomatedMode) {
                 const statusElement = document.getElementById('status-message');
                 if (statusElement) {
-                    statusElement.innerHTML = `<strong>${player.name}</strong> ${statusMessages.join('; ')}`;
+                    statusElement.innerHTML = `<strong>${this.getPlayerDisplayName(player)}</strong> ${statusMessages.join('; ')}`;
                 }
             }
 
             // Add to game log
             logMessages.forEach(logEntry => {
-                this.addLogEntry(logEntry.msg, 'store-purchase', logEntry.player);
+                if (logEntry.key) {
+                    this.addLogEntryT(logEntry.key, logEntry.args || [], 'store-purchase', logEntry.player);
+                } else {
+                    this.addLogEntry(logEntry.msg, 'store-purchase', logEntry.player);
+                }
             });
 
             // Handle completion based on game mode
@@ -10972,6 +11287,120 @@ class Game {
             logEntries[0].remove();
         }
     }
+
+    /**
+     * Translation-aware log entry. Stores the structured key + args so the host can
+     * broadcast it to guests, who then translate locally with their own language.
+     *
+     * @param {string} key       - i18n translation key (e.g. "log.gameStarted")
+     * @param {Array}  args      - Array of arguments to substitute into the translation
+     * @param {string} category  - Log category for CSS styling (default: 'system')
+     * @param {object} player    - Optional player whose color tints the entry border
+     */
+    /**
+     * Internal: convert a log entry argument into a display string in the current language.
+     * Handles player markers and translation-key markers specially.
+     */
+    _resolveLogArg(a) {
+        if (a == null) return '';
+        if (Array.isArray(a)) {
+            // Resolve each element and join with ", "
+            return a.map((x) => this._resolveLogArg(x)).join(', ');
+        }
+        if (typeof a === 'object') {
+            if (a.__player__) {
+                return this.getPlayerDisplayName({ name: a.name });
+            }
+            if (a.__t__) {
+                const innerArgs = (a.args || []).map((x) => this._resolveLogArg(x));
+                return t.apply(null, [a.__t__].concat(innerArgs));
+            }
+            // Player-like object with .id and .name (host's local call site)
+            if (typeof a.id === 'number' && typeof a.name === 'string') {
+                return this.getPlayerDisplayName(a);
+            }
+        }
+        return a;
+    }
+
+    /**
+     * Construct a translation-key marker that addLogEntryT/logBattleActionT can embed
+     * inside the args array, so the receiver translates it locally.
+     */
+    tArg(key, ...innerArgs) {
+        return { __t__: key, args: innerArgs };
+    }
+
+    addLogEntryT(key, args, category = 'system', player = null) {
+        if (!Array.isArray(args)) args = [];
+
+        // Resolve special markers in args FIRST so the local render uses translated text too
+        const resolvedArgs = args.map((a) => this._resolveLogArg(a));
+
+        // Translate locally for immediate display on this client
+        const localText = t.apply(null, [key].concat(resolvedArgs));
+        this.addLogEntry(localText, category, player);
+
+        // Store a serializable version of args for network sync
+        const argsForNet = args.map(function (a) {
+            if (a && typeof a === 'object' && typeof a.id === 'number' && typeof a.name === 'string') {
+                return { __player__: true, name: a.name };
+            }
+            return a;
+        });
+
+        if (!this.structuredLog) this.structuredLog = [];
+        this.structuredLog.push({
+            key: key,
+            args: argsForNet,
+            category: category,
+            playerId: player && typeof player.id === 'number' ? player.id : -1,
+            playerColor: player && player.color && player.color.background ? player.color.background : null
+        });
+        // Keep last 50 (twice what we broadcast, so we have headroom)
+        if (this.structuredLog.length > 50) {
+            this.structuredLog.shift();
+        }
+    }
+
+    /**
+     * Render a structured log entry on the local client. Used by guests when they
+     * receive the host's structured log queue. Translates the key in the local language.
+     */
+    renderStructuredLogEntry(entry) {
+        if (this.isAutomatedMode) return;
+        const logContainer = document.getElementById('game-log');
+        if (!logContainer) return;
+
+        let text;
+        if (entry.key === '__battleT__') {
+            // Battle log wrapper: args = [innerKey, innerArgsArray]
+            const innerKey = entry.args[0];
+            const innerArgs = (entry.args[1] || []).map((a) => this._resolveLogArg(a));
+            const innerText = t.apply(null, [innerKey].concat(innerArgs));
+            text = '⚔️ ' + innerText;
+        } else {
+            // Resolve special markers in each arg into local-language strings
+            const args = (entry.args || []).map((a) => this._resolveLogArg(a));
+            text = t.apply(null, [entry.key].concat(args));
+        }
+
+        const logEntry = document.createElement('div');
+        logEntry.className = `log-entry ${entry.category || 'system'}`;
+        logEntry.innerHTML = text;
+        if (entry.playerColor) {
+            logEntry.style.setProperty('border-left-color', entry.playerColor, 'important');
+        } else {
+            logEntry.style.setProperty('border-left-color', 'white', 'important');
+        }
+        logContainer.appendChild(logEntry);
+        logContainer.scrollTop = logContainer.scrollHeight;
+
+        const logEntries = logContainer.querySelectorAll('.log-entry');
+        if (logEntries.length > 100) {
+            logEntries[0].remove();
+        }
+    }
     
     clearGameLog() {
         const logContainer = document.getElementById('game-log');
@@ -11015,15 +11444,13 @@ class Game {
         const item = this.storeItems[itemIndex];
         
         if (player.resources.money < item.price) {
-            alert(`${player.name} doesn't have enough money!`);
+            alert(t('alert.notEnoughMoney', player.name));
             return;
         }
         
         // Check if buying this item would exceed capacity
         const currentInventorySize = this.getInventorySize(player);
-        // If Plasma Level 3 and buying batteries, size is 0
-        const effectiveSize = (player.weapon.name === 'Plasma' && player.weapon.powerTrackPosition >= 7 && item.name === 'Battery') ? 0 : item.size;
-        const newTotalSize = currentInventorySize + effectiveSize;
+        const newTotalSize = currentInventorySize + item.size;
         const capacity = player.maxInventoryCapacity;
         
         if (newTotalSize > capacity) {
@@ -11045,12 +11472,7 @@ class Game {
         // Deduct money and add item to inventory
         player.resources.money -= item.price;
         const newItem = {...item};
-        
-        // If Plasma Level 3 and buying batteries, set size to 0
-        if (player.weapon.name === 'Plasma' && player.weapon.powerTrackPosition >= 7 && item.name === 'Battery') {
-            newItem.size = 0;
-        }
-        
+
         player.inventory.push(newItem);
         
         // Update display
@@ -11082,7 +11504,7 @@ class Game {
             : this.players[this.currentStorePlayer];
         
         if (player.resources.money < price) {
-            alert(`${player.name} doesn't have enough money!`);
+            alert(t('alert.notEnoughMoney', player.name));
             return;
         }
         
@@ -11090,13 +11512,13 @@ class Game {
         if (itemName === 'Bullet') {
             const bulletCount = player.inventory.filter(inv => inv.name === 'Bullet').length;
             if (bulletCount >= 6) {
-                alert(`${player.name} already has maximum bullets (6)!`);
+                alert(t('store.maxBulletsReached', player.name));
                 return;
             }
         } else if (itemName === 'Battery') {
             const batteryCount = player.inventory.filter(inv => inv.name === 'Battery').length;
             if (batteryCount >= 6) {
-                alert(`${player.name} already has maximum batteries (6)!`);
+                alert(t('store.maxBatteriesReached', player.name));
                 return;
             }
         }
@@ -11112,12 +11534,7 @@ class Game {
             effect: itemName === 'Bullet' ? 'rifle_ammo' : itemName === 'Battery' ? 'plasma_power' : 'unknown',
             icon: itemName === 'Bullet' ? '🔫' : itemName === 'Battery' ? '🔋' : '❓'
         };
-        
-        // If Plasma Level 3 and buying batteries, set size to 0
-        if (player.weapon.name === 'Plasma' && player.weapon.powerTrackPosition >= 7 && itemName === 'Battery') {
-            item.size = 0;
-        }
-        
+
         // Deduct money and add item to inventory
         player.resources.money -= price;
         player.inventory.push(item);
@@ -11151,8 +11568,11 @@ class Game {
         });
 
         // Log the purchase
-        this.addLogEntry(
-            `🛒 <strong>${player.name}</strong> bought ${itemName} for $${price}`,
+        const itemKeyMap = { 'Beer': 'item.beer.name', 'Blood Bag': 'item.bloodBag.name', 'Grenade': 'item.grenade.name', 'Bomb': 'item.bomb.name', 'Dynamite': 'item.dynamite.name', 'Fake Blood': 'item.fakeBlood.name', 'Bullet': 'item.bullet.name', 'Battery': 'item.battery.name' };
+        const itemArg = itemKeyMap[itemName] ? this.tArg(itemKeyMap[itemName]) : itemName;
+        this.addLogEntryT(
+            'log.boughtItem',
+            [player, itemArg, price],
             'store-purchase',
             player
         );
@@ -11402,11 +11822,13 @@ class Game {
                     const playerType = player.isBot ? ' (Bot)' : '';
                     let resourceName = '';
 
+                    const locKey = 'location.' + ({1:'workSite',2:'bar',3:'station',4:'hospital',5:'dojo',6:'plaza',7:'forest'}[location.id] || 'workSite');
                     if (location.resource === 'money' || location.resource === 'exp') {
                         this.modifyResource(player.id, location.resource, rewardAmount);
-                        resourceName = location.resource === 'money' ? 'money' : 'EXP';
-                        this.addLogEntry(
-                            `💰 <strong>${player.name}</strong>${playerType} received ${rewardAmount} ${resourceName} from ${location.name}`,
+                        const resourceKey = location.resource === 'money' ? 'common.money' : 'common.exp';
+                        this.addLogEntryT(
+                            'log.receivedFromLocation',
+                            [player, rewardAmount, this.tArg(resourceKey), this.tArg(locKey)],
                             'resource-gain',
                             player
                         );
@@ -11415,8 +11837,10 @@ class Game {
                         // Also add items to inventory
                         const itemName = location.resource === 'beer' ? 'Beer' : 'Blood Bag';
                         this.addItemToInventory(player.id, itemName, rewardAmount);
-                        this.addLogEntry(
-                            `💰 <strong>${player.name}</strong>${playerType} received ${rewardAmount} ${itemName} from ${location.name}`,
+                        const itemKey = location.resource === 'beer' ? 'item.beer.name' : 'item.bloodBag.name';
+                        this.addLogEntryT(
+                            'log.receivedFromLocation',
+                            [player, rewardAmount, this.tArg(itemKey), this.tArg(locKey)],
                             'resource-gain',
                             player
                         );
@@ -11424,8 +11848,9 @@ class Game {
                         // Plaza scoring: 3 points if alone, 0 if crowded
                         this.addScore(player.id, rewardAmount, 'plaza');
                         if (rewardAmount > 0) {
-                            this.addLogEntry(
-                                `💰 <strong>${player.name}</strong>${playerType} received ${rewardAmount} points from ${location.name}`,
+                            this.addLogEntryT(
+                                'log.receivedFromLocation',
+                                [player, rewardAmount, this.tArg('common.points'), this.tArg(locKey)],
                                 'resource-gain',
                                 player
                             );
@@ -11433,13 +11858,13 @@ class Game {
                     }
                 }
             });
-            
+
             // Bat Level 1 Power: Apprentice gets +1 resource when sharing location with other hunters
             // Check for apprentices with Bat weapon at this location
             this.players.forEach(player => {
-                if (player.weapon.name === 'Bat' && player.weapon.powerTrackPosition >= 1 && 
+                if (player.weapon.name === 'Bat' && player.weapon.powerTrackPosition >= 1 &&
                     player.tokens.apprentice === location.id && totalCount > 1) {
-                    
+
                     // Check if there's at least one other player's hunter at this location
                     let hasOtherHunter = false;
                     this.players.forEach(otherPlayer => {
@@ -11447,16 +11872,15 @@ class Game {
                             hasOtherHunter = true;
                         }
                     });
-                    
+
                     if (hasOtherHunter) {
-                        const playerType = player.isBot ? ' (Bot)' : '';
                         // Give +1 resource of this location type
                         if (location.resource === 'money' || location.resource === 'exp') {
                             this.modifyResource(player.id, location.resource, 1);
-                            const resourceName = location.resource === 'money' ? 'money' : 'EXP';
-                            console.log(`Bat Lv1 Power: ${player.name}'s apprentice gets +1 ${location.resource} at ${location.name}`);
-                            this.addLogEntry(
-                                `🦇 <strong>${player.name}</strong>${playerType}'s apprentice received +1 ${resourceName} (Bat Lv1 Power)`,
+                            const resourceKey = location.resource === 'money' ? 'common.money' : 'common.exp';
+                            this.addLogEntryT(
+                                'log.batLv1Apprentice',
+                                [player, this.tArg(resourceKey)],
                                 'resource-gain',
                                 player
                             );
@@ -11464,9 +11888,10 @@ class Game {
                             player.resources[location.resource] += 1;
                             const itemName = location.resource === 'beer' ? 'Beer' : 'Blood Bag';
                             this.addItemToInventory(player.id, itemName, 1);
-                            console.log(`Bat Lv1 Power: ${player.name}'s apprentice gets +1 ${itemName} at ${location.name}`);
-                            this.addLogEntry(
-                                `🦇 <strong>${player.name}</strong>${playerType}'s apprentice received +1 ${itemName} (Bat Lv1 Power)`,
+                            const itemKey = location.resource === 'beer' ? 'item.beer.name' : 'item.bloodBag.name';
+                            this.addLogEntryT(
+                                'log.batLv1Apprentice',
+                                [player, this.tArg(itemKey)],
                                 'resource-gain',
                                 player
                             );
@@ -11596,7 +12021,8 @@ class Game {
                 };
                 this.onlineManager.pushGameState(state);
 
-                this.addLogEntry(`⚠️ <strong>${player.name}</strong> failed to enter Forest: ${cannotAttack ? 'no way to attack' : ''}${cannotAttack && lacksEP ? ' and ' : ''}${lacksEP ? 'insufficient EP' : ''}`, 'warning', player);
+                const reasonKey = cannotAttack && lacksEP ? 'forest.failureReasonBoth' : (cannotAttack ? 'forest.failureReasonAttack' : 'forest.failureReasonEP');
+                this.addLogEntryT('forest.failureLog', [player, this.tArg(reasonKey)], 'warning', player);
 
                 // Continue to next hunter
                 this.checkNextForestHunter();
@@ -11618,11 +12044,11 @@ class Game {
         // Determine message based on which conditions failed
         let message = '';
         if (cannotAttack && lacksEP) {
-            message = 'You had failed to fight the monster due to lack of EP and no way to attack (no ammunition or combat items).';
+            message = t('forest.failureBoth');
         } else if (cannotAttack) {
-            message = 'You had failed to fight the monster due to no way to attack (no ammunition or combat items).';
+            message = t('forest.failureAttackOnly');
         } else {
-            message = 'You had failed to fight the monster due to lack of EP.';
+            message = t('forest.failureEPOnly');
         }
 
         // Store current player
@@ -12073,7 +12499,7 @@ class Game {
 
         // Update title
         const title = document.querySelector('.data-collection-overlay-content h2');
-        if (title) title.textContent = 'Data Collection Results';
+        if (title) title.textContent = t('dataCollection.results');
     }
 
     closeDataCollectionOverlay() {
@@ -12093,7 +12519,7 @@ class Game {
         if (resultsDiv) resultsDiv.style.display = 'none';
 
         const title = document.querySelector('.data-collection-overlay-content h2');
-        if (title) title.textContent = 'Data Collection Running';
+        if (title) title.textContent = t('dataCollection.running');
 
         // Show the data collection modal
         this.showDataCollectionModal();
@@ -12104,7 +12530,7 @@ class Game {
         if (progressElement) {
             if (this.isAutomatedMode) {
                 progressElement.style.display = 'block';
-                progressElement.textContent = `Running game ${this.automatedGamesCompleted + 1} of ${this.automatedGamesTotal}...`;
+                progressElement.textContent = t('dataCollection.runningGame', this.automatedGamesCompleted + 1, this.automatedGamesTotal);
             } else {
                 progressElement.style.display = 'none';
             }
@@ -12114,7 +12540,7 @@ class Game {
         const overlayText = document.getElementById('dc-overlay-progress-text');
         const overlayBar = document.getElementById('dc-overlay-progress-bar');
         if (overlayText && this.isAutomatedMode) {
-            overlayText.textContent = `Running game ${this.automatedGamesCompleted + 1} of ${this.automatedGamesTotal}...`;
+            overlayText.textContent = t('dataCollection.runningGame', this.automatedGamesCompleted + 1, this.automatedGamesTotal);
         }
         if (overlayBar && this.automatedGamesTotal > 0) {
             const pct = (this.automatedGamesCompleted / this.automatedGamesTotal) * 100;
@@ -12140,37 +12566,38 @@ class Game {
         sortedPlayers.forEach(player => {
             const locationNames = ['Work Site', 'Bar', 'Station', 'Hospital', 'Dojo', 'Plaza', 'Forest'];
 
+            const powerLv = player.weapon.powerTrackPosition >= 7 ? 3 : player.weapon.powerTrackPosition >= 3 ? 2 : 1;
             statsHTML += `
                 <div class="player-stats-card">
                     <div class="stats-card-header" style="background-color: ${player.color?.background || '#ddd'};">
-                        <h3>${player.name}</h3>
-                        <span class="weapon-name">${player.weapon.name}</span>
+                        <h3>${this.getPlayerDisplayName(player)}</h3>
+                        <span class="weapon-name">${this.getWeaponDisplayName(player.weapon.name)}</span>
                     </div>
                     <div class="stats-card-body">
                         <div class="stats-section">
-                            <h4>Final Results</h4>
+                            <h4>${t('gameStats.finalResults')}</h4>
                             <div class="stat-row">
-                                <span class="stat-label">Rank:</span>
+                                <span class="stat-label">${t('gameStats.rank')}</span>
                                 <span class="stat-value">#${rankings[player.id]}</span>
                             </div>
                             <div class="stat-row">
-                                <span class="stat-label">Total Score:</span>
+                                <span class="stat-label">${t('gameStats.totalScore')}</span>
                                 <span class="stat-value">${player.score}</span>
                             </div>
                             <div class="stat-row">
-                                <span class="stat-label">Popularity Level:</span>
+                                <span class="stat-label">${t('gameStats.popularityLevel')}</span>
                                 <span class="stat-value">${player.popularityTrack.pointToken}</span>
                             </div>
                             <div class="stat-row">
-                                <span class="stat-label">Weapon Power:</span>
-                                <span class="stat-value">Level ${player.weapon.powerTrackPosition >= 7 ? 3 : player.weapon.powerTrackPosition >= 3 ? 2 : 1}</span>
+                                <span class="stat-label">${t('gameStats.weaponPower')}</span>
+                                <span class="stat-value">${t('gameStats.levelN', powerLv)}</span>
                             </div>
                         </div>
 
                         <div class="stats-section">
-                            <h4>Combat Statistics</h4>
+                            <h4>${t('gameStats.combatStats')}</h4>
                             <div class="stat-row">
-                                <span class="stat-label">Defeated Monsters:</span>
+                                <span class="stat-label">${t('gameStats.defeatedMonsters')}</span>
                                 <span class="stat-value">
                                     Lv1: ${player.monstersDefeated?.level1 || 0} |
                                     Lv2: ${player.monstersDefeated?.level2 || 0} |
@@ -12180,54 +12607,54 @@ class Game {
                         </div>
 
                         <div class="stats-section">
-                            <h4>Score Breakdown</h4>
+                            <h4>${t('gameStats.scoreBreakdown')}</h4>
                             <div class="stat-row">
-                                <span class="stat-label">From Monsters:</span>
+                                <span class="stat-label">${t('gameStats.fromMonsters')}</span>
                                 <span class="stat-value">${player.scoreFromMonsters || 0}</span>
                             </div>
                             <div class="stat-row">
-                                <span class="stat-label">From Popularity:</span>
+                                <span class="stat-label">${t('gameStats.fromPopularity')}</span>
                                 <span class="stat-value">${player.scoreFromPopularity || 0}</span>
                             </div>
                             <div class="stat-row">
-                                <span class="stat-label">From Plaza:</span>
+                                <span class="stat-label">${t('gameStats.fromPlaza')}</span>
                                 <span class="stat-value">${player.scoreFromPlaza || 0}</span>
                             </div>
                             <div class="stat-row">
-                                <span class="stat-label">From Milestones:</span>
+                                <span class="stat-label">${t('gameStats.fromMilestones')}</span>
                                 <span class="stat-value">${player.scoreFromMilestones || 0}</span>
                             </div>
                             <div class="stat-row">
-                                <span class="stat-label">From Fake Blood:</span>
+                                <span class="stat-label">${t('gameStats.fromFakeBlood')}</span>
                                 <span class="stat-value">${player.scoreFromFakeBlood || 0}</span>
                             </div>
                             <div class="stat-row">
-                                <span class="stat-label">From Other:</span>
+                                <span class="stat-label">${t('gameStats.fromOther')}</span>
                                 <span class="stat-value">${player.scoreFromOther || 0}</span>
                             </div>
                         </div>
 
                         <div class="stats-section">
-                            <h4>Placement Statistics</h4>
+                            <h4>${t('gameStats.placementStats')}</h4>
                             <div class="stat-row">
-                                <span class="stat-label">Hunter Alone:</span>
-                                <span class="stat-value">${player.hunterAloneCount} times</span>
+                                <span class="stat-label">${t('gameStats.hunterAlone')}</span>
+                                <span class="stat-value">${t('gameStats.timesN', player.hunterAloneCount)}</span>
                             </div>
                             <div class="stat-row">
-                                <span class="stat-label">Apprentice with Hunters:</span>
-                                <span class="stat-value">${player.apprenticeWithHuntersCount} times</span>
+                                <span class="stat-label">${t('gameStats.apprenticeWithHunters')}</span>
+                                <span class="stat-value">${t('gameStats.timesN', player.apprenticeWithHuntersCount)}</span>
                             </div>
                         </div>
 
                         <div class="stats-section">
-                            <h4>Location Selections</h4>
+                            <h4>${t('gameStats.locationSelections')}</h4>
                             ${locationNames.map((name, index) => {
                                 const locationId = index + 1;
                                 const hunterCount = player.locationSelections[locationId].hunter;
                                 const apprenticeCount = player.locationSelections[locationId].apprentice;
                                 return `
                                     <div class="stat-row">
-                                        <span class="stat-label">${name}:</span>
+                                        <span class="stat-label">${this.getLocationDisplayName(name)}:</span>
                                         <span class="stat-value">H: ${hunterCount} | A: ${apprenticeCount}</span>
                                     </div>
                                 `;
@@ -12272,7 +12699,7 @@ class Game {
         // Show game over message if not in automated mode
         if (!this.isAutomatedMode) {
             document.getElementById('status-message').textContent = 
-                `🎉 Game Over! ${winner.name} wins with ${winner.score} points! 🎉`;
+                t('gameOver.fanfare', this.getPlayerDisplayName(winner), winner.score);
             
             // Disable all buttons when game ends
             this.disableAllPlayerButtons();
@@ -12294,7 +12721,7 @@ class Game {
         
         // Show game over message for regular games
         document.getElementById('status-message').innerHTML =
-            `🎉 Game Over! ${winner.name} wins with ${winner.score} points! 🎉`;
+            t('gameOver.fanfare', this.getPlayerDisplayName(winner), winner.score);
 
         // Hide game controls
         document.getElementById('confirm-selection').style.display = 'none';
@@ -12306,14 +12733,14 @@ class Game {
 
         // Add View Stats button
         const statsButton = document.createElement('button');
-        statsButton.textContent = 'View Game Stats';
+        statsButton.textContent = t('gameStats.view');
         statsButton.className = 'control-button';
         statsButton.onclick = () => this.showGameStats();
         controls.appendChild(statsButton);
 
         // Add Exit to Menu button
         const exitButton = document.createElement('button');
-        exitButton.textContent = 'Exit to Main Menu';
+        exitButton.textContent = t('gameStats.exit');
         exitButton.className = 'control-button';
         exitButton.onclick = () => this.exitToMainMenu();
         controls.appendChild(exitButton);
@@ -12370,7 +12797,7 @@ class Game {
 
                 if (hpFull && epFull) {
                     console.log(`Bat Lv2 Power: ${player.name} has full HP and EP, no bonus received`);
-                    this.addLogEntry(`🦇 ${player.name}'s Bat Lv2 Power: Both HP and EP are full, no bonus`, 'power', player);
+                    this.addLogEntryT('log.batLv2Power', [player], 'power', player);
                 } else if (player.isBot) {
                     let choice;
                     if (hpFull) {
@@ -12391,10 +12818,10 @@ class Game {
 
                     if (choice === 'hp') {
                         this.modifyResource(player.id, 'hp', 1);
-                        this.addLogEntry(`🦇 ${player.name} chooses +1 HP from Bat Lv2 Power`, 'power', player);
+                        this.addLogEntryT('log.batLv2HP', [player], 'power', player);
                     } else {
                         this.modifyResource(player.id, 'ep', 1);
-                        this.addLogEntry(`🦇 ${player.name} chooses +1 EP from Bat Lv2 Power`, 'power', player);
+                        this.addLogEntryT('log.batLv2EP', [player], 'power', player);
                     }
                 } else {
                     // Human player: show choice dialog
@@ -12429,6 +12856,11 @@ class Game {
             if (player.weapon.name === 'Plasma' && player.weapon.powerTrackPosition >= 3) {
                 this.modifyResource(player.id, 'money', 2);
             }
+
+            if (player.weapon.name === 'Plasma' && player.weapon.powerTrackPosition >= 7) {
+                this.modifyResource(player.id, 'exp', 2);
+                this.addLogEntryT('log.plasmaLv3Power', [player], 'power', player);
+            }
         });
     }
 
@@ -12443,7 +12875,7 @@ class Game {
         this.currentRound++;
 
         // Log round start
-        this.addLogEntry(`🔄 <strong>Round ${this.currentRound} Started</strong>`, 'round-start');
+        this.addLogEntryT('log.roundStarted', [this.currentRound], 'round-start');
 
         this.applyRoundStartPowers();
         
@@ -12472,7 +12904,7 @@ class Game {
         confirmBtn.disabled = true;
         document.getElementById('next-player').style.display = 'none';
         document.getElementById('status-message').textContent =
-            `New Round Started! ${this.currentPlayer.name}: Select locations for your Hunter and Apprentice`;
+            t('status.newRoundStarted', this.getPlayerDisplayName(this.currentPlayer));
         document.querySelector('.card-selection').style.display = 'grid';
         
         // Show current player text again for the new round (only in turn-based local mode)
@@ -12498,10 +12930,10 @@ class Game {
 
         // Show phase title only (no red/green indicators)
         this.showPlayerStatusIndicators(true);
-        this.setPhaseTitle(`Capacity Overflow: ${player.name}`);
+        this.setPhaseTitle(t('phase.capacityOverflow', this.getPlayerDisplayName(player)));
 
         // Show capacity management UI
-        document.getElementById('capacity-player-name').textContent = player.name;
+        document.getElementById('capacity-player-name').textContent = this.getPlayerDisplayName(player);
         document.getElementById('capacity-current').textContent = this.getInventorySize(player);
         document.getElementById('capacity-max').textContent = player.maxInventoryCapacity;
         document.getElementById('capacity-excess').textContent = this.getInventorySize(player) - player.maxInventoryCapacity;
@@ -12532,22 +12964,22 @@ class Game {
                 const upgradeDisabled = !canUpgrade || buttonsDisabled;
                 const discardDisabled = buttonsDisabled;
                 
-                const disabledTitle = buttonsDisabled ? 'Cannot interact with this player board' : '';
-                
+                const disabledTitle = buttonsDisabled ? t('tooltip.botBoard') : '';
+
                 buttonsHTML = `
-                    <button onclick="game.useItemFromOverflow(${playerId}, ${index})" class="use-btn" ${useDisabled ? 'disabled' : ''} title="${buttonsDisabled ? disabledTitle : (canUse ? 'Use item' : (item.name === 'Beer' ? 'EP is at maximum' : 'HP is at maximum'))}">Use</button>
-                    <button onclick="game.addToUpgradeFromOverflow(${playerId}, ${index})" class="upgrade-btn" ${upgradeDisabled ? 'disabled' : ''} title="${buttonsDisabled ? disabledTitle : (canUpgrade ? 'Add to upgrade progress' : 'Max resource is already 10')}">Upgrade</button>
-                    <button onclick="game.removeItem(${playerId}, ${index})" class="remove-btn" ${discardDisabled ? 'disabled' : ''} title="${buttonsDisabled ? disabledTitle : 'Discard item'}">Discard</button>
+                    <button onclick="game.useItemFromOverflow(${playerId}, ${index})" class="use-btn" ${useDisabled ? 'disabled' : ''} title="${buttonsDisabled ? disabledTitle : (canUse ? t('capacity.useItem') : (item.name === 'Beer' ? t('tooltip.epFull') : t('tooltip.hpFull')))}">${t('capacity.use')}</button>
+                    <button onclick="game.addToUpgradeFromOverflow(${playerId}, ${index})" class="upgrade-btn" ${upgradeDisabled ? 'disabled' : ''} title="${buttonsDisabled ? disabledTitle : (canUpgrade ? t('capacity.addToUpgrade') : t('capacity.maxAlready'))}">${t('capacity.upgrade')}</button>
+                    <button onclick="game.removeItem(${playerId}, ${index})" class="remove-btn" ${discardDisabled ? 'disabled' : ''} title="${buttonsDisabled ? disabledTitle : t('capacity.discardItem')}">${t('capacity.discard')}</button>
                 `;
             } else {
                 // Grenade, Bomb, Dynamite, Fake Blood: Discard only
                 const discardDisabled = buttonsDisabled;
-                const disabledTitle = buttonsDisabled ? 'Cannot interact with this player board' : 'Discard item';
-                buttonsHTML = `<button onclick="game.removeItem(${playerId}, ${index})" class="remove-btn" ${discardDisabled ? 'disabled' : ''} title="${disabledTitle}">Discard</button>`;
+                const disabledTitle = buttonsDisabled ? t('tooltip.botBoard') : t('capacity.discardItem');
+                buttonsHTML = `<button onclick="game.removeItem(${playerId}, ${index})" class="remove-btn" ${discardDisabled ? 'disabled' : ''} title="${disabledTitle}">${t('capacity.discard')}</button>`;
             }
-            
+
             itemElement.innerHTML = `
-                <span>${item.icon || '❓'} ${item.name} (Size: ${item.size})</span>
+                <span>${item.icon || '❓'} ${this.getItemDisplayName(item.name)} (${t('store.size')} ${item.size})</span>
                 <div class="item-actions">
                     ${buttonsHTML}
                 </div>
@@ -12696,7 +13128,7 @@ class Game {
         // Check if item is for combat only
         const combatItems = ['reduce_1_monster_hp', 'reduce_2_monster_hp', 'reduce_3_monster_hp'];
         if (combatItems.includes(item.effect) && !this.currentBattle) {
-            alert('This item can only be used during monster combat!');
+            alert(t('alert.combatItemOnly'));
             return;
         }
         
@@ -12713,7 +13145,7 @@ class Game {
             this.updateInventoryDisplay(player.id);
         });
         
-        alert(`${player.name} used ${item.name}!`);
+        alert(t('alert.usedItem', player.name, item.name));
     }
     
     useInventoryItem(playerId, itemName) {
@@ -12928,7 +13360,7 @@ class Game {
         });
         
         if (container.innerHTML === '') {
-            container.innerHTML = '<p>No pets available</p>';
+            container.innerHTML = '<p>' + t('monster.noPetsAvailable') + '</p>';
         }
 
         this.updateTotalEPCost();
@@ -13093,10 +13525,10 @@ class Game {
             if (hpFull && epFull) return;
             if (hpFull) {
                 this.modifyResource(playerId, 'ep', 1);
-                this.addLogEntry(`🦇 ${player.name} receives +1 EP from Bat Lv2 Power`, 'power', player);
+                this.addLogEntryT('log.batLv2EPGain', [player], 'power', player);
             } else {
                 this.modifyResource(playerId, 'hp', 1);
-                this.addLogEntry(`🦇 ${player.name} receives +1 HP from Bat Lv2 Power`, 'power', player);
+                this.addLogEntryT('log.batLv2HPGain', [player], 'power', player);
             }
             this.updateResourceDisplay();
             this.updateInventoryDisplay(playerId);
@@ -13111,7 +13543,7 @@ class Game {
         // If both are full, no choice needed
         if (hpFull && epFull) {
             console.log(`Bat Lv2 Power: ${player.name} has full HP and EP, no bonus received`);
-            this.addLogEntry(`🦇 ${player.name}'s Bat Lv2 Power: Both HP and EP are full, no bonus`, 'power', player);
+            this.addLogEntryT('log.batLv2Power', [player], 'power', player);
             return;
         }
         
@@ -13177,7 +13609,7 @@ class Game {
                 hpBtn.onclick = () => {
                     this.modifyResource(playerId, 'hp', 1);
                     console.log(`Bat Lv2 Power: ${player.name} chooses +1 HP at round start`);
-                    this.addLogEntry(`🦇 ${player.name} chooses +1 HP from Bat Lv2 Power`, 'power', player);
+                    this.addLogEntryT('log.batLv2HP', [player], 'power', player);
                     document.body.removeChild(modal);
                     this.updateResourceDisplay();
                     this.updateInventoryDisplay(playerId);
@@ -13191,7 +13623,7 @@ class Game {
                 epBtn.onclick = () => {
                     this.modifyResource(playerId, 'ep', 1);
                     console.log(`Bat Lv2 Power: ${player.name} chooses +1 EP at round start`);
-                    this.addLogEntry(`🦇 ${player.name} chooses +1 EP from Bat Lv2 Power`, 'power', player);
+                    this.addLogEntryT('log.batLv2EP', [player], 'power', player);
                     document.body.removeChild(modal);
                     this.updateResourceDisplay();
                     this.updateInventoryDisplay(playerId);
@@ -13277,19 +13709,10 @@ class Game {
     }
 
     getBattleLogEntries() {
-        const logEl = document.getElementById('game-log');
-        if (!logEl) return [];
-        const entries = logEl.querySelectorAll('.log-entry');
-        const result = [];
-        entries.forEach(e => {
-            result.push({
-                html: e.innerHTML,
-                className: e.className,
-                borderColor: e.style.getPropertyValue('border-left-color') || ''
-            });
-        });
-        // Only return last 20 entries to save bandwidth
-        return result.slice(-20);
+        // Return the structured log queue (translation key + args) so guests can re-render
+        // each entry in their own chosen language. Limit to last 20 to save bandwidth.
+        if (!this.structuredLog) this.structuredLog = [];
+        return this.structuredLog.slice(-20);
     }
 
     serializeBattleState() {
@@ -13425,12 +13848,19 @@ class Game {
         // Refresh button states so upgrade/restore buttons reflect synced resources
         this.refreshAllPlayerButtonStates();
 
-        // Update game log from host
+        // Update game log from host: each entry is a structured {key, args, category, playerColor}
+        // pair. Translate locally so the guest sees everything in their own chosen language.
         if (state.battleLog && state.battleLog.length > 0) {
             const logEl = document.getElementById('game-log');
             if (logEl) {
                 logEl.innerHTML = '';
                 state.battleLog.forEach(entry => {
+                    if (entry && typeof entry === 'object' && entry.key) {
+                        // New structured format — translate locally
+                        this.renderStructuredLogEntry(entry);
+                        return;
+                    }
+                    // Backwards compat: legacy format (raw HTML or string)
                     const div = document.createElement('div');
                     if (typeof entry === 'object') {
                         div.className = entry.className || 'log-entry';
@@ -13439,7 +13869,6 @@ class Game {
                             div.style.setProperty('border-left-color', entry.borderColor, 'important');
                         }
                     } else {
-                        // Backwards compat: old string format
                         div.className = 'log-entry';
                         div.innerHTML = entry;
                     }
@@ -13478,19 +13907,19 @@ class Game {
             // Update dummy token positions
             this.updateDummyTokenDisplay();
 
-            this.addLogEntry(`🔄 <strong>Round ${this.currentRound} Started</strong>`, 'round-start');
+            this.addLogEntryT('log.roundStarted', [this.currentRound], 'round-start');
             this.createLocationCards();
             this.updateLocationCardStates();
-            document.getElementById('status-message').textContent = 'Select locations for your Hunter and Apprentice';
+            document.getElementById('status-message').textContent = t('status.selectLocationsBare');
             // Show player status indicators
             this.initializePlayerStatusIndicators();
             this.showPlayerStatusIndicators();
-            this.setPhaseTitle('Location Selection Phase');
+            this.setPhaseTitle(t('phase.selection'));
             // Enable confirm button
             const confirmBtn = document.getElementById('confirm-selection');
             if (confirmBtn) {
                 confirmBtn.disabled = true;
-                confirmBtn.textContent = 'Select Both Locations';
+                confirmBtn.textContent = t('status.selectBothLocations');
                 confirmBtn.style.display = 'inline-block';
             }
             // Show card selection UI
@@ -13512,8 +13941,8 @@ class Game {
         // Keep status indicators visible and updated during selection/store phases
         if (phase === 'selection' || phase === 'store') {
             this.showPlayerStatusIndicators();
-            if (phase === 'selection') this.setPhaseTitle('Location Selection Phase');
-            if (phase === 'store') this.setPhaseTitle('Store Phase');
+            if (phase === 'selection') this.setPhaseTitle(t('phase.selection'));
+            else if (phase === 'store') this.setPhaseTitle(t('phase.store'));
         }
 
         if (phase === 'distribution') {
@@ -13565,7 +13994,7 @@ class Game {
                 const battlePlayer = this.players.find(p => p.id === battlePlayerId);
                 if (battlePlayer) {
                     this.showPlayerStatusIndicators(true);
-                    this.setPhaseTitle(`Battle Phase: ${battlePlayer.name}`);
+                    this.setPhaseTitle(t('phase.battle', this.getPlayerDisplayName(battlePlayer)));
                     // Show the battling player's status div so their timer is visible
                     const battleStatusDiv = document.querySelector(`.player-status[data-player-id="${battlePlayerId}"]`);
                     if (battleStatusDiv) {
@@ -13605,7 +14034,7 @@ class Game {
         this.roundPhase = 'selection';
         this.resetPlayerCompletionStatus();
         this.showPlayerStatusIndicators();
-        this.setPhaseTitle('Location Selection Phase');
+        this.setPhaseTitle(t('phase.selection'));
 
         // Initialize phase timers for this phase
         this.initPhaseTimers();
@@ -13657,10 +14086,10 @@ class Game {
         if (cardSelection) cardSelection.style.display = 'grid';
         this.createLocationCards();
         this.updateLocationCardStates();
-        document.getElementById('status-message').textContent = 'Select locations for your Hunter and Apprentice';
+        document.getElementById('status-message').textContent = t('status.selectLocationsBare');
         const confirmBtn = document.getElementById('confirm-selection');
         if (confirmBtn) {
-            confirmBtn.textContent = 'Select Both Locations';
+            confirmBtn.textContent = t('status.selectBothLocations');
             confirmBtn.disabled = true;
             confirmBtn.style.display = 'inline-block';
         }
@@ -13685,19 +14114,19 @@ class Game {
             if (localPlayer.selectedCards.hunter === 7) {
                 let warningMessages = [];
                 if (localPlayer.resources.ep < 2) {
-                    warningMessages.push('• You need at least 2 EP to enter the Forest (you have ' + localPlayer.resources.ep + ' EP)');
+                    warningMessages.push(t('forestWarn.needEP', localPlayer.resources.ep));
                 }
                 if (!this.hasRequiredAmmunition(localPlayer)) {
                     if (localPlayer.weapon.name === 'Rifle') {
                         const bullets = localPlayer.inventory.filter(i => i.name === 'Bullet').length;
-                        warningMessages.push('• Rifle needs bullets for combat (you have ' + bullets + ' bullets)');
+                        warningMessages.push(t('forestWarn.needBullets', bullets));
                     } else if (localPlayer.weapon.name === 'Plasma') {
                         const batteries = localPlayer.inventory.filter(i => i.name === 'Battery').length;
-                        warningMessages.push('• Plasma needs batteries for combat (you have ' + batteries + ' batteries)');
+                        warningMessages.push(t('forestWarn.needBatteries', batteries));
                     }
                 }
                 if (warningMessages.length > 0) {
-                    let msg = '⚠️ Forest Entry Warning\n\n' + warningMessages.join('\n') + '\n\nProceed?';
+                    let msg = t('forestWarn.title') + '\n\n' + warningMessages.join('\n') + '\n\n' + t('forestWarn.proceedShort');
                     if (!confirm(msg)) return;
                 }
             }
@@ -13709,7 +14138,8 @@ class Game {
             localPlayer.locationSelections[apprenticeLoc].apprentice++;
 
             this.pendingSelectionLogs.push({
-                message: `📍 <strong>${localPlayer.name}</strong> selected: Hunter → ${this.getLocationName(hunterLoc)}, Apprentice → ${this.getLocationName(apprenticeLoc)}`,
+                key: 'log.playerSelected',
+                args: [localPlayer, this.locationTArg(hunterLoc), this.locationTArg(apprenticeLoc)],
                 type: 'selection',
                 player: localPlayer
             });
@@ -13724,7 +14154,7 @@ class Game {
 
             // Disable further selection UI while waiting for other players
             document.getElementById('confirm-selection').disabled = true;
-            document.getElementById('status-message').textContent = 'Waiting for other players...';
+            document.getElementById('status-message').textContent = t('status.waitingForOthers');
             document.querySelector('.card-selection').style.display = 'none';
 
             // Check if all done
@@ -13745,7 +14175,7 @@ class Game {
 
             // Disable further selection UI
             document.getElementById('confirm-selection').disabled = true;
-            document.getElementById('status-message').textContent = 'Waiting for other players...';
+            document.getElementById('status-message').textContent = t('status.waitingForOthers');
             document.querySelector('.card-selection').style.display = 'none';
         }
     }
@@ -13756,7 +14186,11 @@ class Game {
         this.stopAllPhaseTimers();
 
         for (const logEntry of this.pendingSelectionLogs) {
-            this.addLogEntry(logEntry.message, logEntry.type, logEntry.player);
+            if (logEntry.key) {
+                this.addLogEntryT(logEntry.key, logEntry.args || [], logEntry.type, logEntry.player);
+            } else {
+                this.addLogEntry(logEntry.message, logEntry.type, logEntry.player);
+            }
         }
         this.pendingSelectionLogs = [];
         this.hidePlayerStatusIndicators();
@@ -13877,7 +14311,7 @@ class Game {
         document.getElementById('bloodBag-amount').textContent = this.getRewardAmount(hospital, this.stationTotalCount);
         document.getElementById('exp-amount').textContent = this.getRewardAmount(dojo, this.stationTotalCount);
 
-        document.getElementById('station-modal-title').textContent = `${player.name}: Choose Station Resource`;
+        document.getElementById('station-modal-title').textContent = t('station.modalTitle', this.getPlayerDisplayName(player));
         document.getElementById('station-modal').style.display = 'flex';
         this.pendingStationPlayer = this.localPlayerId;
     }
@@ -13890,7 +14324,7 @@ class Game {
         this.storePhaseCompleted = false;
         this.resetPlayerCompletionStatus();
         this.showPlayerStatusIndicators();
-        this.setPhaseTitle('Store Phase');
+        this.setPhaseTitle(t('phase.store'));
 
         // Initialize phase timers
         this.initPhaseTimers();
@@ -13947,7 +14381,7 @@ class Game {
                 playerId: this.localPlayerId
             });
             document.getElementById('store-area').style.display = 'none';
-            document.getElementById('status-message').textContent = 'Waiting for other players...';
+            document.getElementById('status-message').textContent = t('status.waitingForOthers');
         }
     }
 
@@ -14057,7 +14491,7 @@ class Game {
         const battlePlayer = this.players.find(p => p.id === this.currentMonsterPlayer);
         if (battlePlayer) {
             this.showPlayerStatusIndicators(true);
-            this.setPhaseTitle(`Battle Phase: ${battlePlayer.name}`);
+            this.setPhaseTitle(t('phase.battle', this.getPlayerDisplayName(battlePlayer)));
             // Show the battling player's status div so their timer is visible
             const battleStatusDiv = document.querySelector(`.player-status[data-player-id="${battlePlayer.id}"]`);
             if (battleStatusDiv) {
@@ -14095,7 +14529,7 @@ class Game {
 
             document.querySelectorAll('.monster-choice').forEach(btn => btn.classList.remove('selected'));
             this.updatePetSelectionUI();
-            document.getElementById('monster-modal-title').textContent = `${player.name}: Choose Monster to Fight`;
+            document.getElementById('monster-modal-title').textContent = t('monster.chooseTitle', this.getPlayerDisplayName(player));
             document.getElementById('monster-modal').style.display = 'flex';
 
             // Push state so guests can see spectator view during monster selection
@@ -14178,7 +14612,7 @@ class Game {
 
             document.querySelectorAll('.monster-choice').forEach(btn => btn.classList.remove('selected'));
             this.updatePetSelectionUI();
-            document.getElementById('monster-modal-title').textContent = `${player.name}: Choose Monster to Fight`;
+            document.getElementById('monster-modal-title').textContent = t('monster.chooseTitle', this.getPlayerDisplayName(player));
             document.getElementById('monster-modal').style.display = 'flex';
         }
 
@@ -14259,7 +14693,7 @@ class Game {
             document.getElementById('battle-log').innerHTML = battleState.battleLogHTML;
         }
 
-        document.getElementById('battle-turn').textContent = `Watching ${battleState.playerName}'s battle...`;
+        document.getElementById('battle-turn').textContent = t('battle.watching', this._translatePlayerName(battleState.playerName));
     }
 
     showMonsterSelectSpectator(playerName) {
@@ -14284,7 +14718,7 @@ class Game {
         document.getElementById('battle-item-buttons').innerHTML = '';
 
         document.getElementById('battle-log').innerHTML = '';
-        document.getElementById('battle-turn').textContent = `${playerName} is choosing a monster level...`;
+        document.getElementById('battle-turn').textContent = t('battle.choosingMonsterLevel', this._translatePlayerName(playerName));
     }
 
     showMonsterPreviewSpectator(playerName, monsterPreview) {
@@ -14316,7 +14750,7 @@ class Game {
         document.getElementById('battle-item-buttons').innerHTML = '';
 
         document.getElementById('battle-log').innerHTML = '';
-        document.getElementById('battle-turn').textContent = `${playerName} encountered a Level ${monsterPreview.level} monster!`;
+        document.getElementById('battle-turn').textContent = t('battle.encounteredMonster', this._translatePlayerName(playerName), monsterPreview.level);
     }
 
     showBattleUIForGuest(battleState) {
@@ -14363,7 +14797,7 @@ class Game {
 
         if (turn === 'monster' || turn === 'monster_attack_first') {
             // Monster's turn — no controls
-            turnText.textContent = 'Monster is attacking...';
+            turnText.textContent = t('battle.monsterIsAttacking');
         } else if (turn === 'player_items' && hasAttacked) {
             // After attacking — show Defense button, items, and possibly double damage
             // Tame is NOT available here — must wait until after monster attacks back
@@ -14375,7 +14809,7 @@ class Game {
                 defenseBtn.disabled = true;
             };
 
-            // Show double damage button if applicable (Knife Lv1)
+            // Show double damage button if applicable (Knife Lv3)
             if (battleState.canUseDoubleDamage && !battleState.doubleDamageUsed) {
                 doubleDamageBtn.style.display = 'inline-block';
                 doubleDamageBtn.textContent = `2x Damage (+${battleState.lastAttackDamage || 0} extra)`;
@@ -14435,7 +14869,7 @@ class Game {
         document.getElementById('monster-energy-display').textContent = monsterData.energy;
         document.getElementById('monster-blood-display').textContent = monsterData.blood;
         document.getElementById('monster-pts-display').textContent = monsterData.pts;
-        document.getElementById('monster-effect-display').textContent = monsterData.effect;
+        document.getElementById('monster-effect-display').textContent = this.getMonsterEffectDisplay(monsterData);
 
         // Hide beer section (beer was already consumed in level selection)
         const beerSection = document.getElementById('monster-select-beer-section');
@@ -14604,7 +15038,8 @@ class Game {
         guestPlayer.locationSelections[action.data.apprentice].apprentice++;
 
         this.pendingSelectionLogs.push({
-            message: `📍 <strong>${guestPlayer.name}</strong> selected: Hunter → ${this.getLocationName(action.data.hunter)}, Apprentice → ${this.getLocationName(action.data.apprentice)}`,
+            key: 'log.playerSelected',
+            args: [guestPlayer, this.locationTArg(action.data.hunter), this.locationTArg(action.data.apprentice)],
             type: 'selection',
             player: guestPlayer
         });
@@ -14632,10 +15067,7 @@ class Game {
         const idx = this.pendingStationPlayers.indexOf(action.playerId);
         if (idx >= 0) this.pendingStationPlayers.splice(idx, 1);
 
-        this.addLogEntry(
-            `💰 <strong>${guestPlayer.name}</strong> chose ${action.data.resource} at Station`,
-            'resource-gain', guestPlayer
-        );
+        this.addLogEntryT('log.guestStationChoice', [guestPlayer, action.data.resource], 'resource-gain', guestPlayer);
 
         this.waitingForGuestAction = false;
 
@@ -14681,10 +15113,9 @@ class Game {
         if (guestPlayer.resources.money >= price) {
             guestPlayer.resources.money -= price;
             guestPlayer.inventory.push({ ...item, price });
-            this.addLogEntry(
-                `🛒 <strong>${guestPlayer.name}</strong> bought ${itemName} for $${price}`,
-                'store', guestPlayer
-            );
+            const itemKeyMap = { 'Beer': 'item.beer.name', 'Blood Bag': 'item.bloodBag.name', 'Grenade': 'item.grenade.name', 'Bomb': 'item.bomb.name', 'Dynamite': 'item.dynamite.name', 'Fake Blood': 'item.fakeBlood.name', 'Bullet': 'item.bullet.name', 'Battery': 'item.battery.name' };
+            const itemArg = itemKeyMap[itemName] ? this.tArg(itemKeyMap[itemName]) : itemName;
+            this.addLogEntryT('log.boughtItem', [guestPlayer, itemArg, price], 'store', guestPlayer);
 
             // Update host UI to reflect guest's purchase
             this.updateResourceDisplay();
@@ -14955,7 +15386,7 @@ class Game {
 
             this.currentSelectedMonster = newMonster;
 
-            this.addLogEntry(`${player.name} spent 1 EP to change monster`, 'system', player);
+            this.addLogEntryT('log.spentEpChangeMonster', [player], 'system', player);
             this.pushMonsterPreviewToGuest(player.id, newMonster);
         } else {
             // No more monsters — refund EP
@@ -15043,10 +15474,10 @@ class Game {
 
         if (action.data.choice === 'hp') {
             this.modifyResource(action.playerId, 'hp', 1);
-            this.addLogEntry(`🦇 ${player.name} chooses +1 HP from Bat Lv2 Power`, 'power', player);
+            this.addLogEntryT('log.batLv2HP', [player], 'power', player);
         } else {
             this.modifyResource(action.playerId, 'ep', 1);
-            this.addLogEntry(`🦇 ${player.name} chooses +1 EP from Bat Lv2 Power`, 'power', player);
+            this.addLogEntryT('log.batLv2EP', [player], 'power', player);
         }
 
         this.updateResourceDisplay();
@@ -15159,7 +15590,7 @@ class Game {
             this.updateDummyTokenDisplay();
             this.updateResourceDisplay();
             this.players.forEach(p => this.updateInventoryDisplay(p.id));
-            this.addLogEntry(`🔄 <strong>Round ${this.currentRound} Started</strong>`, 'round-start');
+            this.addLogEntryT('log.roundStarted', [this.currentRound], 'round-start');
         }, 1000);
     }
 
@@ -15360,11 +15791,11 @@ class Game {
         if (!modal) return;
 
         const targetNames = this.kickVote.targetNames.join(', ');
-        document.getElementById('kick-vote-title').textContent = 'Kick Vote';
+        document.getElementById('kick-vote-title').textContent = t('kickVote.title');
 
         if (isVoter) {
             document.getElementById('kick-vote-message').textContent =
-                `Do you wish to kick out ${targetNames}?`;
+                t('kickVote.askVoter', targetNames);
             const yesBtn = modal.querySelector('.kick-vote-yes-btn');
             const noBtn = modal.querySelector('.kick-vote-no-btn');
             yesBtn.style.display = 'inline-block';
@@ -15373,7 +15804,7 @@ class Game {
             noBtn.disabled = false;
         } else {
             document.getElementById('kick-vote-message').textContent =
-                'Other players are voting on whether to kick you...';
+                t('kickVote.askTarget');
             modal.querySelector('.kick-vote-yes-btn').style.display = 'none';
             modal.querySelector('.kick-vote-no-btn').style.display = 'none';
         }
@@ -15625,7 +16056,7 @@ class Game {
         this.updateInventoryDisplay(playerId);
         this.applyPlayerNameColors();
 
-        this.addLogEntry(`🚫 <strong>${oldName}</strong> was kicked and replaced by <strong>${player.name}</strong>`, 'system');
+        this.addLogEntryT('log.kicked', [oldName, player], 'system');
 
         console.log(`Player ${playerId} (${oldName}) kicked and replaced by ${player.name}`);
     }
@@ -15691,7 +16122,7 @@ class Game {
                     player.isBot = true;
                     player.name = 'Bot' + (player.id + 1);
                     this.updateKickedPlayerNameTags(player);
-                    this.addLogEntry(`🚫 <strong>${oldName}</strong> was kicked and replaced by <strong>${player.name}</strong>`, 'system');
+                    this.addLogEntryT('log.kicked', [oldName, player], 'system');
                 }
             });
             this.applyPlayerNameColors();
@@ -15755,7 +16186,7 @@ class Game {
     endGameOnline(winner) {
         this.roundPhase = 'gameover';
         document.getElementById('status-message').textContent =
-            `🎉 Game Over! ${winner.name} wins with ${winner.score} points! 🎉`;
+            t('gameOver.fanfare', this.getPlayerDisplayName(winner), winner.score);
 
         document.getElementById('confirm-selection').style.display = 'none';
         document.getElementById('next-player').style.display = 'none';
@@ -15764,13 +16195,13 @@ class Game {
         controls.innerHTML = '';
 
         const statsButton = document.createElement('button');
-        statsButton.textContent = 'View Game Stats';
+        statsButton.textContent = t('gameStats.view');
         statsButton.className = 'control-button';
         statsButton.onclick = () => this.showGameStats();
         controls.appendChild(statsButton);
 
         const exitButton = document.createElement('button');
-        exitButton.textContent = 'Exit to Main Menu';
+        exitButton.textContent = t('gameStats.exit');
         exitButton.className = 'control-button';
         exitButton.onclick = () => {
             if (this.onlineManager) {
@@ -15920,7 +16351,7 @@ class Game {
             const playerSlot = this.onlinePlayerMap[data.senderId];
             if (playerSlot !== undefined && this.players[playerSlot]) {
                 const player = this.players[playerSlot];
-                senderName = player.name;
+                senderName = this.getPlayerDisplayName(player);
                 senderColor = player.color?.background || '#95a5a6';
             }
         }
@@ -15933,7 +16364,21 @@ class Game {
         senderSpan.style.color = senderColor;
         senderSpan.textContent = senderName + ':';
 
-        const textNode = document.createTextNode(' ' + data.message);
+        // Translate __i18n__:key (or __i18n__:tacticsKey|locationKey) to local language
+        let displayMessage = data.message || '';
+        if (typeof displayMessage === 'string' && displayMessage.indexOf('__i18n__:') === 0) {
+            const payload = displayMessage.substring('__i18n__:'.length);
+            if (payload.indexOf('|') !== -1) {
+                // Composed: tacticsKey|locationKey
+                const [tacticsKey, locationKey] = payload.split('|');
+                const tacticsText = t(tacticsKey);
+                const locationText = t(locationKey);
+                displayMessage = tacticsText.replace('__', locationText);
+            } else {
+                displayMessage = t(payload);
+            }
+        }
+        const textNode = document.createTextNode(' ' + displayMessage);
 
         msgEl.appendChild(senderSpan);
         msgEl.appendChild(textNode);
@@ -15999,33 +16444,63 @@ class Game {
         if (!listContainer) return;
         listContainer.innerHTML = '';
 
+        // Build the key list for this tab
+        const keys = this.getCannedKeysForTab(tabIndex);
+
         let itemIndex = 1;
-        for (let row = 0; row < this.cannedMessages.length; row++) {
-            const msg = this.cannedMessages[row][tabIndex];
-            if (!msg) continue;
+        const self = this;
+        keys.forEach(function (key) {
+            const msg = t(key);
+            if (!msg || msg.indexOf('[MISSING') === 0 || msg.indexOf('[UNTRANSLATED') === 0) return;
 
             const item = document.createElement('button');
             item.className = 'canned-msg-item';
             item.textContent = `${itemIndex}. ${msg}`;
-            item.addEventListener('click', () => {
-                this.handleCannedMessageClick(tabIndex, msg);
+            item.addEventListener('click', function () {
+                self.handleCannedMessageClick(tabIndex, msg, key);
             });
             listContainer.appendChild(item);
             itemIndex++;
-        }
+        });
 
         this.cannedPanelState = 'messages';
         this.cannedActiveTab = tabIndex;
     }
 
-    handleCannedMessageClick(tabIndex, message) {
+    /**
+     * Returns the ordered list of translation keys for a given canned message tab.
+     */
+    getCannedKeysForTab(tabIndex) {
+        switch (tabIndex) {
+            case 0: // greeting
+                return ['chat.canned.greeting.0', 'chat.canned.greeting.1', 'chat.canned.greeting.2', 'chat.canned.greeting.3'];
+            case 1: // mid-game
+                return ['chat.canned.midgame.0', 'chat.canned.midgame.1', 'chat.canned.midgame.2', 'chat.canned.midgame.3', 'chat.canned.midgame.4', 'chat.canned.midgame.5'];
+            case 2: // closing
+                return ['chat.canned.closing.0', 'chat.canned.closing.1', 'chat.canned.closing.2', 'chat.canned.closing.3', 'chat.canned.closing.4', 'chat.canned.closing.5'];
+            case 3: // tactics
+                return ['chat.canned.tactics.0', 'chat.canned.tactics.1', 'chat.canned.tactics.2', 'chat.canned.tactics.3', 'chat.canned.tactics.4', 'chat.canned.tactics.5', 'chat.canned.tactics.6', 'chat.canned.tactics.7'];
+            case 4: // locations
+                return ['chat.canned.location.workSite', 'chat.canned.location.bar', 'chat.canned.location.station', 'chat.canned.location.hospital', 'chat.canned.location.dojo', 'chat.canned.location.plaza', 'chat.canned.location.forest'];
+            default:
+                return [];
+        }
+    }
+
+    handleCannedMessageClick(tabIndex, message, key) {
         if (tabIndex <= 2) {
             // Tabs 0-2: auto-send immediately
-            this.sendChatMessage(message);
+            // Send as i18n key so the receiver can translate locally
+            if (key) {
+                this.sendChatMessage('__i18n__:' + key);
+            } else {
+                this.sendChatMessage(message);
+            }
             this.closeCannedPanel();
         } else if (tabIndex === 3) {
             // Tab 3 (戰術): store pending, show in input, switch to tab 4
             this.pendingTacticsMessage = message;
+            this.pendingTacticsKey = key;
             const chatInput = document.getElementById('chat-input');
             if (chatInput) {
                 chatInput.value = message;
@@ -16039,9 +16514,15 @@ class Game {
         } else if (tabIndex === 4) {
             // Tab 4 (地點): replace __ in pending message, send
             if (this.pendingTacticsMessage) {
-                const composed = this.pendingTacticsMessage.replace('__', message);
-                this.sendChatMessage(composed);
+                if (this.pendingTacticsKey && key) {
+                    // Send composed pair as keys so receiver translates locally
+                    this.sendChatMessage('__i18n__:' + this.pendingTacticsKey + '|' + key);
+                } else {
+                    const composed = this.pendingTacticsMessage.replace('__', message);
+                    this.sendChatMessage(composed);
+                }
                 this.pendingTacticsMessage = null;
+                this.pendingTacticsKey = null;
                 const chatInput = document.getElementById('chat-input');
                 if (chatInput) {
                     chatInput.value = '';

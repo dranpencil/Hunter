@@ -1,0 +1,717 @@
+key,en,zh
+common.cancel,Cancel,取消
+common.confirm,Confirm,確認
+common.back,Back,返回
+common.ok,OK,確定
+common.close,Close,關閉
+common.yes,Yes,是
+common.no,No,否
+common.ready,Ready,準備
+common.start,Start,開始
+common.continue,Continue,繼續
+common.player,Player,玩家
+common.bot,Bot,電腦
+common.hp,HP,血量
+common.ep,EP,體力
+common.exp,EXP,經驗
+common.money,Money,金錢
+common.score,Score,分數
+common.beer,Beer,啤酒
+common.bloodBag,Blood Bag,血袋
+common.hunter,Hunter,獵人
+common.apprentice,Apprentice,徒弟
+common.attack,Attack,攻擊
+common.defense,Defense,防禦
+common.tame,Tame,收服
+common.level,Level,等級
+common.round,Round,回合
+common.points,Points,分數
+common.popularity,Popularity,人氣
+common.inventory,Inventory,物品欄
+common.capacity,Capacity,容量
+common.weapon,Weapon,武器
+common.location,Location,區域
+board.upgrade,Upgrade:,升級：
+board.upgradeShort,Upgrade,升級
+board.upgradeProgress,Upgrade: {0}/{1},升級：{0}/{1}
+board.maxUpgrade,Max⬆️,最大⬆️
+board.attackDice,Attack Dice,攻擊骰
+board.defenseDice,Defense Dice,防禦骰
+board.weaponPowerTrack,Weapon Power Track,武器能力軌道
+board.lv1,Lv1,Lv1
+board.lv2,Lv2,Lv2
+board.lv3,Lv3,Lv3
+board.score,Score:,分數：
+board.popularityTrack,Popularity Track,人氣軌道
+board.popularity,Popularity:,人氣：
+board.pet,Pet,寵物
+board.petLabel,Pet:,寵物：
+board.milestone6Hp,6(+2pts),6(+2 分)
+board.milestone8Hp,8(+3pts),8(+3 分)
+board.milestone10Hp,10(+4pts),10(+4 分)
+board.milestone8Ep,8(+2pts),8(+2 分)
+board.milestone10Ep,10(+4pts),10(+4 分)
+tooltip.hpMax10,HP is at maximum (10),血量已達上限 (10)
+tooltip.epMax10,EP is at maximum (10),體力已達上限 (10)
+common.monster,Monster,怪獸
+chat.quickSuffix,uick,捷
+chat.quickButton,<b>Q</b>uick,<b>Q</b>快捷
+capacity.messageSuffix,", your inventory is over capacity!","，你的物品欄已超出容量！"
+menu.title,"Rock, Paper, Hunters",剪刀、石頭、獵人
+menu.localPlay,Local Play,本機遊玩
+menu.onlinePlay,Online Play,線上遊玩
+menu.dataCollection,Data Collection Mode,資料收集模式
+menu.rulebook,Rulebook,規則書
+menu.language,Language,語言
+language.title,Select Language / 選擇語言,Select Language / 選擇語言
+rules.title,Game Rules,遊戲規則
+welcome.message,"Welcome to Rock, Paper, Hunter!","歡迎來到剪刀、石頭、獵人！"
+log.title,Game Log,遊戲紀錄
+chat.title,Chat,聊天
+chat.placeholder,Type a message...,輸入訊息...
+chat.send,Send,送出
+chat.quick,Quick,快捷
+chat.tab.greeting,問候語,問候語
+chat.tab.midgame,比賽中,比賽中
+chat.tab.closing,結語,結語
+chat.tab.tactics,戰術,戰術
+chat.tab.locations,區域,區域
+chat.canned.greeting.0,Hello,你好
+chat.canned.greeting.1,"Good luck, have fun!",請多多指教
+chat.canned.greeting.2,"I'm a newbie, please go easy on me",我是新手，請鞭小力一點
+chat.canned.greeting.3,Long time no see,好久不見
+chat.canned.midgame.0,Let's have an epic showdown!,來個精彩的對決吧
+chat.canned.midgame.1,This monster is a real pain,這隻怪獸真難纏
+chat.canned.midgame.2,Looks like luck is on my side today,看來我今天的運氣比較好
+chat.canned.midgame.3,Let me take the lead for a bit,讓我領先一下
+chat.canned.midgame.4,Looks like there's still a chance,看起來還有機會
+chat.canned.midgame.5,Let's go,大夥進攻囉
+chat.canned.closing.0,What a great game,這真是場精彩的比賽
+chat.canned.closing.1,You saw right through me. Impressive,被你猜到了，真厲害
+chat.canned.closing.2,"The score is so close, it’s a real nail-biter",比分差距不大，真是驚險
+chat.canned.closing.3,Sorry for winning by so much,不好意思贏太多
+chat.canned.closing.4,Thanks,謝謝
+chat.canned.closing.5,"That was fun! Rematch?","好玩，要不要再一場？"
+chat.canned.tactics.0,"I'm heading to __, and nobody's stopping me","我要去__，誰都別想跟我搶"
+chat.canned.tactics.1,"Watch out! Someone is heading for __",小心！有人要去__
+chat.canned.tactics.2,"__ is looking very tempting this round",這輪__變得很誘人耶
+chat.canned.tactics.3,"You really want that __, don't you?","看起來你很想去__，嘿嘿"
+chat.canned.tactics.4,"Everyone, block him! He's rushing for __!","大家快去圍堵他，衝向__"
+chat.canned.tactics.5,"Don't tell me you're planning to go to __?",該不會你想去__吧？
+chat.canned.tactics.6,"Seems we both want __. How about we take turns?","看來我們都很想去__，要不輪流一下"
+chat.canned.tactics.7,"Sorry, I need a moment to think","各位高抬貴手，讓去__一次拜託"
+chat.canned.location.workSite,Work Site,工地
+chat.canned.location.bar,Bar,酒吧
+chat.canned.location.station,Station,車站
+chat.canned.location.hospital,Hospital,醫院
+chat.canned.location.dojo,Dojo,道場
+chat.canned.location.plaza,Plaza,廣場
+chat.canned.location.forest,Forest,森林
+lobby.online.title,Online Play,線上遊玩
+lobby.online.createRoom,Create Room,建立房間
+lobby.online.joinRoom,Join Room,加入房間
+lobby.create.title,Create Room,建立房間
+lobby.create.totalPlayers,Total Players:,總玩家數：
+lobby.create.players2,2 Players,2位玩家
+lobby.create.players3,3 Players,3位玩家
+lobby.create.players4,4 Players,4位玩家
+lobby.create.timeLimit,Phase Time Limit:,時間限制：
+lobby.create.timer30,30 seconds,30 秒
+lobby.create.timer60,1 minute,1 分鐘
+lobby.create.timer120,2 minutes,2 分鐘
+lobby.create.timer180,3 minutes,3 分鐘
+lobby.create.timerNone,No time limit,無時間限制
+lobby.create.button,Create Room,建立房間
+lobby.waiting.title,Waiting for Players,等待玩家中
+lobby.waiting.shareCode,Share this room code:,分享這個房間代碼：
+lobby.waiting.copyCode,Copy Code,複製代碼
+lobby.waiting.copied,Copied!,已複製！
+lobby.composition.mixed,{0} humans + {1} bots = {2} players,{0} 位玩家 + {1} 位電腦 = 共 {2} 位
+lobby.composition.allHumans,{0} humans = {1} players,{0} 位玩家 = 共 {1} 位
+lobby.waiting.connected,"Players: {0}/{1} connected","玩家：{0}/{1} 已連線"
+lobby.waiting.spinner,Waiting for players to join...,等待其他玩家加入...
+lobby.waiting.readyToStart,Ready to start!,準備開始！
+lobby.waiting.startGame,Start Game,開始遊戲
+lobby.waiting.cancel,Cancel,取消
+lobby.join.title,Join Room,加入房間
+lobby.join.enterCode,Enter Room Code:,輸入房間代碼：
+lobby.join.placeholder,ABCD,ABCD
+lobby.join.button,Join,加入
+lobby.guest.title,Waiting for Players,等待玩家中
+lobby.guest.roomCode,Room Code:,房間代碼：
+lobby.guest.ready,Ready,就緒
+lobby.guest.notReady,Not Ready,尚未就緒
+lobby.guest.statusText,"Set your preferences, then click Ready",設定你的偏好然後按"就緒"
+lobby.guest.leave,Leave,離開
+connection.connected,Connected,已連線
+connection.host,Host,房主
+connection.guest,Guest,訪客
+disconnect.title,Player Disconnected,玩家斷線
+disconnect.message,The other player has disconnected.,另一位玩家已斷線。
+disconnect.return,Return to Menu,返回主選單
+kickVote.title,Kick Vote,投票踢出
+kickVote.message,Do you wish to kick out this player?,你要將這位玩家踢出嗎？
+kickVote.yes,Yes,是
+kickVote.no,No,否
+kickVote.timer,0:30,0:30
+kickVote.askVoter,Do you wish to kick out {0}?,你要將 {0} 踢出嗎？
+kickVote.askTarget,Other players are voting on whether to kick you...,其他玩家正在投票決定是否踢出你...
+setup.title,Configure Players,設定玩家
+setup.player,Player,玩家
+setup.bot,Bot,電腦
+setup.closed,Closed,關閉
+setup.changeToBot,Change to Bot,改為電腦
+setup.changeToPlayer,Change to Player,改為玩家
+setup.addPlayer,Add Player,新增玩家
+setup.ready,Ready,準備
+setup.readyWithCount,Ready ({0} Players),準備 （{0} 位玩家）
+setup.readyNeedMore,Ready (Need at least 2 players),準備 （需要至少 2 位玩家）
+setup.remove,Remove,移除
+setup.slot.player,Player,玩家
+setup.slot.bot,Bot,電腦
+setup.slot.closed,Closed,關閉
+location.workSite,Work Site,工地
+location.bar,Bar,酒吧
+location.station,Station,車站
+location.hospital,Hospital,醫院
+location.dojo,Dojo,道場
+location.plaza,Plaza,廣場
+location.forest,Forest,森林
+location.workSite.reward,$6/4,$6/4
+location.bar.reward,Beer 6/4,啤酒 6/4
+location.station.reward,Wild Card,自由選擇
+location.hospital.reward,Blood 4/2,血袋 4/2
+location.dojo.reward,EXP 4/2,經驗 4/2
+location.plaza.reward,Score 4/2,分數 4/2
+location.forest.reward,Monster Hunt,獵殺怪獸
+status.selectLocations,"{0}: Select locations for your Hunter and Apprentice","{0}：為你的獵人和徒弟選擇區域"
+status.currentPlayer,Current Player:,目前玩家：
+status.confirmSelection,Confirm Selection,確認選擇
+status.selectBothLocations,Select Both Locations,請選擇兩個區域
+status.nextPlayer,Next Player,下一位玩家
+status.toggleBoards,Collapse,摺疊
+status.toggleBoardsExpand,Expand,展開
+selection.hunterLocation,Hunter Location,獵人區域
+selection.apprenticeLocation,Apprentice Location,徒弟區域
+phase.selection,Location Selection Phase,選擇區域階段
+phase.distribution,Resource Distribution Phase,資源分配階段
+phase.station,Station Phase,車站階段
+phase.store,Store Phase,商店階段
+phase.battle,"Battle Phase: {0}","戰鬥階段：{0}"
+phase.capacityOverflow,"Capacity Overflow: {0}","物品超重：{0}"
+phase.nextRound,Next Round,下一回合
+station.title,"{0}: Choose Station Resource","{0}：選擇車站資源"
+station.modalTitle,"{0}: Choose Station Resource","{0}：選擇車站資源"
+station.money,Money,金錢
+station.beer,Beer,啤酒
+station.bloodBag,Blood Bag,血袋
+station.experience,Experience,經驗
+weapon.bat.name,Bat,球棒
+weapon.bat.lv1,"When your apprentice met other hunters, +1 resource of that location",徒弟在資源區域撞其他獵人+1區域資源
+weapon.bat.lv2,+1 ep or +1 hp at the start of the round,回合開始+1體力或+1血量
+weapon.bat.lv3,Reroll the hit die once and sum all values for the final damage,命中的骰子再骰1次，傷害為所有傷害加總
+weapon.katana.name,Katana,武士刀
+weapon.katana.lv1,None,無
+weapon.katana.lv2,+2 exp when hunter is alone,單獨存在區域+2經驗
+weapon.katana.lv3,Instant kill if total dice value is over 27,攻擊骰總點數大於27則一擊必殺
+weapon.rifle.name,Rifle,步槍
+weapon.rifle.lv1,"2$ for bullet, consume 1 bullet to forest","可購買子彈:2$，每次戰鬥花費1子彈"
+weapon.rifle.lv2,+2$ at the start of the round,回合開始+2$
+weapon.rifle.lv3,All shop prices -1$,商店價格-1$
+weapon.plasma.name,Plasma,電漿砲
+weapon.plasma.lv1,"2$ for battery, consume 1 battery to forest","可購買電池:2$，每次戰鬥花費1電池"
+weapon.plasma.lv2,+2$ at the start of the round,回合開始+2$
+weapon.plasma.lv3,+2exp at the start of the round,回合開始+2exp
+weapon.chain.name,Chain,鎖鏈
+weapon.chain.lv1,enable to tame monsters whose hp ≦ 3,怪獸於血量3以下即可收服
+weapon.chain.lv2,+2beer at the start of the round,回合開始+2啤酒
+weapon.chain.lv3,pet's attack x2,寵物攻擊x2
+weapon.axe.name,Axe,斧頭
+weapon.axe.lv1,"When damaged, monster takes 1 damage but receive 1 less exp",玩家受傷時反擊怪獸受1點傷害(受傷時獲得經驗-1)
+weapon.axe.lv2,+1 blood bag at the start of the round,回合開始+1血袋
+weapon.axe.lv3,"Monster takes equal damage when player is hit",玩家受傷時反擊怪獸受一樣的傷害
+weapon.whip.name,Whip,鞭子
+weapon.whip.lv1,Taming and bringing pets cost 1 less ep,寵物和收服怪獸體力-1
+weapon.whip.lv2,+2 beer at the start of the round,回合開始+2啤酒
+weapon.whip.lv3,Taming and bringing pets cost no ep,寵物和收服不耗體力
+weapon.bow.name,Bow,弓
+weapon.bow.lv1,Defense rate +16%,閃避率+16%
+weapon.bow.lv2,+2 exp when hunter is alone,單獨存在區域+2經驗
+weapon.bow.lv3,Damage x2,傷害x2
+weapon.sword.name,Sword,劍
+weapon.sword.lv1,None,無
+weapon.sword.lv2,+2 exp when hunter is alone,單獨存在區域+2經驗
+weapon.sword.lv3,"+X points when defeating monsters(X=monster )",打敗怪獸+X分(X=怪獸等級)
+weapon.knife.name,Knife,小刀
+weapon.knife.lv1,Monster rewards are doubled(except points),打敗怪獸資源x2
+weapon.knife.lv2,+2 points when hunter is alone,單獨存在區域+2分
+weapon.knife.lv3,Double damage for one time attack,可將一次的攻擊力x2
+weapon.gloves.name,Gloves,拳套
+weapon.gloves.lv1,"base attack=1. +1 if your hp is below 50%.","基礎攻擊力=1，當hp少於一半時攻擊力+1"
+weapon.gloves.lv2,+1 blood bag at the start of the round,回合開始+1血袋
+weapon.gloves.lv3,"attack +1 every time your hp is lost",每次遭受攻擊而扣血，攻擊力+1
+item.beer.name,Beer,啤酒
+item.beer.desc,gain 1 Energy,獲得 1 體力
+item.bloodBag.name,Blood Bag,血袋
+item.bloodBag.desc,gain 1 Blood,獲得 1 血量
+item.grenade.name,Grenade,手榴彈
+item.grenade.desc,reduce 1 monster's HP,扣除怪獸 1 點血量
+item.bomb.name,Bomb,炸彈
+item.bomb.desc,reduce 2 monster's HP,扣除怪獸 2 點血量
+item.dynamite.name,Dynamite,炸藥
+item.dynamite.desc,reduce 3 monster's HP,扣除怪獸 3 點血量
+item.fakeBlood.name,Fake Blood,假血
+item.fakeBlood.desc,when defeating the monster gain 2 points,擊敗怪獸時獲得 2 分
+item.bullet.name,Bullet,子彈
+item.bullet.desc,Ammunition required for Rifle weapon,步槍所需的彈藥
+item.battery.name,Battery,電池
+item.battery.desc,Ammunition required for Plasma weapon,電漿砲所需的彈藥
+item.beer.battleEffect,Recover 1 EP,恢復 1 體力
+item.bloodBag.battleEffect,Recover 1 HP,恢復 1 血量
+item.grenade.battleEffect,Monster -1 HP,怪獸 -1 血量
+item.bomb.battleEffect,Monster -2 HP,怪獸 -2 血量
+item.dynamite.battleEffect,Monster -3 HP,怪獸 -3 血量
+item.fakeBlood.battleEffect,Bonus +2 PTS,加分 +2 分
+inventory.beerDesc,Restores 1 EP / Upgrade EP max,恢復 1 體力 / 升級體力上限
+inventory.bloodBagDesc,Restores 1 HP / Upgrade HP max,恢復 1 血量 / 升級血量上限
+inventory.grenadeDesc,+1 damage to monster,對怪獸 +1 傷害
+inventory.bombDesc,+2 damage to monster,對怪獸 +2 傷害
+inventory.dynamiteDesc,+3 damage to monster,對怪獸 +3 傷害
+inventory.fakeBloodDesc,+2 points when defeating monster,擊敗怪獸時 +2 分
+store.title,Store,商店
+store.titlePlayer,"Store - {0}","商店 - {0}"
+store.money,Money:,金錢：
+store.capacity,Capacity:,容量：
+store.size,Size:,大小：
+store.maxLabel,Max:,上限：
+store.maxBullets,Max bullets!,子彈已達上限！
+store.maxBatteries,Max batteries!,電池已達上限！
+store.overCapacity,⚠️ Over capacity!,⚠️ 超出容量！
+store.buy,Buy,購買
+store.finishShopping,Finish Shopping,結束購物
+store.itemsHeading,Available Items,可購買物品
+store.inventoryHeading,Your Inventory,你的物品欄
+store.notEnoughMoney,{0} doesn't have enough money!,{0} 的金錢不足！
+store.maxBulletsReached,{0} already has maximum bullets (6)!,{0} 已擁有最多的子彈（6）！
+store.maxBatteriesReached,{0} already has maximum batteries (6)!,{0} 已擁有最多的電池（6）！
+store.capacityWarning,"⚠️ Capacity Warning ⚠️\n\n{0}, buying {1} (size {2}) will exceed your capacity!\n\nCurrent inventory: {3}/{4}\nAfter purchase: {5}/{4} ({6} over capacity)\n\nYou'll need to remove items after shopping to fit within capacity.\n\nDo you still want to buy this item?","⚠️ 容量警告 ⚠️\n\n{0}，購買 {1}（大小 {2}）將會超出容量！\n\n目前物品欄：{3}/{4}\n購買後：{5}/{4}（超出 {6}）\n\n你需要在購物後丟棄物品以符合容量。\n\n你仍然要購買嗎？"
+capacity.title,Capacity Overflow,物品超重
+capacity.message,"{0}, your inventory is over capacity!","{0}，你的物品已超出容量！"
+capacity.current,Current:,目前：
+capacity.max,Max:,上限：
+capacity.excess,Excess:,超出：
+capacity.removePrompt,Please remove items to fit within your capacity:,請丟棄物品以符合你的容量：
+capacity.use,Use,使用
+capacity.upgrade,Upgrade,升級
+capacity.discard,Discard,丟棄
+capacity.useItem,Use item,使用物品
+capacity.addToUpgrade,Add to upgrade progress,加入升級進度
+capacity.maxAlready,Max resource is already 10,該資源已達上限 10
+capacity.discardItem,Discard item,丟棄物品
+forest.failureTitle,⚠️ Forest Entry Failed,⚠️ 森林進入失敗
+forest.failureNoAttack,no way to attack,無法攻擊
+forest.failureNoEP,insufficient EP,體力不足
+forest.failureCombined,{0} and {1},{0} 與 {1}
+forest.failureLog,"⚠️ <strong>{0}</strong> failed to enter Forest: {1}","⚠️ <strong>{0}</strong> 無法進入森林：{1}"
+forest.failureReasonBoth,no way to attack and insufficient EP,無法攻擊且體力不足
+forest.failureReasonAttack,no way to attack,無法攻擊
+forest.failureReasonEP,insufficient EP,體力不足
+forest.acknowledgeOk,OK,確定
+forest.failureBoth,You had failed to fight the monster due to lack of EP and no way to attack (no ammunition or combat items).,你因為體力不足且無法攻擊（沒有彈藥或戰鬥物品）而無法與怪獸戰鬥。
+forest.failureAttackOnly,You had failed to fight the monster due to no way to attack (no ammunition or combat items).,你因為無法攻擊（沒有彈藥或戰鬥物品）而無法與怪獸戰鬥。
+forest.failureEPOnly,You had failed to fight the monster due to lack of EP.,你因為體力不足而無法與怪獸戰鬥。
+monster.title,Monster Encountered!,遇到怪獸了！
+monster.level,Level:,等級：
+monster.hp,HP:,血量：
+monster.att,ATT:,攻擊：
+monster.rewards,Rewards:,獎勵：
+monster.money,💰 Money:,💰 金錢：
+monster.energy,⚡ Energy:,⚡ 體力：
+monster.blood,🩸 Blood:,🩸 血量：
+monster.points,🏆 Points:,🏆 分數：
+monster.effect,Effect:,效果：
+monster.changeButton,Change (-1 EP),換一隻 (-1 體力)
+monster.changeNoEP,Change (No EP),換一隻 （無體力）
+monster.changeNoMore,Change (No More Monsters),換一隻 （沒有更多怪獸）
+monster.readyButton,Ready,就緒
+monster.noPetsAvailable,No pets available,沒有可用的寵物
+monster.chooseTitle,"{0}: Choose Monster to Fight","{0}：選擇要對戰的怪獸"
+status.botSelecting,{0} (Bot) is selecting locations...,{0} （電腦）正在選擇區域...
+status.botThinking,<strong>{0}</strong> is thinking...,<strong>{0}</strong> 思考中...
+status.botBattling,<strong>{0}</strong> (Bot) is battling Level {1} Monster...,<strong>{0}</strong> （電腦）正在對戰等級 {1} 怪獸...
+status.botShopping,<strong>{0}</strong> is shopping...,<strong>{0}</strong> 購物中...
+battle.petsLabel,Pets:,寵物：
+monsterSelect.title,Choose Monster Level,選擇怪獸等級
+monsterSelect.level1,Level 1,等級 1
+monsterSelect.level2,Level 2,等級 2
+monsterSelect.level3,Level 3,等級 3
+monsterSelect.epCost,{0} EP,{0} 體力
+monsterSelect.viewStats,View monster statistics,查看怪獸統計
+monsterSelect.petTitle,Select Pets to Join Battle (Optional),選擇加入戰鬥的寵物（可選）
+monsterSelect.beerTitle,Consume Beers to Increase EP (Optional),消耗啤酒增加體力（可選）
+monsterSelect.availableBeers,Available Beers:,可用啤酒：
+monsterSelect.currentEp,Current EP:,目前體力：
+monsterSelect.totalEpCost,Total EP Cost:,總體力消耗：
+monsterSelect.confirmBattle,Confirm Battle,確認戰鬥
+monsterSelect.consumeBeers,Consume Beers to Increase EP,消耗啤酒增加體力
+monsterLevel.info.title,Monster Level Information,怪獸等級資訊
+monsterLevel.info.lv1,Level 1 Monsters,等級 1 怪獸
+monsterLevel.info.lv2,Level 2 Monsters,等級 2 怪獸
+monsterLevel.info.lv3,Level 3 Monsters,等級 3 怪獸
+monsterLevel.info.aveHp,Ave. 🩸 {0},平均 🩸 {0}
+monsterLevel.info.aveAtt,Ave. ⚔️ {0},平均 ⚔️ {0}
+monsterLevel.info.avePts,Ave. 🏆 {0},平均 🏆 {0}
+monsterLevel.info.close,Close,關閉
+monster.effect.none,None,無
+monster.effect.attackUpHalfHP,+1 attack when hp below 50%,"血減半時，攻擊力+1"
+monster.effect.stealMoney,Steal 2$ from you,偷走玩家2金幣
+monster.effect.deathDamageAll,"Upon death, all players in forest -1 hp",死亡時，玩家及在森林裡的玩家-1血(不會導致玩家血歸零)
+monster.effect.noExpFromDamage,Player receive no exp when injured,玩家受傷無法獲得經驗
+monster.effect.damageCap2,"Maximum 2 damage per attack",玩家無法一次給予怪獸超過2點傷害
+monster.effect.firstStrike1,Attack first if your defense is below 1,玩家防禦力1以上先攻
+monster.effect.otherMonstersPlus1HP,Other monsters +1 hp this round,這回合其他怪獸+1血
+monster.effect.damageNonForest1HP,"All players outside of forest -1 hp(hp won't go down to 0)",不在森林的玩家-1血(不會導致玩家血歸零)
+monster.effect.drainEP,Player -1ep when attack,每次玩家攻擊-1體力
+monster.effect.healAfterSurviving,"If not dead after the attack, +1 hp",遭受攻擊後若沒有死亡+1血
+monster.effect.immuneGrenades,"Grenades have no effect on it",不怕手榴彈
+monster.effect.damageCap4,"Maximum 4 damage per attack",玩家無法一次給予怪獸超過4點傷害
+monster.effect.immuneAllExplosives,"Grenades, bomds and dynamites have no effect on it",不怕手榴彈、炸彈、炸藥
+monster.effect.firstStrike3,Attack first if your defense is below 3,玩家防禦力3以上先攻
+monster.effect.firstStrike2,Attack first if your defense is below 2,玩家防禦力2以上先攻
+monster.effect.extraTamingCost,Needs extra 1 ep to tame,需要+1體力收服
+monster.effect.maxExp3,"Player can only receive 3 exp at most",玩家受傷最多獲得3經驗
+monster.effect.reduceNonForestExp,"All players outside of forest -2 exp",不在森林的玩家-2經驗
+monster.effect.damageNonForest2HP,"All players outside of forest -2 hp",不在森林的玩家-2血
+monster.effect.reduceNonForestPts,"All players outside of forest -2 points",不在森林的玩家-2分
+monster.effect.damageCap6,"Maximum 6 damage per attack",玩家無法一次給予怪獸超過6點傷害
+monster.effect.firstStrike4,Attack first if your defense is below 4,玩家防禦力4以上先攻
+monster.effect.maxExp4,"Player can only receive 4 exp at most",玩家受傷最多獲得4經驗
+battle.title,Monster Battle,怪獸戰鬥
+battle.vs,VS,VS
+battle.playerHP,HP:,血量：
+battle.playerEP,EP:,體力：
+battle.bullets,Bullets:,子彈：
+battle.batteries,Batteries:,電池：
+battle.monsterLevel,"Level {0} Monster","等級 {0} 怪獸"
+battle.monsterATT,ATT:,攻擊：
+battle.rewards,Rewards:,獎勵：
+battle.rewardsLoading,Loading...,載入中...
+battle.yourTurn,Your turn to attack!,輪到你攻擊！
+battle.useItemsOrAttack,Use items or attack the monster!,使用物品或攻擊怪獸！
+battle.useItemsOrDefend,You can use items or proceed to defense!,你可以使用物品或繼續防禦！
+battle.monsterAttacksTurn,Monster attacks!,怪獸攻擊！
+battle.monsterAttacksFirst,Monster attacks first!,怪獸先攻！
+battle.choosingMonsterLevel,{0} is choosing a monster level...,{0} 正在選擇怪獸等級...
+battle.encounteredMonster,{0} encountered a Level {1} monster!,{0} 遇到了等級 {1} 的怪獸！
+battle.useItemsAttackOrTame,"Use items, attack, or tame the monster!",使用物品、攻擊或收服怪獸！
+battle.monsterWeakened,Monster weakened! Attack or Tame?,怪獸被削弱！攻擊或收服？
+battle.monsterIsAttacking,Monster is attacking...,怪獸正在攻擊...
+battle.watching,Watching {0}'s battle...,觀看 {0} 的戰鬥...
+status.allPlayersSelected,All players have selected locations! Game proceeding...,所有玩家已選擇區域！遊戲繼續...
+gameStats.view,View Game Stats,查看遊戲統計
+dataCollection.results,Data Collection Results,資料收集結果
+battle.weaponPowerReward,+{0} Weapon Power,+{0} 武器能力
+battle.attack,Attack!,攻擊！
+battle.tame,Tame!,收服！
+battle.tameWithCost,Tame! ({0} EP),收服！（{0} 體力）
+battle.defense,Defense!,防禦！
+battle.doubleDamage,2x Damage!,雙倍傷害！
+battle.useItems,Use Items:,使用物品：
+battle.logHeading,Battle Log:,戰鬥紀錄：
+battle.combat,Combat,戰鬥
+battle.player1Attacks,Player 1 attacks Player 2,玩家 1 攻擊玩家 2
+battle.player2Attacks,Player 2 attacks Player 1,玩家 2 攻擊玩家 1
+battle.usesBeer,{0} uses Beer! EP restored to {1},{0} 使用啤酒！體力恢復至 {1}
+battle.beerMaxEP,{0} uses Beer but EP is already at maximum!,{0} 體力已滿！
+battle.usesBloodBag,{0} uses Blood Bag! HP restored to {1},{0} 使用血袋！血量恢復至 {1}
+battle.bloodBagMaxHP,{0} uses Blood Bag but HP is already at maximum!,{0} 血量已滿！
+battle.usesGrenade,{0} uses Grenade! Monster takes {1} damage,{0} 使用手榴彈！怪獸受到 {1} 傷害
+battle.grenadeImmune,{0} uses Grenade but it has no effect! Monster is immune to grenades,{0} 使用手榴彈但無效！怪獸對手榴彈免疫
+battle.usesBomb,{0} uses Bomb! Monster takes {1} damage,{0} 使用炸彈！怪獸受到 {1} 傷害
+battle.bombImmune,{0} uses Bomb but it has no effect! Monster is immune to bombs,{0} 使用炸彈但無效！怪獸對炸彈免疫
+battle.bombCapped,{0} uses Bomb! Monster takes {1} damage (capped from {2}),{0} 使用炸彈！怪獸受到 {1} 傷害（從 {2} 受限）
+battle.usesDynamite,{0} uses Dynamite! Monster takes {1} damage,{0} 使用炸藥！怪獸受到 {1} 傷害
+battle.dynamiteImmune,{0} uses Dynamite but it has no effect! Monster is immune to dynamite,{0} 使用炸藥但無效！怪獸對炸藥免疫
+battle.dynamiteCapped,{0} uses Dynamite! Monster takes {1} damage (capped from {2}),{0} 使用炸藥！怪獸受到 {1} 傷害（從 {2} 受限）
+battle.usesFakeBlood,{0} uses Fake Blood! Will gain +2 bonus points when monster is defeated,{0} 使用假血！擊敗怪獸時將獲得 +2 加分
+battle.monsterAttack,"Monster attacks for {0} damage! {1} defends: [{2}] = {3} defense. Final damage: {4}","怪獸造成 {0} 傷害！{1} 防禦：[{2}] = {3} 防禦力。最終傷害：{4}"
+battle.gainExp,{0} gains {1} EXP from taking damage!,{0} 從受傷中獲得 {1} 經驗！
+battle.gainExpAxe,{0} gains {1} EXP from taking damage (Axe: -1 EXP)!,{0} 從受傷中獲得 {1} 經驗（斧頭：-1 經驗）！
+battle.gainExpNone,{0} gains no EXP (monster effect)!,{0} 沒有獲得經驗（怪獸效果）！
+battle.gainExpCapped,{0} gains {1} EXP from taking damage (capped by monster effect)!,{0} 從受傷中獲得 {1} 經驗（被怪獸效果限制）！
+battle.playerAttacks,"{0} attacks: [{1}] = {2} damage{3} = {4} total","{0} 攻擊：[{1}] = {2} 傷害{3} = 共 {4}"
+battle.petDamageSuffix," + {0} pet damage"," + {0} 寵物傷害"
+battle.playerDefeated,{0} has been defeated!,{0} 被擊敗了！
+battle.playerHPSet1,{0}'s HP set to 1,{0} 的血量被設為 1
+battle.defeatedByMonster,{0} was defeated by the monster,{0} 被怪獸擊敗
+battle.cannotAttackNoAmmo,{0} cannot attack without ammo!,{0} 沒有彈藥無法攻擊！
+battle.usesBullet,{0} uses 1 bullet as entrance fee for this battle!,{0} 在本次戰鬥使用 1 顆子彈作為入場費！
+battle.usesBattery,{0} uses 1 battery as entrance fee for this battle!,{0} 在本次戰鬥使用 1 顆電池作為入場費！
+battle.noBullets,{0} has no bullets for battle!,{0} 沒有子彈可用於戰鬥！
+battle.noBatteries,{0} has no batteries for battle!,{0} 沒有電池可用於戰鬥！
+battle.bulletEntranceFee,{0} pays 1 bullet as Forest entrance fee (unlimited attacks)!,{0} 支付 1 顆子彈作為森林入場費（無限攻擊）！
+battle.batteryEntranceFee,{0} pays 1 battery as Forest entrance fee (unlimited attacks)!,{0} 支付 1 顆電池作為森林入場費（無限攻擊）！
+battle.itemsUsed,"{0} uses items: {1} - Monster HP now: {2}","{0} 使用物品：{1} - 怪獸目前血量：{2}"
+battle.recoveryItemsUsed,{0} uses recovery items: {1},{0} 使用恢復物品：{1}
+battle.fakeBloodBonus,{0} uses {1} Fake Blood for +{2} bonus points,{0} 使用 {1} 個假血獲得 +{2} 加分
+battle.monsterDefeatedByItems,Monster defeated by items!,怪獸被物品擊敗！
+battle.tameSuccess,{0} tames the Level {1} monster! Spent {2} EP,{0} 收服了等級 {1} 怪獸！消耗 {2} 體力
+battle.defeatMonster,{0} defeats the Level {1} monster!,{0} 擊敗了等級 {1} 怪獸！
+battle.gainMoney,+{0} money,+{0} 金錢
+battle.gainBeer,+{0} beer,+{0} 啤酒
+battle.gainBlood,+{0} blood bags,+{0} 血袋
+battle.gainScoreSimple,+{0} score,+{0} 分數
+battle.gainScoreFakeBlood,+{0} base score + {1} Fake Blood bonus = {2} total score,+{0} 基礎分數 + {1} 假血加分 = 共 {2} 分
+battle.knifeLv1Doubled,Knife Lv1 Power: rewards doubled!,小刀 Lv1 能力：獎勵翻倍！
+battle.swordLv3Bonus,Sword Lv3 Power: +{0} bonus points!,劍 Lv3 能力：+{0} 加分！
+battle.batLv3Hits,Bat Lv3 Power: {0} dice hit - rolled {0} bonus dice ({1} bonus damage),球棒 Lv3 能力：{0} 個骰子命中 - 重骰 {0} 個額外骰子（{1} 額外傷害）
+battle.batLv3NoHits,Bat Lv3 Power: No hits - no bonus dice,球棒 Lv3 能力：沒有命中 - 沒有額外骰子
+battle.bowLv3Doubled,Bow Lv3 Power: Damage doubled!,弓 Lv3 能力：傷害翻倍！
+battle.katanaLv3Kill,Katana Lv3 Power: Instant kill! ({0} total dice pips >= 27),武士刀 Lv3 能力：一擊必殺！（總點數 {0} >= 27）
+battle.chainLv3Doubled,Chain Lv3 Power: Pet damage doubled!,鎖鏈 Lv3 能力：寵物傷害翻倍！
+battle.knifeLv3Activate,{0} activates Knife Lv3 Power: 2x damage! {1} extra damage dealt!,{0} 啟動小刀 Lv3 能力：雙倍傷害！額外造成 {1} 傷害！
+battle.glovesLv3Bonus,Gloves Lv3 Power: Attack increased! (+{0} total attack bonus),拳套 Lv3 能力：攻擊力提升！（+{0} 總攻擊加成）
+battle.axeLv1Counter,Axe Lv1 Power: {0} fights back for {1} damage!,斧頭 Lv1 能力：{0} 反擊造成 {1} 傷害！
+battle.axeLv3Counter,Axe Lv3 Power: {0} fights back for {1} damage!,斧頭 Lv3 能力：{0} 反擊造成 {1} 傷害！
+battle.axeCounterCapped,Axe counter damage capped at {0}!,斧頭反擊傷害被限制在 {0}！
+battle.axeKill,Monster defeated by Axe retaliation!,怪獸被斧頭反擊擊敗！
+battle.damageCap,Monster effect: Damage capped at {0}! (Would have dealt {1}),怪獸效果：傷害被限制在 {0}！（原本應造成 {1}）
+battle.doubleDamageCap,Double damage limited by monster's damage cap of {0},雙倍傷害被怪獸的傷害上限 {0} 限制
+battle.monsterEffectMessage,⚡ Monster Effect: {0},⚡ 怪獸效果：{0}
+battle.defeatedNoAmmo,{0} defeated due to lack of ammunition!,{0} 因彈藥不足而失敗！
+battle.monsterFirstAttackAxe,"Monster attacks first for {0} damage. {1} defends: [{2}] = {3} defense. Final damage: {4} (+{5} EXP, Axe -1)","怪獸先攻造成 {0} 傷害。{1} 防禦：[{2}] = {3} 防禦力。最終傷害：{4}（+{5} 經驗，斧頭 -1）"
+battle.monsterFirstAttackNoExp,"Monster attacks first for {0} damage. {1} defends: [{2}] = {3} defense. Final damage: {4} (no EXP from monster effect)","怪獸先攻造成 {0} 傷害。{1} 防禦：[{2}] = {3} 防禦力。最終傷害：{4}（怪獸效果使無經驗）"
+battle.monsterFirstAttackCapped,"Monster attacks first for {0} damage. {1} defends: [{2}] = {3} defense. Final damage: {4} (+{5} EXP, capped by monster effect)","怪獸先攻造成 {0} 傷害。{1} 防禦：[{2}] = {3} 防禦力。最終傷害：{4}（+{5} 經驗，被怪獸效果限制）"
+battle.monsterFirstAttack,"Monster attacks first for {0} damage. {1} defends: [{2}] = {3} defense. Final damage: {4} (+{5} EXP)","怪獸先攻造成 {0} 傷害。{1} 防禦：[{2}] = {3} 防禦力。最終傷害：{4}（+{5} 經驗）"
+battle.monsterFirstAttackPlain,"Monster attacks first for {0} damage. {1} defends: [{2}] = {3} defense. Final damage: {4}","怪獸先攻造成 {0} 傷害。{1} 防禦：[{2}] = {3} 防禦力。最終傷害：{4}"
+battle.itemsUsedDamage,{0} uses items: {1} for {2} damage!,{0} 使用物品：{1} 造成 {2} 傷害！
+battle.itemsUsedCapped,{0} uses items: {1} for {2} damage (capped from {3})!,{0} 使用物品：{1} 造成 {2} 傷害（從 {3} 受限）！
+battle.monsterDefeatedSimple,Monster defeated!,怪獸被擊敗！
+battle.monsterAttackAxe,"Monster attacks for {0} damage. {1} defends: [{2}] = {3} defense. Final damage: {4} (+{5} EXP, Axe -1)","怪獸造成 {0} 傷害。{1} 防禦：[{2}] = {3} 防禦力。最終傷害：{4}（+{5} 經驗，斧頭 -1）"
+battle.monsterAttackNoExp,"Monster attacks for {0} damage. {1} defends: [{2}] = {3} defense. Final damage: {4} (no EXP from monster effect)","怪獸造成 {0} 傷害。{1} 防禦：[{2}] = {3} 防禦力。最終傷害：{4}（怪獸效果使無經驗）"
+battle.monsterAttackCapped,"Monster attacks for {0} damage. {1} defends: [{2}] = {3} defense. Final damage: {4} (+{5} EXP, capped by monster effect)","怪獸造成 {0} 傷害。{1} 防禦：[{2}] = {3} 防禦力。最終傷害：{4}（+{5} 經驗，被怪獸效果限制）"
+battle.monsterAttackExp,"Monster attacks for {0} damage. {1} defends: [{2}] = {3} defense. Final damage: {4} (+{5} EXP)","怪獸造成 {0} 傷害。{1} 防禦：[{2}] = {3} 防禦力。最終傷害：{4}（+{5} 經驗）"
+battle.monsterAttackPlain,"Monster attacks for {0} damage. {1} defends: [{2}] = {3} defense. Final damage: {4}","怪獸造成 {0} 傷害。{1} 防禦：[{2}] = {3} 防禦力。最終傷害：{4}"
+battle.timeout,Battle timeout - monster wins,戰鬥逾時 - 怪獸獲勝
+battle.survivedWith1HP,{0} was defeated but survives with 1 HP,{0} 雖被擊敗但以 1 點血量存活
+battle.totalDefeated,"{0} has defeated {1} Lv1, {2} Lv2, {3} Lv3 monsters","{0} 已擊敗 {1} 隻 Lv1、{2} 隻 Lv2、{3} 隻 Lv3 怪獸"
+battle.tameAsPet,{0} tamed the Level {1} monster as a pet!,{0} 收服了等級 {1} 怪獸成為寵物！
+battle.autoManaged,"Auto-managed resources: {0}","自動管理資源：{0}"
+battle.victoryGained,Victory! Gained: {0}$,勝利！獲得：{0}$
+battle.victoryGainedBeer,", {0} beer",", {0} 啤酒"
+battle.victoryGainedBlood,", {0} blood bags",", {0} 血袋"
+battle.victoryGainedPoints,", {0} points",", {0} 分"
+battle.attackRolls,{0} attacks! Rolls: {1} = {2} damage,{0} 攻擊！骰子：{1} = {2} 傷害
+battle.attackPetSuffix,", + {0} pet damage = {1} total damage"," + {0} 寵物傷害 = 共 {1} 傷害"
+battle.weaponPowerAdvance,{0}'s weapon power advances {1} space(s) to position {2}!,{0} 的武器能力前進 {1} 格至位置 {2}！
+battle.weaponPowerMaxed,{0}'s weapon power is already at maximum position!,{0} 的武器能力已達最大位置！
+battle.petCount,{0} Level {1} Pet,{0} 隻等級 {1} 寵物
+battle.withPetsSuffix," with {0}","，帶 {0}"
+log.botChoseMonster,⚔️ <strong>{0}</strong> (Bot) chose Level {1} Monster{2} ({3} EP),⚔️ <strong>{0}</strong>（電腦）選擇了等級 {1} 怪獸{2}（{3} 體力）
+log.boughtItem,🛒 <strong>{0}</strong> bought {1} for ${2},🛒 <strong>{0}</strong> 以 ${2} 購買 {1}
+__battlePrefix__,⚔️ {0},⚔️ {0}
+log.botChangedMonster,🔄 <strong>{0}</strong> (Bot) spent 1 EP to change monster (monster attacks first; defense {1}),🔄 <strong>{0}</strong>（電腦）消耗 1 體力換怪獸（怪獸先攻；防禦力 {1}）
+log.botNoMoreMonsters,⚠️ <strong>{0}</strong> (Bot) no more monsters available; must fight current monster,⚠️ <strong>{0}</strong>（電腦）沒有更多怪獸；必須對戰現有怪獸
+log.botStationPreferred,💰 <strong>{0}</strong> (Bot) chose {1} at Station (weapon preference),💰 <strong>{0}</strong>（電腦）在車站選擇了 {1}（武器偏好）
+log.botStationRandom,💰 <strong>{0}</strong> (Bot) chose {1} at Station (random),💰 <strong>{0}</strong>（電腦）在車站隨機選擇了 {1}
+log.batLv1Apprentice,🦇 <strong>{0}</strong>'s apprentice received +1 {1} (Bat Lv1 Power),🦇 <strong>{0}</strong> 的徒弟獲得 +1 {1}（球棒 Lv1 能力）
+log.playerSelected,"📍 <strong>{0}</strong> selected: Hunter → {1}, Apprentice → {2}","📍 <strong>{0}</strong> 選擇了：獵人 → {1}，徒弟 → {2}"
+log.receivedFromLocation,💰 <strong>{0}</strong> received {1} {2} from {3},💰 <strong>{0}</strong> 從 {3} 獲得 {1} {2}
+log.botBought,🛒 <strong>{0}</strong> (Bot) bought: {1},🛒 <strong>{0}</strong>（電腦）購買了：{1}
+log.botBoughtNothing,🛒 <strong>{0}</strong> (Bot) bought nothing,🛒 <strong>{0}</strong>（電腦）沒有購買任何物品
+log.botAutoManaged,💰 <strong>{0}</strong> (Bot) auto-managed: {1},💰 <strong>{0}</strong>（電腦）自動管理：{1}
+log.botEntersBattle,⚔️ <strong>{0}</strong> (Bot) enters battle vs Level {1} Monster ({2} HP {3} ATT),⚔️ <strong>{0}</strong>（電腦）進入戰鬥對戰等級 {1} 怪獸（{2} 血量 {3} 攻擊）
+lobby.waiting.playersLabel,Players:,玩家：
+lobby.waiting.connectedSuffix,connected,已連線
+botStore.boughtSuffix,"bought: {0}","購買：{0}"
+botStore.boughtNothingSuffix,didn't buy anything,沒有購買任何物品
+botStore.managedSuffix,"managed: {0}","管理：{0}"
+botAction.upgradedAttackDice,upgraded attack dice to {0} (-{1} EXP),攻擊骰升級至 {0}（-{1} 經驗）
+botAction.upgradedDefenseDice,upgraded defense dice to {0} (-3 EXP),防禦骰升級至 {0}（-3 經驗）
+botAction.hpMilestone,HP milestone bonus (+{0} points),血量里程碑加成（+{0} 分）
+botAction.epMilestone,EP milestone bonus (+{0} points),體力里程碑加成（+{0} 分）
+botAction.usedBloodBag,used Blood Bag (+{0} HP),使用血袋 (+{0} 血量)
+botAction.usedBeer,used Beer (+{0} EP),使用啤酒 (+{0} 體力)
+botAction.upgradedHp,upgraded max HP to {0},最大血量升級至 {0}
+botAction.upgradedEp,upgraded max EP to {0},最大體力升級至 {0}
+botAction.upgradedHpMilestone,upgraded max HP to {0} (+{1} milestone points),最大血量升級至 {0}（+{1} 里程碑分數）
+botAction.upgradedEpMilestone,upgraded max EP to {0} (+{1} milestone points),最大體力升級至 {0}（+{1} 里程碑分數）
+botAction.upgradedHpPlus1,upgraded max HP (+1),最大血量升級 (+1)
+botAction.upgradedEpPlus1,upgraded max EP (+1),最大體力升級 (+1)
+botAction.discarded,discarded {0},丟棄了 {0}
+forestWarn.title,⚠️ Forest Entry Warning,⚠️ 進入森林警告
+forestWarn.intro,Your Hunter is entering the Forest but lacks the following:,你的獵人即將進入森林但缺少以下資源：
+forestWarn.needEP,• You need at least 2 EP to enter the Forest (you have {0} EP),• 你需要至少 2 體力才能進入森林（你目前有 {0} 體力）
+forestWarn.needBullets,• Rifle needs bullets for combat (you have {0} bullets),• 步槍戰鬥需要子彈（你目前有 {0} 顆子彈）
+forestWarn.needBatteries,• Plasma needs batteries for combat (you have {0} batteries),• 電漿砲戰鬥需要電池（你目前有 {0} 顆電池）
+forestWarn.canBuy,You can still obtain these resources in the Store phase.,你仍可在商店階段取得這些資源。
+forestWarn.canUseItems,"Combat items (Grenades, Bombs, Dynamite) can also be used to fight monsters.","戰鬥物品（手榴彈、炸彈、炸藥）也可用於對戰怪獸。"
+forestWarn.proceed,Do you want to proceed with this selection?,你要繼續這個選擇嗎？
+forestWarn.proceedShort,Proceed?,繼續嗎？
+battle.monsterEffectDrainEP,{0} loses 1 EP from monster effect,{0} 因怪獸效果失去 1 體力
+battle.monsterEffectHeal,Monster gains +1 HP from its effect ({0} HP),怪獸因效果獲得 +1 血量（{0} 血量）
+log.gameStarted,🎮 <strong>New Game Started</strong> - {0} players,🎮 <strong>新遊戲開始</strong> - {0} 位玩家
+log.onlineGameStarted,🌐 <strong>Online Game Started</strong> - {0} players,🌐 <strong>線上遊戲開始</strong> - {0} 位玩家
+log.roundStarted,🔄 <strong>Round {0} Started</strong>,🔄 <strong>第 {0} 回合開始</strong>
+log.maxResourceReached,⚠️ {0} reached max {1} ({2}). Lost {3} {1}!,⚠️ {0} {1} 達到上限 ({2})。失去 {3} {1}！
+log.maxResourceUpgraded,⬆️ {0}'s max {1} increased to {2}!,⬆️ {0} 的最大 {1} 提升至 {2}！
+log.usedBeer,{0} used beer to restore 1 EP ({1}/{2}),{0} 使用啤酒恢復 1 體力 ({1}/{2})
+log.usedBloodBag,{0} used blood bag to restore 1 HP ({1}/{2}),{0} 使用血袋恢復 1 血量 ({1}/{2})
+log.knifeLv2Alone,🔪 {0} receives +2 points from Knife Lv2 Power,🔪 {0} 從小刀 Lv2 能力獲得 +2 分
+log.batLv2Power,🦇 {0}'s Bat Lv2 Power: Both HP and EP are full,no bonus,🦇 {0} 的球棒 Lv2 能力：血量和體力均已滿，沒有加成
+log.batLv2HP,🦇 {0} chooses +1 HP from Bat Lv2 Power,🦇 {0} 從球棒 Lv2 能力選擇 +1 血量
+log.batLv2EP,🦇 {0} chooses +1 EP from Bat Lv2 Power,🦇 {0} 從球棒 Lv2 能力選擇 +1 體力
+log.batLv2HPGain,🦇 {0} receives +1 HP from Bat Lv2 Power,🦇 {0} 從球棒 Lv2 能力獲得 +1 血量
+log.batLv2EPGain,🦇 {0} receives +1 EP from Bat Lv2 Power,🦇 {0} 從球棒 Lv2 能力獲得 +1 體力
+log.plasmaLv3Power,⚡ {0}'s Plasma Lv3 Power: +2 EXP at round start,⚡ {0} 的電漿砲 Lv3 能力：回合開始 +2 經驗
+log.popularityLevelUp,📈 {0} reached Popularity Level {1} (+{2} points),📈 {0} 達到人氣等級 {1}（+{2} 分）
+log.lostPoints,📉 {0} loses 2 points (not in forest),📉 {0} 失去 2 分（不在森林）
+log.spentEpChangeMonster,{0} spent 1 EP to change monster,{0} 消耗 1 體力換怪獸
+log.changeRefunded,{0} tried to change monster but no more available (EP refunded),{0} 嘗試換怪獸但已沒有可用怪獸（已退還體力）
+log.guestStationChoice,💰 <strong>{0}</strong> chose {1} at Station,💰 <strong>{0}</strong> 在車站選擇了 {1}
+log.kicked,🚫 <strong>{0}</strong> was kicked and replaced by <strong>{1}</strong>,🚫 <strong>{0}</strong> 被踢出並由 <strong>{1}</strong> 取代
+alert.failCreateRoom,Failed to create room. Check your Firebase configuration.,建立房間失敗。請檢查 Firebase 設定。
+alert.hpFull,HP is already full!,血量已滿！
+alert.epFull,EP is already full!,體力已滿！
+alert.noBloodBag,No blood bag available to restore HP!,沒有血袋可恢復血量！
+alert.noBeer,No beer available to restore EP!,沒有啤酒可恢復體力！
+alert.confirmNewGame,Are you sure you want to start a new game? All progress will be lost.,你確定要開始新遊戲嗎？所有進度將會遺失。
+alert.maxResource,"⚠️ Resource Cap Reached!\n\n{0} has reached the maximum {1} limit of {2}.\n\n{3} {1} was lost!","⚠️ 達到資源上限！\n\n{0} 已達到 {1} 上限 {2}。\n\n失去了 {3} {1}！"
+alert.maxUpgrade,Cannot upgrade {0} - already at maximum (10),無法升級 {0} - 已達上限 (10)
+alert.usedBeer,{0} used beer and recovered 1 EP!,{0} 使用啤酒恢復 1 體力！
+alert.epAlreadyMax,{0}'s EP is already at maximum!,{0} 的體力已滿！
+alert.usedBloodBag,{0} used blood bag and recovered 1 HP!,{0} 使用血袋恢復 1 血量！
+alert.hpAlreadyMax,{0}'s HP is already at maximum!,{0} 的血量已滿！
+alert.noItemType,{0} doesn't have any {1}!,{0} 沒有任何 {1}！
+alert.attackDiceMax,{0}'s attack dice is already at maximum (7)!,{0} 的攻擊骰已達上限 (7)！
+alert.defenseDiceMax,{0}'s defense dice is already at maximum (6)!,{0} 的防禦骰已達上限 (6)！
+alert.noMoreMonsters,No more monsters available at this level! All remaining monsters have been shown to you.,此等級沒有更多怪獸了！
+alert.needExtraEP,You need {0} extra EP to fight this monster! Choose a different monster or cancel.,你需要額外 {0} 體力才能與這隻怪獸戰鬥！請選擇別的怪獸或取消。
+alert.needTotalEP,{0} needs {1} EP for this battle!,{0} 此次戰鬥需要 {1} 體力！
+alert.noMonstersLevel,No available monsters at level {0}!,等級 {0} 沒有可用的怪獸！
+alert.noBullets,No bullets available for attack!,沒有可用的子彈！
+alert.noBatteries,No batteries available for attack!,沒有可用的電池！
+alert.notEnoughMoney,{0} doesn't have enough money!,{0} 的金錢不足！
+alert.combatItemOnly,This item can only be used during monster combat!,此物品只能在怪獸戰鬥中使用！
+alert.usedItem,{0} used {1}!,{0} 使用了 {1}！
+dataCollection.title,Data Collection Mode,資料收集模式
+dataCollection.numGames,Number of Games:,遊戲場數：
+dataCollection.playerCount,Player Count:,玩家數：
+dataCollection.start,Start Collection,開始收集
+dataCollection.cancel,Cancel,取消
+dataCollection.running,Data Collection Running,資料收集執行中
+dataCollection.runningGame,"Running game {0} of {1}...","正在執行第 {0} 場 / 共 {1} 場..."
+dataCollection.stop,Stop Collection,停止收集
+dataCollection.close,Close,關閉
+gameStats.title,Game Statistics,遊戲統計
+gameStats.close,Close Stats,關閉統計
+gameStats.exit,Exit to Main Menu,返回主選單
+gameStats.finalResults,Final Results,最終結果
+gameStats.rank,Rank:,排名：
+gameStats.totalScore,Total Score:,總分：
+gameStats.popularityLevel,Popularity Level:,人氣等級：
+gameStats.weaponPower,Weapon Power:,武器能力：
+gameStats.levelN,Level {0},等級 {0}
+gameStats.combatStats,Combat Statistics,戰鬥統計
+gameStats.defeatedMonsters,Defeated Monsters:,擊敗的怪獸：
+gameStats.scoreBreakdown,Score Breakdown,分數明細
+gameStats.fromMonsters,From Monsters:,來自怪獸：
+gameStats.fromPopularity,From Popularity:,來自人氣：
+gameStats.fromPlaza,From Plaza:,來自廣場：
+gameStats.fromMilestones,From Milestones:,來自里程碑：
+gameStats.fromFakeBlood,From Fake Blood:,來自假血：
+gameStats.fromOther,From Other:,來自其他：
+gameStats.placementStats,Placement Statistics,放置統計
+gameStats.hunterAlone,Hunter Alone:,獵人單獨：
+gameStats.apprenticeWithHunters,Apprentice with Hunters:,徒弟與獵人共處：
+gameStats.timesN,{0} times,{0} 次
+gameStats.locationSelections,Location Selections,區域選擇
+gameOver.title,Game Over,遊戲結束
+gameOver.winner,{0} wins with {1} points!,{0} 以 {1} 分獲勝！
+popularity.level0,Level 0,等級 0
+popularity.level1,Level 1,等級 1
+popularity.level2,Level 2,等級 2
+popularity.level3,Level 3,等級 3
+popularity.level4,Level 4,等級 4
+popularity.level5,Level 5,等級 5
+popularity.lvShort,Lv.{0},Lv.{0}
+popularity.points,Points,分數
+popularity.reward,Reward,獎勵
+color.random,Random,隨機
+color.orange,Orange,橘色
+color.green,Green,綠色
+color.blue,Blue,藍色
+color.purple,Purple,紫色
+color.red,Red,紅色
+color.yellow,Yellow,黃色
+color.black,Black,黑色
+weaponSelect.random,Random,隨機
+preferences.title,Your Preferences,你的偏好
+preferences.name,Name:,名稱：
+preferences.color,Color:,顏色：
+preferences.weapon,Weapon:,武器：
+preferences.taken,{0} (taken),{0} （已被選擇）
+preferences.you,{0} (you),{0} （你）
+preferences.host,Host,房主
+preferences.notReady,Not Ready,未準備
+preferences.waitingHost,Waiting for host to start...,等待房主開始...
+preferences.slotOpen,Slot {0} (open),空位 {0} （開放）
+preferences.slotOpenSimple,Slot {0} (open),空位 {0} （開放）
+preferences.takenSuffix,(taken),（已被選擇）
+preferences.youSuffix,(you),（你）
+preferences.slotInfo,{0} · {1},{0} · {1}
+lobby.composition.waitingMore,"Waiting for more players... ({0} open slot{1})","等待更多玩家... （{0} 個空位{1}）"
+lobby.composition.allConnected,All players connected and ready!,所有玩家已連線並準備好！
+lobby.composition.connectedHumans,{0} humans connected — empty slots will be filled by bots,{0} 位人類玩家已連線 — 空位將由電腦填補
+lobby.composition.waitingReady,Waiting for players to ready up ({0}/{1}),等待玩家準備中 （{0}/{1}）
+online.allConnected,All players connected!,所有玩家已連線！
+alert.invalidRoomCode,Please enter a 4-character room code.,請輸入 4 個字元的房間代碼。
+alert.failJoinRoom,Failed to join room.,加入房間失敗。
+tooltip.botBoard,Cannot interact with bot player board,無法操作電腦玩家面板
+tooltip.dummyToken,Location occupied by dummy token,此區域暫時無法進入
+tooltip.forestNeedEP,Need 2+ EP for Forest,進入森林需要 2 點以上體力
+tooltip.forestNeedBullets,Need bullets for Rifle in Forest,森林中步槍需要子彈
+tooltip.forestNeedBatteries,Need batteries for Plasma in Forest,森林中電漿砲需要電池
+tooltip.forestNeedAmmo,Need ammunition for Forest,森林需要彈藥
+tooltip.forestUnavailable,Forest not available,森林無法使用
+tooltip.locationUnavailable,Location not available,區域無法使用
+tooltip.noBloodBag,No Blood Bag available,沒有可用的血袋
+tooltip.hpFull,HP is already full,血量已滿
+tooltip.restoreHP,Restore HP using Blood Bag,使用血袋恢復血量
+tooltip.noBeer,No Beer available,沒有可用的啤酒
+tooltip.epFull,EP is already full,體力已滿
+tooltip.restoreEP,Restore EP using Beer,使用啤酒恢復體力
+effect.stealMoney.notify,Monster steals {0} money from {1}!,怪獸從 {1} 偷走了 {0} 金錢！
+effect.stealMoney.tooltip,This monster has the ability to steal money when selected.,這隻怪獸在被選擇時有偷錢的能力。
+effect.boostOthers.notify,All other monsters gain +1 HP this round!,本回合所有其他怪獸獲得 +1 血量！
+effect.boostOthers.tooltip,This monster's presence strengthens all other monsters in the forest.,這隻怪獸的存在強化了森林中所有其他怪獸。
+effect.damageNonForest1.notify,Players not in forest lose 1 HP: {0},不在森林的玩家失去 1 血量：{0}
+effect.damageNonForest1.tooltip,This monster's aura damages all players who chose not to enter the forest.,這隻怪獸的氣場傷害所有未進入森林的玩家。
+effect.drainExpNonForest.notify,Players not in forest lose 2 EXP: {0},不在森林的玩家失去 2 經驗：{0}
+effect.drainExpNonForest.tooltip,This monster drains the experience of those who avoid the forest.,這隻怪獸吸取躲避森林玩家的經驗。
+effect.damageNonForest2.notify,Players not in forest lose HP: {0},不在森林的玩家失去血量：{0}
+effect.damageNonForest2.tooltip,This powerful monster's aura severely damages those outside the forest.,這隻強大怪獸的氣場嚴重傷害森林外的玩家。
+effect.deathCurse,Monster's death curse! Forest players lose 1 HP: {0},怪獸的死亡詛咒！森林裡的玩家失去 1 血量：{0}
+effect.deathCurseTooltip,"Upon death, this monster releases a curse that damages all hunters in the forest (won't reduce HP below 1).",死亡時這隻怪獸會釋放詛咒傷害森林裡的所有獵人（不會讓血量降到 0）。
+gameOver.fanfare,🎉 Game Over! {0} wins with {1} points! 🎉,🎉 遊戲結束！{0} 以 {1} 分獲勝！🎉
+status.currentPlayerLabel,"Current Player: {0}","目前玩家：{0}"
+status.selectLocationsPrompt,"{0}: Select locations for your Hunter and Apprentice","{0}：為你的獵人和徒弟選擇區域"
+status.selectLocationsBare,Select locations for your Hunter and Apprentice,為你的獵人和徒弟選擇區域
+status.roundComplete,Round complete! Resources have been distributed.,回合結束！資源已分配。
+status.startingBattle,Starting battle...,開始戰鬥...
+status.waitingForBattle,Waiting for battle to start...,等待戰鬥開始...
+status.waitingForOthers,Waiting for other players...,等待其他玩家...
+status.newRoundStarted,"New Round Started! {0}: Select locations for your Hunter and Apprentice","新回合開始！{0}：為你的獵人和徒弟選擇區域"
+status.moneyDisplay,"Money: ${0}","金錢：${0}"
+status.capacityDisplay,"Capacity: {0}/{1}","容量：{0}/{1}"
+status.totalEpCost,Total EP Cost:,總體力消耗：
+status.bulletsCount,Bullets: {0}/{1},子彈：{0}/{1}
+status.batteriesCount,Batteries: {0}/{1},電池：{0}/{1}
+status.hpDisplay,HP: {0}/{1},血量：{0}/{1}
+status.epDisplay,EP: {0}/{1},體力：{0}/{1}
+status.attDisplay,ATT: {0},攻擊：{0}
+button.copyCode,Copy Code,複製代碼
+button.cancelClose,✕,✕
+common.host,Host,房主
+common.guest,Guest,訪客
+common.connected,Connected,已連線

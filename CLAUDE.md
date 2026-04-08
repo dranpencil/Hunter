@@ -1,478 +1,359 @@
-# Rock, Paper, Hunter Board Game System Documentation
+# Rock, Paper, Hunters - Full Project Documentation
 
 ## Overview
-Rock, Paper, Hunter is a strategic digital board game for 2-4 players where each player controls a Hunter and an Apprentice token, placing them on 7 different locations to gather resources, fight monsters, and score points. The game features sophisticated AI opponents, 11 unique weapons with special powers, and dynamic resource management.
+Rock, Paper, Hunters is a strategic digital board game for 2-4 players where each player controls a Hunter and an Apprentice token, placing them on 7 different locations to gather resources, fight monsters, and score points. The game features sophisticated AI opponents, 11 unique weapons with special powers, dynamic resource management, and Firebase-based online multiplayer.
 
-## Core Game Architecture
+## Project Structure
 
-### Main Classes
-- **BotPlayer** (lines 2-981): Comprehensive AI decision-making system with CSV-based lookup tables
-- **Game** (lines 983-7000+): Main game controller managing all phases, mechanics, and UI
+### Source Files
+- **game.js** (~16,060 lines) - Core game engine: BotPlayer class + Game class
+- **firebase-config.js** (~340 lines) - OnlineManager class for Firebase multiplayer
+- **index.html** - UI structure, modals, layout
+- **style.css** - Styling, responsive layout, animations
+
+### Data Files (CSV Lookup Tables)
+- `Weapon.csv` - 11 weapons with stats, capacities, powers, preferred locations
+- `Monster.csv` - 37 monsters (Levels 1-3) with HP, ATT, rewards, special effects
+- `Item.csv` - 8 consumable items with prices, sizes, effects
+- `exp需求組合(lv1-3).csv` - EXP/Dojo decision tables for bot AI
+- `森林需求組合(lv1-3).csv` - Forest entry decision tables for bot AI
+- `canned message.csv` - Pre-scripted chat messages (5 categories)
+
+### Image Assets
+- **Locations** (7): `work_site.png`, `bar.png`, `station.png`, `hospital.png`, `dojo.png`, `plaza.png`, `forest.png`
+- **Weapons** (11): `bat.png`, `katana.png`, `rifle.png`, `plasma.png`, `chain.png`, `axe.png`, `whip.png`, `bow.png`, `sword.png`, `knife.png`, `gloves.png`
+
+### Other Files
+- `game_backup_before_refactor.js` - Pre-refactor backup
+- `Rules_EN.htm` - English rulebook (loaded in iframe modal)
+
+## Core Architecture
+
+### Three Main Classes
+
+| Class | File | Lines | Purpose |
+|-------|------|-------|---------|
+| **BotPlayer** | game.js | 2-1048 | AI decision-making with CSV lookup tables |
+| **Game** | game.js | 1050-16060 | Game controller: all phases, mechanics, UI, online sync |
+| **OnlineManager** | firebase-config.js | 2-340 | Firebase room management, state sync, heartbeat |
 
 ### Game State Management
-- Phase tracking via `roundPhase`: 'selection', 'distribution', 'station', 'store', 'battle', 'nextround'
-- Mode tracking via `gameMode`: 'simultaneous' (1 human) or 'turnbased' (2+ humans)
-- Player completion tracking via `playerCompletionStatus`: Object mapping player IDs to completion status
-- Dynamic player count configurations (2-4 players)
-- Dummy token system for game balance across different player counts
+- **Phase tracking** via `roundPhase`: `'selection'` | `'distribution'` | `'station'` | `'store'` | `'battle'` | `'nextround'` | `'capacityOverflow'` | `'gameover'`
+- **Mode tracking** via `gameMode`: `'simultaneous'` (1 human local) | `'turnbased'` (2+ humans local) | `'online'` (Firebase multiplayer)
+- **Player completion** via `playerCompletionStatus`: Object mapping player IDs to boolean
+- **Player count**: 2-4 players with dummy token balancing
+- **Automated mode** via `isAutomatedMode`: Skips all DOM updates for data collection
 
-## Game Flow
+### Design Patterns
+- **State Machine**: Round phase management
+- **Strategy Pattern**: Weapon-specific behaviors and powers
+- **Observer Pattern**: UI updates on state changes
+- **Factory Pattern**: Dynamic player/bot creation
+- **Host-Guest Pattern**: Online mode with authoritative host
 
-### 1. Selection Phase
-- **Game Mode**: Simultaneous (1 human) or Turn-Based (2+ humans)
-- **Simultaneous Mode**: All bots select instantly, human selects at own pace
-- **Turn-Based Mode**: Players select sequentially with visual status indicators
+## Complete Game Flow
+
+### Startup
+1. Main menu: Local Play / Online Play / Data Collection / Rulebook
+2. **Local**: Player count (2-4) -> Weapon selection -> Game starts
+3. **Online**: Create/Join room -> Preferences (color, weapon, name) -> Ready -> Game starts
+
+### Round Phases
+
+#### 1. Selection Phase
 - Players secretly select locations for Hunter and Apprentice tokens
-- Forest requirements: 2+ EP and ammunition for Rifle/Plasma weapons
-- Human players can select Forest without requirements (warning shown at confirmation)
-- Bots use probabilistic entry system with weapon preferences
-  - Forest entries: -100 penalty without ammunition (Rifle/Plasma)
-  - Normal entries (4 base) with at least 1 ammunition
-- Status indicators show player completion: 🔴 (pending) / 🟢 (completed)
+- **Simultaneous Mode** (1 human): Bots select instantly, human selects at own pace
+- **Turn-Based Mode** (2+ humans): Sequential selection with status indicators
+- **Online Mode**: Host runs bots, all humans select independently, host waits for all
+- Forest requirements: 2+ EP and ammunition (Rifle/Plasma) - warning shown but human can proceed
+- Status indicators: red circle (pending) / green circle (completed)
 
-### 2. Resource Distribution Phase  
+#### 2. Resource Distribution Phase
 - Players collect resources from all locations except Forest
-- Rewards scale based on token density:
-  - 2 players: [6,4] rewards
-  - 3 players: [7,5,4] rewards  
-  - 4 players: [8,6,5,4] rewards
-- Only Hunters collect resources (exception: Bat weapon power)
+- Rewards scale by token density per player count:
+  - 2 players: [6,4]
+  - 3 players: [7,5,4]
+  - 4 players: [8,6,5,4]
+- Only Hunters collect (exception: Bat Lv1 power for Apprentice)
 
-### 3. Station Choice Phase
-- Hunters at Station select desired resource type
+#### 3. Station Choice Phase
+- Hunters at Station select resource type (money/beer/blood bag/exp)
 - Reward amount determined by total Station token count
 
-### 4. Store Phase
-- **Game Mode**: Simultaneous (1 human) or Turn-Based (2+ humans)
-- **Simultaneous Mode**: All bots shop instantly, human shops at own pace
-- **Turn-Based Mode**: Players shop sequentially with visual status indicators
-- Players purchase items with money
-- Capacity overflow management with use/upgrade/discard options
-- Items available: Beer, Blood Bag, Grenade, Bomb, Dynamite, Fake Blood, Bullets, Batteries
-- Status indicators show player completion: 🔴 (pending) / 🟢 (completed)
+#### 4. Store Phase
+- Same mode system as Selection Phase (simultaneous/turn-based/online)
+- Items: Beer ($2), Blood Bag ($2), Grenade ($2), Bomb ($4), Dynamite ($6), Fake Blood ($2), Bullets ($2), Batteries ($2)
+- Capacity overflow triggers use/upgrade/discard modal
 
-### 5. Battle Phase
-- Forest hunters fight monsters in score order (lowest score first)
+#### 5. Battle Phase
+- Forest hunters fight monsters in score order (lowest first)
+- Player selects monster level (1/2/3), can use beer for EP, select pets
 - Dice-based combat with weapon damage arrays
-- Monster taming available for specific weapons
+- Monster taming available for Chain/Whip weapons
+- Bot AI uses tactical item optimization
 
-### 6. Next Round Phase
-- Dummy tokens rotate locations (1→2→3→4→5→6→1, skip Forest)
-- Round start weapon powers activate
-- Board resets for new selections
+#### 6. Next Round Phase
+- Dummy tokens rotate: locations 1->2->3->4->5->6->1 (skip Forest)
+- Round-start weapon powers activate
+- Win check: any player >= 50 points -> game ends at round completion
+- Winner = highest score (popularity level as tiebreaker)
 
-**Win Condition**: Game ends when any player reaches 50+ points, winner determined by highest score (with popularity level as tiebreaker) at round end
+## Online Multiplayer System (Firebase)
 
-## Bot System AI
+### Firebase Structure
+```
+/rooms/{roomCode}
+  ├── hostId, status, playerCount, humanPlayerCount
+  ├── players/  { joinOrder, preferredColor/Weapon/Name, isReady }
+  ├── config/   { humanSlots, weapons, colors, playerNames }
+  ├── gameState/ { roundPhase, players[], dummyTokens, battleLog, ... }
+  ├── actions/  { type, playerId, data, timestamp }
+  ├── chat/     { senderId, message, timestamp }
+  ├── heartbeat/ { [playerId]: timestamp }
+  └── kickVote/ { targetIds, votes, voterIds, ... }
+```
 
-### Location Selection System
-Bots use a **probabilistic entry system** where each location receives "entries" (like lottery tickets). Higher entries = higher selection probability. The system calculates entries based on multiple factors, then randomly selects weighted by entry count.
+### Host-Guest Architecture
+- **Host**: Authoritative game state manager. Runs all game logic, broadcasts state via `pushGameState()`, listens for guest actions via `listenForActions()`
+- **Guest**: Receives state via `applyRemoteGameState()`, sends only own actions via `pushAction()`. Guest actions: selection confirm, store purchases, battle choices, upgrades, item usage, station choice, kick votes
+- **State sync**: Host serializes full game state -> Firebase -> Guest applies and updates UI + button states
 
-### Hunter Location Selection Logic (BotPlayer.selectHunterLocation)
+### Room Management
+- 4-character room codes (A-Z, 2-9, excluding I/O/0/1)
+- Heartbeat: 5s interval write, 300s disconnect timeout, 240s warning
+- `onDisconnect().remove()` for cleanup on network failure
+- Room deletion: 60s after game ends
 
-**Base System:**
-- All 7 locations start with **4 base entries**
-- Unavailable locations: **-100 entries** (effectively eliminated)
+### Online Action Flow (Guest -> Host)
+Guest calls function -> sends `pushAction({type, playerId, data})` -> returns immediately.
+Host receives via `listenForActions()` -> `handleGuestAction()` -> processes -> `pushGameState()` -> Guest receives updated state.
 
-**Adjustments Applied (in order):**
+Action types: `confirm_selection`, `store_purchase`, `finish_shopping`, `battle_attack`, `battle_defense`, `battle_tame`, `battle_use_item`, `battle_use_double_damage`, `station_choice`, `player_board_action` (addToUpgrade, upgradeWeapon, restoreHP, restoreEP, useItem), `capacity_overflow_action`, `kick_vote`
 
-1. **Weapon Preference** (+2 entries)
-   - Each weapon has a preferred location (Bat→Plaza, Rifle→Work Site, Chain→Bar, etc.)
-   - If preferred location unavailable: redirect +2 bonus to Station (if available)
-   - Exception: Plaza preference doesn't redirect
+## Chat System (Lines ~15790-16024)
 
-2. **Resource-Based Adjustments**
-   - **Hospital (HP-based)**:
-     - HP ≤ 50%: +2 entries
-     - HP 50-99%: +1 entry
-   - **Bar (EP-based)**:
-     - EP < required for Forest: +2 entries
-     - EP < max: +1 entry
-   - **Work Site (Capacity-based)**:
-     - Available capacity > 4: +2 entries
-     - Available capacity 3-4: +1 entry
-     - Available capacity ≤ 2: no bonus
+### Real-Time Chat
+- Firebase-backed with sender name in player color
+- 100 character limit, last 50 messages in DOM
+- Enter key to send from input
 
-3. **Dojo Adjustment** (CSV table-based)
-   - Lookup based on: attack dice, defense dice, weapon power track level
-   - Power track determines table: positions 1-2→lv1 table, 3-6→lv2 table, 7→lv3 table
-   - Adds variable entries based on table value
+### Canned Message System
+- 5 tabs: greeting (tab 0), mid-game (tab 1), closing (tab 2), tactics (tab 3), locations (tab 4)
+- Tab 3 (tactics) stores pending message with `__` placeholder -> switches to tab 4
+- Tab 4 (locations) replaces `__` in pending message -> sends composed message
+- Context-aware default tab: gameover->tab 2, round 1 selection->tab 0, selection->tab 3, else->tab 1
 
-4. **Plaza Adjustment**
-   - If bot hasn't visited Plaza in 2+ rounds: +2 entries
+### Keyboard Shortcuts
+- **Alt+Q**: Toggle canned panel (state -> `'tabs'`)
+- **Number keys 1-5**: Select tab when in `'tabs'` state (state -> `'messages'`)
+- **Number keys 1-9**: Click Nth message when in `'messages'` state
+- Ignored when chat input is focused or panel is closed
+- Messages prefixed with 1-based index for visual hint
 
-5. **Forest Adjustments** (most complex)
-   - **Bonuses:**
-     - EP at maximum: +3 entries
-     - Has Grenade: +2 entries
-     - Has Bomb: +4 entries
-     - Has Dynamite: +6 entries
-     - Has lowest score: +4 entries
-   - **Penalties:**
-     - HP < 50%: -3 entries
-     - **Rifle with 0 bullets AND money < 2: -100 entries**
-     - **Plasma with 0 batteries AND money < 2: -100 entries**
-   - **CSV Table Lookup:** Adds variable entries based on attack/defense dice + power track level
+## Timer & Kick Vote System
 
-**Selection Process:**
-1. Calculate total of all positive entries
-2. Generate random number × total
-3. Subtract entries from each location until random ≤ 0
-4. First location to bring random ≤ 0 is selected
+### Phase Timers (Lines ~15175-15290)
+- Per-player timers in `this.phaseTimers`
+- Duration: user-selected (30s/60s/120s/180s or disabled)
+- Online human players only (bots/offline skip)
+- Display: "M:SS" format, warning red at <=10s
+- Paused during kick votes, resumed after
 
-### Apprentice Location Selection Logic (BotPlayer.selectApprenticeLocation)
+### Kick Vote System (Lines ~15291-15700)
+- Triggered when phase timer expires (500ms debounce for batching)
+- Voters: human players not targeted
+- 30-second vote countdown
+- Majority wins; tied = first voter's vote as tiebreaker
+- If no voters (only bots): auto-kick
+- Kicked player removed from game, tokens cleared
 
-**Base System:**
-- All locations (except hunter's) start with **4 base entries**
-- Hunter's location: **0 entries** (cannot overlap)
-- Unavailable locations: **-100 entries**
+## Bot AI System (BotPlayer Class, Lines 2-1048)
 
-**Social-Aware Adjustments:**
+### Location Selection (Probabilistic Entry System)
+Each location gets "entries" (weighted lottery tickets). Base: 4 entries per location.
 
-1. **Other Players' Preferences** (+2 entries each)
-   - For EACH other player (excluding self):
-   - Add +2 entries to that player's weapon preferred location
-   - Example: If 2 other players prefer Plaza, Plaza gets +4 total
+**Hunter adjustments (in order)**:
+1. Weapon preference: +2 entries to preferred location
+2. Resource needs: HP-based (Hospital), EP-based (Bar), capacity-based (Work Site)
+3. Dojo: CSV table lookup based on attack/defense dice + power track level
+4. Plaza: +2 if not visited in 2+ rounds
+5. Forest: complex bonuses (items, EP, lowest score) and penalties (low HP, no ammo)
 
-2. **Highest Score Player Bonus** (+2 additional entries)
-   - Find player with highest score (excluding self)
-   - Add +2 extra entries to that player's preferred location
-   - Creates "follow the leader" behavior
-
-3. **Forest Coordination Logic**
-   - **If Hunter is IN Forest:**
-     - Check all other players (excluding self)
-     - For each player: check if `popularityLevel === popularityRewardLevel`
-     - If NO other player has matching popularity tokens: +2 entries
-     - If ANY other player has matching tokens: no bonus
-     - Encourages Forest when bot can capitalize on popularity rewards without competition
-   - **If Hunter is NOT in Forest:**
-     - Forest entries = -100 (prevents solo apprentice Forest entry)
-
-**Design Principles:**
-- **Probabilistic**: Adds variety and unpredictability to bot behavior
-- **Resource-driven**: Prioritizes locations based on current needs (HP, EP, capacity)
-- **Combat-ready**: Strong Forest bonuses when prepared (items, full EP, ammunition available or money to buy)
-- **Safety-first**: Heavy penalties for Forest without resources to fight
-- **Social apprentice**: Follows other players to maximize resource competition and strategic positioning
-- **Adaptive scaling**: CSV tables adjust Dojo/Forest preferences as weapons grow stronger
-- **Weapon synergy**: Each weapon's preferred location guides both hunter and apprentice decisions
-
-### Resource Management AI
-- Priority order: Money → EP → HP → EXP
-- Weapon-specific item priorities (e.g., Rifle needs 3+ bullets)
-- Automatic capacity overflow resolution
+**Apprentice adjustments**:
+1. Other players' weapon preferences: +2 per player
+2. Highest-score player: +2 additional
+3. Forest coordination: +2 if hunter in Forest and popularity advantage
 
 ### Bot Stages
-1. **Stage 1**: Before 2nd level 1 monster
-2. **Stage 2**: Before 2nd level 2 monster
-3. **Stage 3**: After 2nd level 2 monster
+1. **Stage 1**: Before 2nd level 1 monster defeat
+2. **Stage 2**: Before 2nd level 2 monster defeat
+3. **Stage 3**: After 2nd level 2 monster defeat
 
 ### Tactical Combat AI
-- Uses minimum items needed for guaranteed kills
-- Prioritizes efficiency: Dynamite > Bomb > Grenade
-- Recovery item usage to maintain max HP/EP
+- Minimum items for guaranteed kills: Dynamite > Bomb > Grenade
+- Recovery items to maintain max HP/EP
 - Fake Blood always used for bonus points
+- Weapon-specific ammo management (Rifle: 3+ bullets, Plasma: 3+ batteries)
+
+## Weapons System (11 Weapons)
+
+Each weapon has: unique damage array [6 values for dice 1-6], 3 power levels (track positions 1, 3, 7), preferred location, capacity, ammunition type (Rifle/Plasma only).
+
+| Weapon | Damage | Capacity | Preferred | Key Power |
+|--------|--------|----------|-----------|-----------|
+| Bat | [0,0,1,1,2,2] | 7 | Plaza | Lv3: Re-roll hits, sum all |
+| Katana | [0,0,0,1,2,3] | 7 | Dojo | Lv3: Instant kill if dice > 27 |
+| Rifle | [0,0,0,2,2,2] | 5 | Work Site | Uses bullets; Lv3: -1$ store prices |
+| Plasma | [0,0,0,0,3,3] | 5 | Work Site | Uses batteries; Lv3: Infinite ammo |
+| Chain | [0,0,1,1,1,2] | 7 | Bar | Tame at HP<=3; Lv3: Pet dmg x2 |
+| Axe | [0,0,0,1,2,2] | 6 | Hospital | Lv1: Counter 1 dmg; Lv3: Counter equal |
+| Whip | [0,0,1,1,1,1] | 8 | Bar | Taming cost -1 EP; Lv3: 0 EP |
+| Bow | [0,0,0,1,1,2] | 7 | Hospital | Lv1: +16% dodge; Lv3: Dmg x2 |
+| Sword | [0,0,0,1,1,2] | 7 | Dojo | Lv3: +1 pt per die showing 1 |
+| Knife | [0,0,1,1,1,1] | 8 | Plaza | Lv1: Double dmg once/battle |
+| Gloves | [0,0,0,1,1,1] | 8 | Hospital | Lv3: +1 dmg [5,6] per HP lost |
 
 ## Combat System
 
-### Battle Mechanics
-- Dice-based combat with weapon-specific damage arrays
-- Attack dice vs defense dice system
-- Monster HP and attack values vary by level
-- EXP gained equal to damage taken
+### Monster Stats (from Monster.csv)
+- **Level 1**: 2-3 HP, 1-3 ATT, 2 EP cost, ~3 EXP reward
+- **Level 2**: 5-7 HP, 2-4 ATT, 3 EP cost, ~7 EXP reward
+- **Level 3**: 10-13 HP, 3-5 ATT, 4 EP cost, ~14 EXP reward
+- 37 unique monsters with special effects (damage caps, dodge, first strike, etc.)
 
-### Monster System
-- **Level 1**: 2 HP, 3 ATT, 2 EP cost
-- **Level 2**: 3 HP, 4 ATT, 3 EP cost
-- **Level 3**: 4 HP, 5 ATT, 4 EP cost
-- Random selection from monster pools per level
+### Combat Flow
+1. Player selects monster level, pays EP cost
+2. Player attacks: roll attack dice, apply weapon damage array
+3. If monster survives: monster counter-attacks (ATT value = damage to player)
+4. Player gains EXP equal to damage taken
+5. Victory: points + money + resources based on monster level
+6. Taming option (Chain/Whip): capture instead of kill if HP <= threshold
 
 ### Combat Items
 - **Grenade**: 1 damage, size 2, $2
 - **Bomb**: 2 damage, size 3, $4
 - **Dynamite**: 3 damage, size 4, $6
-- **Fake Blood**: Bonus points = monster level
+- **Fake Blood**: Bonus points = monster level, size 1, $2
 
-## Weapons System
+## Resource System
 
-### 11 Unique Weapons
-Each weapon features:
-- Unique damage array (dice rolls 1-6)
-- 3 power levels (positions 1, 3, 7 on track)
-- Preferred location for bot AI
-- Special ammunition requirements (Rifle/Plasma)
-
-### Notable Weapon Powers
-
-**Bat**
-- Lv1: Apprentice gets +1 resource when sharing location with hunters
-- Lv2: +1 HP or +1 EP at round start (player choice)
-- Lv3: Re-roll successful hits until miss, sum all damage
-
-**Katana**
-- Lv1: None
-- Lv2: +2 EXP when hunter is alone at location
-- Lv3: Instant kill if attack dice total > 27
-
-**Rifle**
-- Lv1: Uses bullets ($2 each), 1 per attack
-- Lv2: +2$ at round start
-- Lv3: Store prices -1$
-
-**Plasma**
-- Lv1: Uses batteries ($2 each), 1 per attack
-- Lv2: +2$ at round start
-- Lv3: Infinite ammunition
-
-**Chain**
-- Lv1: Can tame monsters at HP ≤ 3
-- Lv2: +2 beer at round start
-- Lv3: Pet damage x2
-
-**Axe**
-- Lv1: Deal 1 damage when taking damage (1 less EXP when damaged)
-- Lv2: +1 blood bag at round start
-- Lv3: Deal equal damage when taking damage
-
-**Whip**
-- Lv1: Taming costs -1 EP
-- Lv2: +2 beer at round start
-- Lv3: Taming costs 0 EP
-
-**Bow**
-- Lv1: +16% dodge chance
-- Lv2: +1 EXP at round start
-- Lv3: Damage x2
-
-**Sword**
-- Lv1: None
-- Lv2: +2 EXP when hunter is alone at location
-- Lv3: +1 point per die showing 1
-
-**Knife**
-- Lv1: Can double damage once per battle
-- Lv2: +2 points when hunter is alone at location
-- Lv3: +2 points when hunter is alone at location (stacks with Lv2 for +4 total)
-
-**Gloves**
-- Lv1: +1 damage [5,6] when taking damage (per attack)
-- Lv2: +2 blood bags at round start
-- Lv3: +1 damage [5,6] per HP lost (overrides Lv1)
-
-## Resource Management
-
-### Resource Types
-- **Money**: Max 15, used for store purchases
-- **EXP**: Max 15, used for weapon upgrades
-- **HP**: Max 10 (upgradeable), combat survival
-- **EP**: Max 10 (upgradeable), Forest entry and taming
-
-### Capacity System
-- Weapon-specific inventory limits
-- Overflow management with use/upgrade/discard options
-- Bot automatic overflow resolution
+| Resource | Max | Purpose |
+|----------|-----|---------|
+| Money | 15 | Store purchases |
+| EXP | 15 | Weapon upgrades (attack/defense dice) |
+| HP | 10 (upgradeable) | Combat survival; 3 Blood Bags = +1 max |
+| EP | 10 (upgradeable) | Forest entry, taming; 4 Beer = +1 max |
 
 ### Scoring Sources
-- Plaza location (crowd-dependent)
-- Monster victory rewards
-- Milestone bonuses (8 and 10 max HP/EP)
-- Weapon-specific bonuses
+- **Monsters**: Points from defeated monsters
+- **Milestones**: HP/EP at 8 (+2 pts) and 10 (+4 pts)
+- **Popularity**: Track advancement (points = level reached)
+- **Plaza**: 3 points if hunter alone at Plaza
+- **Fake Blood**: Bonus points equal to monster level
+- **Other**: Weapon-specific bonuses (Knife alone bonus, Sword die bonus, etc.)
 
-## Technical Implementation
+### Popularity Track
+- **Point Token**: Permanent highest position (0-5), scores on advancement
+- **Reward Token**: Current position, affects resource distribution priority
+- Moves up if hunter alone at location, down if crowded (Knife Lv1+ exemption)
+- Forest placement = no change
 
-### UI Update System
-- `updateResourceDisplay()`: Player stats and resources
-- `updateInventoryDisplay()`: Inventory with use buttons
-- `updateLocationDisplays()`: Dynamic reward text
-- `addLogEntry()`: Comprehensive action logging
+## Location System (7 Locations)
 
-### Design Patterns
-- **State Machine**: Round phase management
-- **Strategy Pattern**: Weapon-specific behaviors
-- **Observer Pattern**: UI updates on state changes
-- **Factory Pattern**: Dynamic player/bot creation
+| # | Location | Rewards | Special |
+|---|----------|---------|---------|
+| 1 | Work Site | Money | Scales by density |
+| 2 | Bar | Beer | Scales by density |
+| 3 | Station | Player's choice | Resource type selection |
+| 4 | Hospital | Blood Bags | Scales by density |
+| 5 | Dojo | EXP | Scales by density |
+| 6 | Plaza | Points | Scales by density |
+| 7 | Forest | Combat | Hunt monsters, no resource collection |
 
-### Data Structures
-- Player objects with nested weapon, resources, inventory
-- Location arrays with dynamic reward calculation
-- CSV-based lookup tables for bot decisions
-- Token tracking system for board state
+Dummy tokens for balance: 2 players (Bar + Dojo), 3 players (Station), 4 players (none)
 
-## Recent Improvements
+## Data Collection System (Lines ~11803-11947)
 
-### Game Mode System (Latest Session)
-- **Simultaneous Mode**: Activated when there is exactly 1 human player
-  - All bots select/shop instantly (complete immediately)
-  - Human player takes their time without waiting for turn order
-  - Phase progresses when all players complete their actions
-  - Used for both Selection Phase and Store Phase
-- **Turn-Based Mode**: Activated when there are 2+ human players
-  - Players select/shop sequentially in turn order
-  - Each player's turn is clearly indicated
-  - Phase progresses after all players complete in sequence
-  - Used for both Selection Phase and Store Phase
+### Automated Game Running
+- Batch processing: 1-1000 games, 2-4 players
+- `isAutomatedMode`: Complete DOM bypass, 0ms delays
+- Progress bar with stop button
 
-### Player Status Indicators
-- **Visual Status Panel**: Shows all players with real-time completion status
-  - Player names displayed in their assigned player colors
-  - Status shown with emoji indicators: 🔴 (pending) / 🟢 (completed)
-  - Clean text-only design without background boxes
-  - Appears during Selection and Store phases
-  - Automatically hidden when phase completes
-- **Status Tracking**: Internal `playerCompletionStatus` object tracks each player
-- **Automatic Reset**: Status resets at the start of each new round
+### CSV Export (18 Data Points Per Player)
+`game_id`, `player_count`, `rounds`, `player_id`, `weapon`, `level`, `score`, `rank`, `weapon_track_pos`, `defeated_lv1`, `defeated_lv2`, `defeated_lv3`, `score_monsters`, `score_milestones`, `score_popularity`, `score_plaza`, `score_fakeblood`, `score_other`
 
-### Selection Phase Updates
-- **Mode Detection**: Automatically determines mode based on human player count
-- **Simultaneous Mode Flow**:
-  - All bots triggered immediately upon phase start
-  - Human player sees location cards and selects at their own pace
-  - Bot status indicators turn green instantly
-  - Phase ends when human completes selection
-- **Turn-Based Mode Flow**:
-  - Players select sequentially in turn order
-  - Current player indicator shows whose turn it is
-  - Status indicators turn green as each player completes
-  - Phase ends after last player confirms
+### Ranking
+- Primary: Highest score
+- Tiebreaker: Popularity track level (0-5)
+- Shared ranks for identical score AND level
 
-### Store Phase Updates
-- **Mode Detection**: Uses same mode determination as Selection Phase
-- **Simultaneous Mode Flow**:
-  - All bots shop automatically using priority-based purchasing
-  - Human player sees store interface and shops at their own pace
-  - Bot status indicators turn green after shopping completes
-  - Phase ends when human clicks "Finish Shopping"
-- **Turn-Based Mode Flow**:
-  - Players shop sequentially in turn order
-  - Store interface updates for each player's turn
-  - Status indicators turn green as each player finishes
-  - Phase ends after last player completes shopping
+## UI Systems
 
-### Game Balance Changes (Latest Session)
-- **Player Count**: Changed from 2-5 to 2-4 players maximum
-- **Dummy Tokens**: 2-player games now start at Bar and Dojo
-- **Forest Selection**: Human players can now select Forest without meeting requirements
-  - Warning popup shows at confirmation stage (not during selection)
-  - Lists missing EP/ammunition requirements
-  - Reminds players about Store phase opportunities
-  - Allows strategic planning ahead
+### Modal Dialogs
+1. **Station Modal**: Resource type selection for Station hunters
+2. **Monster Modal**: Level selection, pet choice, beer consumption, battle confirm
+3. **Battle UI**: Player vs Monster stats, attack/tame/defense/item buttons, battle log
+4. **Store**: Item grid with prices/capacity, player inventory, money display
+5. **Capacity Overflow**: Use/upgrade/discard items when over capacity
+6. **Forest Failure**: Warning for insufficient EP/ammo (human can proceed)
+7. **Kick Vote**: Target name, live tally, 30s timer, vote buttons
+8. **Data Collection**: Game count input, player count select
+9. **Game Stats**: Final scores, rankings, weapon levels
+10. **Disconnect**: Notification with return-to-menu button
+11. **Rulebook**: iframe loading Rules_EN.htm
 
-### Bot System Enhancements
-- Tactical item usage during combat phases
-- CSV-based decision tables for consistency
-- Weapon-specific resource priorities
-- Stage-based Forest entry requirements
-- Automatic capacity overflow resolution
-- Forest selection logic: -100 entry penalty without ammunition
+### Player Boards
+- **Expanded view**: Full stats, inventory grid, weapon track, upgrade buttons, restore buttons
+- **Collapsed view**: Compact stats, upgrade buttons, inventory counters
+- Toggle between views with button
+- Button states managed by `shouldDisablePlayerButtons()` and `refreshAllPlayerButtonStates()`
 
-### Bug Fixes
-- Fixed double resource distribution issue
-- Fixed Station resource distribution
-- Bot display updates synchronized with actions
-- Ammunition display updates for all players
-- Score and milestone checkbox updates
-- Weapon power advancement for bots
-- Pet display updates when bots tame
+### Layout
+- CSS Grid/Flexbox responsive layout
+- Left: Player boards (2x2 grid) + Game board (7 location columns) + Status
+- Right: Selection cards + Store + Battle UI + Status panel
+- Split game log (top 50%) / chat (bottom 50%) when online
 
-### UI Improvements
-- Real-time inventory updates with usage buttons
-- Dynamic location rewards based on player count
-- Comprehensive game logging system
-- Player color assignment system
-- Battle action chronological ordering
+## Key Functions Reference
 
-## Development Notes
+| Function | Line | Purpose |
+|----------|------|---------|
+| `BotPlayer.selectHunterLocation()` | ~106 | Bot hunter location AI |
+| `BotPlayer.selectApprenticeLocation()` | ~324 | Bot apprentice location AI |
+| `Game.init()` | ~2436 | UI initialization |
+| `createPlayerBoards()` | ~3796 | Render player board HTML |
+| `createPlayerBoardHTML()` | ~3812 | Expanded board template |
+| `createCollapsedPlayerBoardHTML()` | ~4039 | Collapsed board template |
+| `shouldDisablePlayerButtons()` | ~5416 | Button enable/disable logic per mode |
+| `refreshAllPlayerButtonStates()` | ~5447 | Re-evaluate all button states |
+| `updateResourceDisplay()` | ~5376 | Update all player stats/inventory |
+| `startResourceDistribution()` | ~11284 | Resource distribution phase |
+| `distributeStationResources()` | ~7035 | Station resource handling |
+| `enterStorePhase()` | ~10298 | Store phase dispatch |
+| `handleCapacityOverflow()` | ~6754 | Overflow management |
+| `addToUpgrade()` | ~7460 | HP/EP upgrade with items |
+| `upgradeWeapon()` | ~7667 | Attack/defense dice upgrade with EXP |
+| `startBattlePhase()` | ~11655 | Battle phase orchestration |
+| `executeBotBattle()` | ~3233 | Bot combat AI |
+| `handleBotTacticalItemUsage()` | ~4854 | Bot item optimization |
+| `nextRound()` | ~5208 | End-of-round processing |
+| `applyRemoteGameState()` | ~13332 | Guest state sync from host |
+| `handleGuestPhaseUpdate()` | ~13461 | Guest UI updates per phase |
+| `handleGuestAction()` | ~14530 | Host processes guest actions |
+| `serializeGameState()` | ~13200 | Serialize state for Firebase |
+| `initChat()` | ~15791 | Chat system + keyboard shortcuts |
+| `toggleCannedPanel()` | ~15906 | Canned message panel toggle |
+| `triggerKickVote()` | ~15293 | Start kick vote process |
+| `initPhaseTimers()` | ~15175 | Phase timer setup |
+| `recordGameData()` | ~11803 | Data collection per game |
+| `exportToCSV()` | ~11837 | CSV file generation |
 
-### Key Functions
-- `startResourceDistribution()` (line 6446): Handles resource phase
-- `executeBotBattle()` (line 3233): Bot combat automation
-- `handleBotTacticalItemUsage()` (line 4854): Bot tactical decisions
-- `distributeStationResources()` (line 3825): Station reward distribution
-- `handleCapacityOverflow()` (line 6754): Overflow management
-- `initializePlayerStatusIndicators()` (line 1873): Creates status indicator UI elements
-- `updatePlayerStatus()` (line 1921): Updates individual player completion status
-- `checkAllPlayersComplete()` (line 1941): Checks if all players finished current phase
-- `updateCurrentPlayerSimultaneous()` (line 2126): Handles simultaneous selection start
-- `confirmSelectionSimultaneous()` (line 3346): Handles simultaneous selection completion
-- `enterStorePhaseSimultaneous()` (line 8022): Handles simultaneous store start
-- `finishShoppingSimultaneous()` (line 8868): Handles simultaneous shopping completion
-
-### Testing Considerations
-- Bot decision consistency across stages
-- Resource distribution scaling with player counts
-- Combat item usage optimization
-- Weapon power interactions
-- UI synchronization with game state
-
-## Data Collection System
-
-### CSV Data Export
-- **Automated Game Running**: Configurable batch processing (1-1000 games, 2-4 players)
-- **Performance Optimized**: 0ms delays, DOM updates skipped in automated mode
-- **15 Data Points Per Player**:
-  - `game_id`, `player_count`, `rounds`, `player_id`, `weapon`, `level`, `score`, `rank`
-  - `weapon_track_pos`, `defeated_lv1`, `defeated_lv2`, `defeated_lv3`
-  - `score_monsters`, `score_milestones`, `score_popularity`, `score_plaza`, `score_fakeblood`, `score_other`
-
-### Score Tracking System
-- **Score Sources**: Comprehensive tracking by source type
-  - `scoreFromMonsters`: Points from defeated monsters
-  - `scoreFromMilestones`: HP/EP milestone bonuses (8→+2pts, 10→+4pts)
-  - `scoreFromPopularity`: Popularity track advancement and reward tokens
-  - `scoreFromPlaza`: Plaza location scoring (3 points if alone)
-  - `scoreFromFakeBlood`: Bonus points from Fake Blood items
-  - `scoreFromOther`: Weapon-specific bonuses and miscellaneous sources
-
-### Ranking System
-- **Primary Sort**: Highest score wins
-- **Tiebreaker**: Popularity track level (0-5)
-- **Shared Ranks**: Players with identical score AND level share same rank
-- **Winner Logic**: Game ends at round completion, winner = rank 1 player
-
-### Popularity Track Logic
-- **Point Token**: Permanent position (0-5) representing highest reached level
-- **Reward Token**: Current position affecting resource rewards
-- **Movement Rules**: 
-  - Up if hunter alone at location
-  - Down if crowded (except Knife Lv1+ power)
-  - Forest placement = no change
-- **Scoring**: Point advancement awards points equal to level reached
-
-### Technical Implementation
-- **`processPopularityTrackLogic()`**: Game logic separated from DOM updates
-- **`calculatePlayerRankings()`**: Ranking calculation with tiebreaker handling
-- **`determineWinner()`**: Proper winner selection using ranking system
-- **DOM Protection**: All UI updates wrapped with `isAutomatedMode` checks
-
-### Data Collection Functions
-- **`recordGameData()`**: Collects 15 data points per player
-- **`exportToCSV()`**: Automatic CSV download with timestamp
-- **`runAutomatedGames()`**: Batch processing with progress tracking
-- **`startDataCollection()`**: UI entry point for automated collection
-
-### Performance Features
-- **DOM Avoidance**: Complete UI bypass during automated games
-- **Speed Optimization**: Minimal delays between phases
-- **Error Handling**: Protected against null DOM references
-- **Memory Efficiency**: Game state reset between automated runs
-
-## Future Enhancements
-- Network multiplayer support
-- Additional weapons and powers
-- New locations and resources
-- Advanced bot difficulty levels
-- Achievement system
-- Real-time statistics dashboard
+## Technical Stack
+- **Frontend**: Vanilla JavaScript ES6, HTML5, CSS3
+- **Backend**: Firebase Realtime Database (hosting/auth not used)
+- **Dependencies**: Firebase SDK v9.23.0 (compat mode) only - no other libraries
+- **Data Export**: CSV format with comprehensive game metrics
 
 ---
-*Last Updated: Current session*
-*Game Version: 1.2 - Simultaneous/Turn-Based Mode System*
-*Technical Stack: Vanilla JavaScript ES6, HTML5, CSS3*
-*Data Export: CSV format with comprehensive game metrics*
-- add to memory.
-- to memorize
-- to memorize
-- add to memory.
-- to memorize
-- to memorize
+*Last Updated: 2025-03-18*
+*Game Version: 1.3 - Online Multiplayer with Chat & Kick System*
