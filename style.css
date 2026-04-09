@@ -259,7 +259,7 @@ h1 {
 
 .stat-max {
     color: #95a5a6;
-    font-size: 11px;
+    font-size: 14px;
 }
 
 .upgrade-section {
@@ -379,6 +379,13 @@ h1 {
 .dice-stat span:first-child {
     min-width: 75px;
     color: #95a5a6;
+}
+
+/* Expanded-board dice value (the 2nd span inside .dice-stat) — match HP value size */
+.player-board:not(.collapsed) .dice-stat > span:nth-child(2) {
+    font-size: 14px;
+    font-weight: bold;
+    color: #fff;
 }
 
 .dice-stat button {
@@ -2971,7 +2978,7 @@ button {
 }
 
 .slot-toggle {
-    background-color: #e74c3c;
+    background-color: #27ae60;
     color: white;
     padding: 5px 15px;
     border: none;
@@ -2982,7 +2989,7 @@ button {
 }
 
 .slot-toggle:hover {
-    background-color: #c0392b;
+    background-color: #229954;
 }
 
 .slot-activate {
@@ -2998,6 +3005,21 @@ button {
 
 .slot-activate:hover {
     background-color: #229954;
+}
+
+.slot-remove {
+    background-color: #e74c3c;
+    color: white;
+    padding: 5px 15px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s;
+}
+
+.slot-remove:hover {
+    background-color: #c0392b;
 }
 
 .ready-btn {

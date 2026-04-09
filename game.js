@@ -836,11 +836,7 @@ class BotPlayer {
         // Log all actions taken
         if (logActions.length > 0) {
             const actionsList = logActions.join(', ');
-            game.addLogEntry(
-                `🔧 <strong>${player.name}</strong> (Bot) resolved capacity overflow: ${actionsList}`,
-                'system',
-                player
-            );
+            game.addLogEntryT('log.botCapacityOverflow', [player, actionsList], 'system', player);
         }
         
         return logActions.length > 0;
@@ -2762,6 +2758,22 @@ class Game {
     }
 
     /**
+     * Translate an internal English resource name (money/exp/hp/ep/beer/bloodBag) to the current language.
+     */
+    getResourceDisplayName(internalName) {
+        const map = {
+            'money': 'common.money',
+            'exp': 'common.exp',
+            'hp': 'common.hp',
+            'ep': 'common.ep',
+            'beer': 'common.beer',
+            'bloodBag': 'common.bloodBag'
+        };
+        const key = map[internalName];
+        return key ? t(key) : internalName;
+    }
+
+    /**
      * Translate a weapon power description (Lv1/Lv2/Lv3) to the current language.
      */
     getWeaponPowerDesc(weaponName, level) {
@@ -3866,7 +3878,7 @@ class Game {
                         <button class="slot-toggle" onclick="game.toggleSlotType(${index})">
                             ${slot.type === 'player' ? t('setup.changeToBot') : t('setup.changeToPlayer')}
                         </button>
-                        ${index > 0 ? `<button class="slot-activate" onclick="game.activateSlot(${index})">${t('setup.remove')}</button>` : ''}
+                        ${index > 0 ? `<button class="slot-remove" onclick="game.activateSlot(${index})">${t('setup.remove')}</button>` : ''}
                     </div>
                 `;
             } else {
@@ -5824,7 +5836,7 @@ class Game {
 
         // Update weapon display (exists in both views)
         const weaponName = document.getElementById(`${prefix}-weapon-name`);
-        if (weaponName) weaponName.textContent = player.weapon.name;
+        if (weaponName) weaponName.textContent = this.getWeaponDisplayName(player.weapon.name);
 
         const weaponImage = document.getElementById(`${prefix}-weapon-image`);
         if (weaponImage) weaponImage.src = `${player.weapon.name.toLowerCase()}.png`;
@@ -5939,10 +5951,11 @@ class Game {
             const lostAmount = newValue - maxValue;
             console.log(`${player.name} lost ${lostAmount} ${resourceType} due to max cap of ${maxValue}`);
             if (resourceType === 'money' || resourceType === 'exp') {
-                this.addLogEntryT('log.maxResourceReached', [player, resourceType, maxValue, lostAmount], 'system', player);
+                const localizedResource = this.getResourceDisplayName(resourceType);
+                this.addLogEntryT('log.maxResourceReached', [player, localizedResource, maxValue, lostAmount], 'system', player);
                 // Show alert for human players only
                 if (!player.isBot && !this.isAutomatedMode) {
-                    alert(t('alert.maxResource', this.getPlayerDisplayName(player), resourceType, maxValue, lostAmount));
+                    alert(t('alert.maxResource', this.getPlayerDisplayName(player), localizedResource, maxValue, lostAmount));
                 }
             }
         }
@@ -6024,7 +6037,7 @@ class Game {
 
         // Log the upgrade
         if (!this.isAutomatedMode) {
-            this.addLogEntryT('log.maxResourceUpgraded', [player, resourceType.toUpperCase(), player.maxResources[resourceType]], 'system', player);
+            this.addLogEntryT('log.maxResourceUpgraded', [player, this.getResourceDisplayName(resourceType), player.maxResources[resourceType]], 'system', player);
         }
         
         // Make sure current doesn't exceed max (though it shouldn't with this logic)
@@ -6779,15 +6792,16 @@ class Game {
                     // Apply damage cap to item damage as well
                     let finalItemDamage = itemDamage;
                     const itemDamageCap = this.applyBattleEffect(monster, 'damageCap');
+                    const localizedItemsUsed = itemsUsed.map(n => this.getItemDisplayName(n)).join(', ');
                     if (itemDamageCap !== null) {
                         finalItemDamage = Math.min(itemDamage, itemDamageCap);
                         if (itemDamage > itemDamageCap) {
-                            battleActions.push({k:'battle.itemsUsedCapped', a:[this.getPlayerDisplayName(player), itemsUsed.join(', '), finalItemDamage, itemDamage]});
+                            battleActions.push({k:'battle.itemsUsedCapped', a:[this.getPlayerDisplayName(player), localizedItemsUsed, finalItemDamage, itemDamage]});
                         } else {
-                            battleActions.push({k:'battle.itemsUsedDamage', a:[this.getPlayerDisplayName(player), itemsUsed.join(', '), finalItemDamage]});
+                            battleActions.push({k:'battle.itemsUsedDamage', a:[this.getPlayerDisplayName(player), localizedItemsUsed, finalItemDamage]});
                         }
                     } else {
-                        battleActions.push({k:'battle.itemsUsedDamage', a:[this.getPlayerDisplayName(player), itemsUsed.join(', '), finalItemDamage]});
+                        battleActions.push({k:'battle.itemsUsedDamage', a:[this.getPlayerDisplayName(player), localizedItemsUsed, finalItemDamage]});
                     }
                     currentMonsterHP -= finalItemDamage;
                 }
@@ -8044,10 +8058,7 @@ class Game {
                 const moneyLoss = Math.min(player.resources.money, 2);
                 if (moneyLoss > 0) {
                     this.modifyResource(player.id, 'money', -moneyLoss);
-                    this.showEffectNotification(
-                        `Monster steals ${moneyLoss} money from ${player.name}!`,
-                        `This monster has the ability to steal money when selected.`
-                    );
+                    this.showEffectNotificationT('effect.stealMoney.notify', [moneyLoss, player]);
                 }
                 break;
                 
@@ -8072,10 +8083,7 @@ class Game {
                 const hpBonusExists = this.activeMonsterEffects.some(effect => effect.type === 'otherMonstersHPBonus');
                 if (!hpBonusExists) {
                     this.activeMonsterEffects.push({ type: 'otherMonstersHPBonus', value: 1 });
-                    this.showEffectNotification(
-                        `All other monsters gain +1 HP this round!`,
-                        `This monster's presence strengthens all other monsters in the forest.`
-                    );
+                    this.showEffectNotificationT('effect.boostOthers.notify', []);
                 }
                 break;
                 
@@ -8089,10 +8097,7 @@ class Game {
                     }
                 });
                 if (affectedPlayers9.length > 0) {
-                    this.showEffectNotification(
-                        `Players not in forest lose 1 HP: ${affectedPlayers9.join(', ')}`,
-                        `This monster's aura damages all players who chose not to enter the forest.`
-                    );
+                    this.showEffectNotificationT('effect.damageNonForest1.notify', [affectedPlayers9.join(', ')]);
                 }
                 break;
                 
@@ -8107,10 +8112,7 @@ class Game {
                     }
                 });
                 if (affectedPlayers23.length > 0) {
-                    this.showEffectNotification(
-                        `Players not in forest lose 2 EXP: ${affectedPlayers23.join(', ')}`,
-                        `This monster drains the experience of those who avoid the forest.`
-                    );
+                    this.showEffectNotificationT('effect.drainExpNonForest.notify', [affectedPlayers23.join(', ')]);
                 }
                 break;
                 
@@ -8126,10 +8128,7 @@ class Game {
                     }
                 });
                 if (affectedPlayers25.length > 0) {
-                    this.showEffectNotification(
-                        `Players not in forest lose HP: ${affectedPlayers25.join(', ')}`,
-                        `This powerful monster's aura severely damages those outside the forest.`
-                    );
+                    this.showEffectNotificationT('effect.damageNonForest2.notify', [affectedPlayers25.join(', ')]);
                 }
                 break;
                 
@@ -8331,10 +8330,7 @@ class Game {
                     }
                 });
                 if (affectedPlayers.length > 0) {
-                    this.showEffectNotification(
-                        t('effect.deathCurse', affectedPlayers.join(', ')),
-                        t('effect.deathCurseTooltip')
-                    );
+                    this.showEffectNotificationT('effect.deathCurse', [affectedPlayers.join(', ')]);
                 }
                 break;
         }
@@ -8358,11 +8354,21 @@ class Game {
     }
     
     showEffectNotification(message, effectDescription) {
-        
         // Add to log (but skip in automated mode for performance)
         if (!this.isAutomatedMode) {
             this.addLogEntryT('battle.monsterEffectMessage', [message], 'effect');
         }
+    }
+
+    /**
+     * Translation-aware version: pass an i18n key + args, the wrapper "Monster Effect: {0}"
+     * receives a translatable inner-key marker so the inner text translates locally too.
+     */
+    showEffectNotificationT(innerKey, innerArgs) {
+        if (this.isAutomatedMode) return;
+        // Embed an inner translation marker as the {0} arg of the wrapper key.
+        const marker = this.tArg(innerKey, ...innerArgs);
+        this.addLogEntryT('battle.monsterEffectMessage', [marker], 'effect');
     }
 
     selectRandomAvailableMonster(level, playerId = null) {
@@ -8673,10 +8679,7 @@ class Game {
             // Check if player can afford extra EP
             if (player.resources.ep >= extraEPCost) {
                 this.modifyResource(playerId, 'ep', -extraEPCost);
-                this.showEffectNotification(
-                    `${player.name} must pay ${extraEPCost} extra EP!`,
-                    `This monster requires additional energy to engage in combat.`
-                );
+                this.showEffectNotificationT('effect.extraEPCost', [player, extraEPCost]);
             } else {
                 // Player can't afford extra EP - cannot fight this monster
                 if (!this.isAutomatedMode) {
@@ -8959,10 +8962,7 @@ class Game {
             
             if (attacksFirst) {
                 console.log(`Monster effect ${battle.monster.effectId}: Monster attacks first (player defense: ${defenseCount})`);
-                this.showEffectNotification(
-                    `Monster attacks first!`,
-                    `${player.name}'s defense (${defenseCount} dice) is too low. The monster gains initiative!`
-                );
+                this.showEffectNotificationT('effect.monsterFirstStrike', []);
                 // Set battle to start with monster attack
                 battle.turn = 'monster_attack_first';
             }
@@ -9347,7 +9347,8 @@ class Game {
             }
             
             monster.hp = Math.max(0, monster.hp);
-            this.logBattleActionT('battle.itemsUsed', [player, itemsUsed.join(', '), monster.hp], player);
+            const localizedItems = itemsUsed.map(n => this.getItemDisplayName(n)).join(', ');
+            this.logBattleActionT('battle.itemsUsed', [player, localizedItems, monster.hp], player);
             
             // Update displays
             this.updateResourceDisplay();
@@ -9429,7 +9430,8 @@ class Game {
         }
         
         if (itemsUsed.length > 0) {
-            this.logBattleActionT('battle.recoveryItemsUsed', [player, itemsUsed.join(', ')], player);
+            const localizedRecovery = itemsUsed.map(n => this.getItemDisplayName(n)).join(', ');
+            this.logBattleActionT('battle.recoveryItemsUsed', [player, localizedRecovery], player);
             this.updateResourceDisplay();
             this.updateInventoryDisplayOld();
             this.updateInventoryDisplay(player.id);
@@ -9862,10 +9864,7 @@ class Game {
             const maxHp = battle.monster.maxHp;
             if (currentHp <= Math.floor(maxHp / 2)) {
                 monsterAttack += 1;
-                this.showEffectNotification(
-                    `Monster becomes enraged! Attack increased to ${monsterAttack}!`,
-                    `When wounded to half HP or less, this monster gains +1 attack power.`
-                );
+                this.showEffectNotificationT('effect.monsterEnraged', [monsterAttack]);
             }
         }
         
@@ -10053,10 +10052,7 @@ class Game {
         if (monster.effectId === 20) {
             requiredEP += 1;
             console.log(`Monster effect 20: Requires +1 EP to tame (total: ${requiredEP} EP)`);
-            this.showEffectNotification(
-                `This monster requires +1 EP to tame!`,
-                `This monster is harder to tame than usual. Total EP cost: ${requiredEP}`
-            );
+            this.showEffectNotificationT('effect.extraTameCost', []);
         }
         
         // Check if taming is possible (consider Chain weapon special HP requirement)
@@ -10340,29 +10336,32 @@ class Game {
         const powerDesc2 = document.getElementById(`p${playerId}-power-desc-2`);
         const powerDesc3 = document.getElementById(`p${playerId}-power-desc-3`);
 
+        const desc1 = this.getWeaponPowerDesc(player.weapon.name, 1) || t('common.none');
+        const desc2 = this.getWeaponPowerDesc(player.weapon.name, 2) || t('common.none');
+        const desc3 = this.getWeaponPowerDesc(player.weapon.name, 3) || t('common.none');
+
         if (powerDesc1) {
-            powerDesc1.textContent = player.weapon.lv1Power || 'No power';
-            powerDesc1.closest('.power-level').setAttribute('data-tooltip', player.weapon.lv1Power || 'No power');
+            powerDesc1.textContent = desc1;
+            powerDesc1.closest('.power-level').setAttribute('data-tooltip', desc1);
         }
         if (powerDesc2) {
-            powerDesc2.textContent = player.weapon.lv2Power || 'No power';
-            powerDesc2.closest('.power-level').setAttribute('data-tooltip', player.weapon.lv2Power || 'No power');
+            powerDesc2.textContent = desc2;
+            powerDesc2.closest('.power-level').setAttribute('data-tooltip', desc2);
         }
         if (powerDesc3) {
-            powerDesc3.textContent = player.weapon.lv3Power || 'No power';
-            powerDesc3.closest('.power-level').setAttribute('data-tooltip', player.weapon.lv3Power || 'No power');
+            powerDesc3.textContent = desc3;
+            powerDesc3.closest('.power-level').setAttribute('data-tooltip', desc3);
         }
     }
     
     activateWeaponPower(playerId, level, battleActions = null) {
         const player = this.players.find(p => p.id === playerId);
         if (!player) return;
-        
-        const unlockMessage = `${player.name} unlocks Level ${level} weapon power!`;
+
         if (battleActions) {
-            battleActions.push(unlockMessage);
+            battleActions.push({k: 'battle.unlocksWeaponPower', a: [player, level]});
         } else {
-            this.logBattleAction(unlockMessage, player);
+            this.logBattleActionT('battle.unlocksWeaponPower', [player, level], player);
         }
         
         // Apply power effects based on weapon and level
@@ -10380,11 +10379,10 @@ class Game {
                 break;
             default:
                 // For weapons without implemented powers yet
-                const powerMessage = `${weaponName} Level ${level} power effect not yet implemented`;
                 if (battleActions) {
-                    battleActions.push(powerMessage);
+                    battleActions.push({k: 'battle.powerNotImplemented', a: [this.getWeaponDisplayName(weaponName), level]});
                 } else {
-                    this.logBattleAction(powerMessage, player);
+                    this.logBattleActionT('battle.powerNotImplemented', [this.getWeaponDisplayName(weaponName), level], player);
                 }
                 break;
         }
@@ -10556,8 +10554,11 @@ class Game {
     logBattleActionT(key, args, player = null) {
         if (!Array.isArray(args)) args = [];
 
+        // Resolve special markers (player objects, item names) before local render
+        const resolvedArgs = args.map((a) => this._resolveLogArg(a));
+
         // Render to local battle modal
-        const localText = t.apply(null, [key].concat(args));
+        const localText = t.apply(null, [key].concat(resolvedArgs));
         const log = document.getElementById('battle-log');
         if (log) {
             const logEntry = document.createElement('div');
@@ -10569,7 +10570,7 @@ class Game {
 
         // Render to local main game log with the ⚔️ prefix
         if (!this.isAutomatedMode) {
-            this.addLogEntry(`⚔️ ${localText}`, 'battle', player);
+            this.addLogEntry('⚔️ ' + localText, 'battle', player);
         }
 
         // Push structured entry for network sync; convert player-objects in args
@@ -12776,8 +12777,7 @@ class Game {
         });
         
         // Show next round transition
-        document.getElementById('status-message').textContent = 
-            'Round complete! All tokens returned to players. Starting next round...';
+        document.getElementById('status-message').textContent = t('status.roundCompleteNext');
         
         // Automatically proceed to next round after a brief delay
         setTimeout(() => {
