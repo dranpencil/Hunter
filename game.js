@@ -4064,15 +4064,19 @@ class Game {
         const container = document.getElementById('player-boards-container');
         container.innerHTML = ''; // Clear existing content
 
+        // Default to collapsed view
+        this.boardsCollapsed = true;
+
         this.players.forEach(player => {
-            const playerBoard = this.createPlayerBoardHTML(player);
+            const playerBoard = this.createCollapsedPlayerBoardHTML(player);
             container.appendChild(playerBoard);
         });
 
-        // Show the toggle button
+        // Show the toggle button with correct label
         const toggleBtn = document.getElementById('toggle-boards-btn');
         if (toggleBtn) {
             toggleBtn.style.display = 'block';
+            toggleBtn.textContent = t('status.toggleBoardsExpand');
         }
     }
     
@@ -8588,8 +8592,8 @@ class Game {
         // Store previous consumption amount
         const previousConsumption = this.monsterSelectBeerConsumption || 0;
 
-        // Calculate max beers that can be consumed (only limited by available beers)
-        const maxConsumable = beerCount;
+        // Calculate max beers that can be consumed (remaining + already consumed = original total)
+        const maxConsumable = beerCount + previousConsumption;
 
         // Calculate new selected count (min 0, max available beers)
         const newConsumption = Math.max(0, Math.min(maxConsumable, previousConsumption + delta));
@@ -13426,8 +13430,8 @@ class Game {
         // Store previous consumption amount
         const previousConsumption = this.selectedBeerConsumption || 0;
 
-        // Calculate max beers that can be consumed (only limited by available beers, not EP capacity)
-        const maxConsumable = beerCount;
+        // Calculate max beers that can be consumed (remaining + already consumed = original total)
+        const maxConsumable = beerCount + previousConsumption;
 
         // Calculate new selected count (min 0, max available beers)
         const newConsumption = Math.max(0, Math.min(maxConsumable, previousConsumption + delta));
@@ -13862,6 +13866,7 @@ class Game {
         this.players.forEach(p => this.updateInventoryDisplay(p.id));
         this.updateDummyTokenDisplay();
         this.players.forEach(p => this.updatePopularityTrackDisplay(p.id));
+        this.updatePetDisplay();
         this.applyPlayerNameColors();
 
         // Refresh button states so upgrade/restore buttons reflect synced resources
