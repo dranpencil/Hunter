@@ -1648,7 +1648,7 @@ class Game {
 
         this.createPlayerBoards();
         const playerBoardsContainer = document.getElementById('player-boards-container');
-        playerBoardsContainer.className = `player-boards players-${config.playerCount}`;
+        playerBoardsContainer.className = `player-boards players-${config.playerCount} collapsed`;
 
         this.roundPhase = 'selection';
         this.pendingSelectionLogs = [];
@@ -1730,7 +1730,7 @@ class Game {
 
         this.createPlayerBoards();
         const playerBoardsContainer = document.getElementById('player-boards-container');
-        playerBoardsContainer.className = `player-boards players-${config.playerCount}`;
+        playerBoardsContainer.className = `player-boards players-${config.playerCount} collapsed`;
 
         this.roundPhase = 'init'; // Set to 'init' so first state update triggers phase transition logic (including timer init)
         this.pendingSelectionLogs = [];
