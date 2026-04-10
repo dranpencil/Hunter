@@ -3202,6 +3202,12 @@ button {
     flex-direction: column;
 }
 
+/* When chat is active (online mode), keep the log+chat panel above modals
+   so players can still type messages while spectating someone's battle */
+.game-log-section.has-chat {
+    z-index: 1001;
+}
+
 .log-header {
     background-color: #2c3e50;
     padding: 15px;

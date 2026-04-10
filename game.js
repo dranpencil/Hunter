@@ -1135,6 +1135,7 @@ class Game {
         this.guestBattleActionQueue = []; // Queue of guest battle actions to process
         this.waitingForGuestAction = false; // Whether host is waiting for guest input
         this.onlineBattleState = null; // Battle state synced to Firebase
+        this.guestBattleEnding = false; // Guard: true while guest sees victory/defeat for 3s
 
         // Chat properties
         this.pendingTacticsMessage = null;
@@ -4501,10 +4502,11 @@ class Game {
         }
 
         // Refresh store display if in store phase to update capacity warnings
+        // But don't re-show the store if the player already finished shopping
         if (this.roundPhase === 'store') {
             if (this.gameMode === 'online') {
-                // Only refresh store for the local player, not remote players
-                if (player.id === this.localPlayerId) {
+                // Only refresh store for the local player, not remote players, and only if still shopping
+                if (player.id === this.localPlayerId && !this.playerCompletionStatus[this.localPlayerId]) {
                     this.showStoreForPlayer(player);
                 }
             } else if (this.gameMode === 'simultaneous') {
@@ -4565,10 +4567,11 @@ class Game {
         }
 
         // Refresh store display if in store phase to update capacity warnings
+        // But don't re-show the store if the player already finished shopping
         if (this.roundPhase === 'store') {
             if (this.gameMode === 'online') {
-                // Only refresh store for the local player, not remote players
-                if (player.id === this.localPlayerId) {
+                // Only refresh store for the local player, not remote players, and only if still shopping
+                if (player.id === this.localPlayerId && !this.playerCompletionStatus[this.localPlayerId]) {
                     this.showStoreForPlayer(player);
                 }
             } else if (this.gameMode === 'simultaneous') {
@@ -8981,6 +8984,25 @@ class Game {
         // In online mode, if this is a remote player's battle, show spectator view on host
         if (this.gameMode === 'online' && this.isHost && player.id !== this.localPlayerId) {
             console.log('Remote player battle - showing spectator view on host');
+
+            // If monster attacks first, execute the first strike on host before pushing state
+            if (battle.turn === 'monster_attack_first') {
+                battle.turn = 'monster';
+                // Push initial state so guest sees "Monster attacks first!" message
+                this.pushBattleStateToGuest();
+                // Execute monster attack after 1-second delay (same as local flow)
+                setTimeout(() => {
+                    if (this.currentBattle) {
+                        this.monsterAttackPlayer();
+                        this.updateHostSpectatorView();
+                        this.pushBattleStateToGuest();
+                    }
+                }, 1000);
+            } else {
+                // Normal flow — push state and wait for guest actions
+                this.pushBattleStateToGuest();
+            }
+
             const battleState = this.serializeBattleState();
             if (battleState) {
                 this.showBattleSpectator(battleState);
@@ -9967,13 +9989,11 @@ class Game {
             // Allow item usage before player's next attack
             battle.turn = 'player_items_after_monster';
 
-            // Hide Knife Lv3 2x damage button after monster attack
-            if (battle.canUseDoubleDamage) {
-                battle.canUseDoubleDamage = false;
-                const doubleDamageBtn = document.getElementById('battle-double-damage-btn');
-                if (doubleDamageBtn) {
-                    doubleDamageBtn.style.display = 'none';
-                }
+            // Hide Knife Lv3 2x damage button during monster attack (don't clear the flag —
+            // it persists until used, so it re-appears on the next player turn)
+            const doubleDamageBtn = document.getElementById('battle-double-damage-btn');
+            if (doubleDamageBtn) {
+                doubleDamageBtn.style.display = 'none';
             }
 
             this.updateBattlePhase();
@@ -10202,9 +10222,14 @@ class Game {
             state.roundPhase = 'battle';
             state.battleState = battleState;
             state.battlePhase = 'ended';
-            state.guestBattle = false;
+            // Preserve guestBattle flag so the guest's own battle ending goes through
+            // the correct code path (guest branch, not spectator branch)
             if (battleState) {
                 state.currentBattlePlayerId = battleState.playerId;
+                const battlePlayer = this.players.find(p => p.id === battleState.playerId);
+                state.guestBattle = battlePlayer && !battlePlayer.isBot && battleState.playerId !== this.localPlayerId;
+            } else {
+                state.guestBattle = false;
             }
             this.onlineManager.pushGameState(state);
         }
@@ -10378,12 +10403,6 @@ class Game {
                 this.applyPlasmaPower(player, level, battleActions);
                 break;
             default:
-                // For weapons without implemented powers yet
-                if (battleActions) {
-                    battleActions.push({k: 'battle.powerNotImplemented', a: [this.getWeaponDisplayName(weaponName), level]});
-                } else {
-                    this.logBattleActionT('battle.powerNotImplemented', [this.getWeaponDisplayName(weaponName), level], player);
-                }
                 break;
         }
     }
@@ -13931,6 +13950,17 @@ class Game {
                 localPlayer.selectedCards = { hunter: null, apprentice: null };
             }
 
+            // Disable apprentice Forest card by default (only enabled when hunter selects Forest)
+            const apprenticeForestCard = document.querySelector(`#apprentice-cards .location-card[data-location-id="7"]`);
+            if (apprenticeForestCard) {
+                apprenticeForestCard.classList.add('disabled');
+                apprenticeForestCard.style.cursor = 'not-allowed';
+                apprenticeForestCard.style.pointerEvents = 'none';
+                apprenticeForestCard.style.backgroundColor = '#7f8c8d';
+                apprenticeForestCard.style.borderColor = '#95a5a6';
+                apprenticeForestCard.style.opacity = '0.5';
+            }
+
             // Initialize and start local phase timers for guest
             this.initPhaseTimers();
             this.players.forEach(p => {
@@ -14587,7 +14617,11 @@ class Game {
         }
 
         // Guest's own battle — hide any leftover spectator UI from prior bot battles
-        document.getElementById('monster-battle').style.display = 'none';
+        // BUT skip if we're in the 3-second "battle ending" delay OR if the battle just ended
+        // (so the player can see the victory/defeat result before the UI closes)
+        if (!this.guestBattleEnding && state.battlePhase !== 'ended') {
+            document.getElementById('monster-battle').style.display = 'none';
+        }
 
         if (state.battlePhase === 'monster_select') {
             // Guest needs to select monster level — start local timer
@@ -14623,6 +14657,8 @@ class Game {
         }
 
         if (state.battlePhase === 'active' && state.battleState) {
+            // New active battle — cancel any ending state
+            this.guestBattleEnding = false;
             // Hide monster selection modals if still showing
             document.getElementById('monster-modal').style.display = 'none';
             document.getElementById('monster-selection-modal').style.display = 'none';
@@ -14647,13 +14683,26 @@ class Game {
             this.showBattleUIForGuest(state.battleState);
         }
 
-        if (state.battlePhase === 'ended') {
+        if (state.battlePhase === 'ended' && !this.guestBattleEnding) {
             // Stop battle timer
             this.stopAllPhaseTimers();
+
+            // Update the battle log with the final state (includes reward messages,
+            // weapon power advance, etc. that weren't in the last 'active' push)
+            if (state.battleState && state.battleState.battleLogHTML) {
+                const battleLog = document.getElementById('battle-log');
+                if (battleLog) {
+                    battleLog.innerHTML = state.battleState.battleLogHTML;
+                }
+            }
+
+            // Set guard flag so subsequent state pushes don't hide the battle UI early
+            this.guestBattleEnding = true;
             // Delay hiding to let guest see the final battle result (matches host's 3s delay)
             setTimeout(() => {
                 document.getElementById('monster-battle').style.display = 'none';
                 document.getElementById('battle-log').innerHTML = '';
+                this.guestBattleEnding = false;
             }, 3000);
         }
     }
@@ -14801,7 +14850,7 @@ class Game {
         } else if (turn === 'player_items' && hasAttacked) {
             // After attacking — show Defense button, items, and possibly double damage
             // Tame is NOT available here — must wait until after monster attacks back
-            turnText.textContent = 'You can use items or proceed to defense!';
+            turnText.textContent = t('battle.useItemsOrDefend');
             defenseBtn.style.display = 'inline-block';
             defenseBtn.disabled = false;
             defenseBtn.onclick = () => {
@@ -14823,7 +14872,7 @@ class Game {
             this.showGuestBattleItems(battleState, itemBtns);
         } else if (turn === 'player_items' || turn === 'player_items_after_monster' || turn === 'player') {
             // Player can attack — show Attack button and items
-            turnText.textContent = 'Your turn to attack!';
+            turnText.textContent = t('battle.yourTurn');
             attackBtn.style.display = 'inline-block';
             attackBtn.disabled = false;
             attackBtn.onclick = () => {
@@ -14834,6 +14883,7 @@ class Game {
             // Show tame button if applicable
             if (battleState.canTame) {
                 tameBtn.style.display = 'inline-block';
+                tameBtn.disabled = false;
                 tameBtn.onclick = () => {
                     this.onlineManager.pushAction({ type: 'battle_tame', playerId: this.localPlayerId });
                     tameBtn.disabled = true;
@@ -14843,7 +14893,7 @@ class Game {
             // Show usable items
             this.showGuestBattleItems(battleState, itemBtns);
         } else {
-            turnText.textContent = 'Waiting...';
+            turnText.textContent = t('battle.waiting');
         }
     }
 
@@ -14883,33 +14933,34 @@ class Game {
     }
 
     showGuestBattleItems(battleState, itemBtns) {
-        if (!battleState.playerInventory) return;
+        // Firebase drops empty arrays (converts [] to null), so treat missing as empty
+        const inventory = battleState.playerInventory || [];
 
         const battleItems = [
-            { name: 'Beer', icon: '🍺', effect: 'Recover 1 EP' },
-            { name: 'Blood Bag', icon: '🩸', effect: 'Recover 1 HP' },
-            { name: 'Grenade', icon: '💣', effect: 'Monster -1 HP' },
-            { name: 'Bomb', icon: '💥', effect: 'Monster -2 HP' },
-            { name: 'Dynamite', icon: '🧨', effect: 'Monster -3 HP' },
-            { name: 'Fake Blood', icon: '🩹', effect: 'Bonus +2 PTS' }
+            { name: 'Beer', icon: '🍺', effectKey: 'item.beer.battleEffect' },
+            { name: 'Blood Bag', icon: '🩸', effectKey: 'item.bloodBag.battleEffect' },
+            { name: 'Grenade', icon: '💣', effectKey: 'item.grenade.battleEffect' },
+            { name: 'Bomb', icon: '💥', effectKey: 'item.bomb.battleEffect' },
+            { name: 'Dynamite', icon: '🧨', effectKey: 'item.dynamite.battleEffect' },
+            { name: 'Fake Blood', icon: '🩹', effectKey: 'item.fakeBlood.battleEffect' }
         ];
 
         battleItems.forEach(item => {
-            const itemCount = battleState.playerInventory.filter(inv => inv.name === item.name).length;
+            const itemCount = inventory.filter(inv => inv.name === item.name).length;
             const btn = document.createElement('button');
             btn.className = 'battle-item-btn';
-            btn.innerHTML = `${item.icon} ${item.name} (${itemCount})`;
-            btn.title = item.effect;
+            btn.innerHTML = `${item.icon} ${this.getItemDisplayName(item.name)} (${itemCount})`;
+            btn.title = t(item.effectKey);
 
             let isDisabled = itemCount === 0;
 
             if (item.name === 'Beer' && battleState.playerEP >= battleState.playerMaxEP) {
                 isDisabled = true;
-                btn.title = 'EP is already at maximum';
+                btn.title = t('tooltip.epFull');
             }
             if (item.name === 'Blood Bag' && battleState.playerHP >= battleState.playerMaxHP) {
                 isDisabled = true;
-                btn.title = 'HP is already at maximum';
+                btn.title = t('tooltip.hpFull');
             }
 
             btn.disabled = isDisabled;
@@ -15288,15 +15339,9 @@ class Game {
 
     handleGuestBattleItem(action) {
         this.useBattleItem(action.data.itemName);
-
         this.updateHostSpectatorView();
-        if (this.currentBattle) {
-            setTimeout(() => {
-                if (this.currentBattle) {
-                    this.pushBattleStateToGuest();
-                }
-            }, 100);
-        }
+        // State push is already handled inside useBattleItem() at line 9850
+        // (or inside monsterDefeated() if the item killed the monster).
     }
 
     handleGuestBattleTame(action) {
