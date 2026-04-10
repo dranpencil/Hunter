@@ -1989,7 +1989,7 @@ class Game {
         
         // Set player board grid class
         const playerBoardsContainer = document.getElementById('player-boards-container');
-        playerBoardsContainer.className = `player-boards players-${playerCount}`;
+        playerBoardsContainer.className = `player-boards players-${playerCount} collapsed`;
         
         
         // Initialize the game UI
@@ -4038,7 +4038,7 @@ class Game {
         this.createPlayerBoards();
         
         const playerBoardsContainer = document.getElementById('player-boards-container');
-        playerBoardsContainer.className = `player-boards players-${playerCount}`;
+        playerBoardsContainer.className = `player-boards players-${playerCount} collapsed`;
         
         this.roundPhase = 'selection';
         this.pendingSelectionLogs = []; // Clear any pending logs
@@ -4066,6 +4066,7 @@ class Game {
 
         // Default to collapsed view
         this.boardsCollapsed = true;
+        container.classList.add('collapsed');
 
         this.players.forEach(player => {
             const playerBoard = this.createCollapsedPlayerBoardHTML(player);
