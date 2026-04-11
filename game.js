@@ -223,12 +223,10 @@ class BotPlayer {
                 entries[7] -= 100; // Strong penalty: no bullets AND can't afford to buy
             }
         } else if (player.weapon.name === 'Plasma') {
-            // Level 3 has infinite batteries - no penalty needed
-            if (player.weapon.powerTrackPosition < 7) {
-                const batteries = player.inventory.filter(item => item.name === 'Battery').length;
-                if (batteries === 0 && player.resources.money < 2) {
-                    entries[7] -= 100; // Strong penalty: no batteries AND can't afford to buy
-                }
+            // Plasma always needs batteries to attack (Lv3 power was changed to +2 EXP at round start)
+            const batteries = player.inventory.filter(item => item.name === 'Battery').length;
+            if (batteries === 0 && player.resources.money < 2) {
+                entries[7] -= 100; // Strong penalty: no batteries AND can't afford to buy
             }
         }
         
@@ -987,16 +985,16 @@ class BotPlayer {
     }
     
     canTameMonster(monster) {
-        // Chain weapon can tame monsters with HP <= 3
+        // Chain Lv1 power: tame monsters with HP <= 3
         if (this.weapon.name === 'Chain') {
             return monster.hp <= 3;
         }
-        
-        // Whip weapon has different taming rules (if applicable)
+
+        // Whip can also tame, but only at default HP=1 (its powers only reduce EP cost)
         if (this.weapon.name === 'Whip') {
-            return monster.hp <= 3; // Assuming similar rule
+            return monster.hp <= 1;
         }
-        
+
         return false;
     }
     
@@ -6350,8 +6348,14 @@ class Game {
         let petEPCost = 0;
         
         // Calculate pet costs (considering Whip power levels)
+        // CSV: Whip Lv1 = pet/tame EP -1, Whip Lv3 = pet/tame EP 0 (overrides Lv1)
         if (player.weapon.name === 'Whip' && player.weapon.powerTrackPosition >= 7) {
             petEPCost = 0; // Level 3 Whip: pets cost 0 EP
+        } else if (player.weapon.name === 'Whip' && player.weapon.powerTrackPosition >= 1) {
+            // Level 1 Whip: each pet costs 1 less EP (minimum 0)
+            petEPCost += this.selectedPets.level1 * Math.max(0, 2 - 1);
+            petEPCost += this.selectedPets.level2 * Math.max(0, 3 - 1);
+            petEPCost += this.selectedPets.level3 * Math.max(0, 4 - 1);
         } else {
             petEPCost += this.selectedPets.level1 * 2;
             petEPCost += this.selectedPets.level2 * 3;
@@ -7168,23 +7172,14 @@ class Game {
     }
     
     canTameMonster(player, monster) {
-        // Chain weapon can tame monsters with HP <= 3
+        // Chain Lv1 power: tame monsters with HP <= 3
         if (player.weapon.name === 'Chain' && player.weapon.powerTrackPosition >= 1) {
             return monster.hp <= 3;
         }
 
-        // Whip weapon can tame monsters based on power level
-        if (player.weapon.name === 'Whip') {
-            if (player.weapon.powerTrackPosition >= 7) {
-                return monster.hp <= 6; // Level 3: Can tame monsters with HP <= 6
-            } else if (player.weapon.powerTrackPosition >= 4) {
-                return monster.hp <= 4; // Level 2: Can tame monsters with HP <= 4
-            } else if (player.weapon.powerTrackPosition >= 1) {
-                return monster.hp <= 2; // Level 1: Can tame monsters with HP <= 2
-            }
-        }
-
-        // Standard taming: any weapon can tame at monster HP = 1
+        // Whip can tame at default HP=1; its powers only reduce EP cost (Lv1 -1, Lv3 0)
+        // and do NOT modify the HP threshold.
+        // Standard taming: any tame-capable weapon can tame at monster HP = 1
         return monster.hp <= 1;
     }
     
