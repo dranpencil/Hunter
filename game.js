@@ -6408,15 +6408,18 @@ class Game {
             selectedMonster = newMonster;
         }
 
-        // Store original HP and apply apprentice bonus if applicable
+        // Store original HP and apply monster effect HP bonus
+        selectedMonster.baseHp = selectedMonster.hp; // HP before any bonuses
         selectedMonster.maxHp = selectedMonster.hp;
+        selectedMonster.hpBonusFromEffect = 0;
 
         // Apply other monsters HP bonus if active (effects 8, 16, 33)
         const hpBonus = this.activeMonsterEffects.find(effect => effect.type === 'otherMonstersHPBonus');
         if (hpBonus) {
             selectedMonster.hp += hpBonus.value;
             selectedMonster.maxHp += hpBonus.value;
-            console.log(`Other monster HP bonus applied: +${hpBonus.value} HP (${selectedMonster.maxHp - hpBonus.value} -> ${selectedMonster.maxHp})`);
+            selectedMonster.hpBonusFromEffect = hpBonus.value;
+            console.log(`Other monster HP bonus applied: +${hpBonus.value} HP (${selectedMonster.baseHp} -> ${selectedMonster.maxHp})`);
         }
 
         // Check if player's apprentice is also in Forest for -1 HP bonus
@@ -6551,7 +6554,8 @@ class Game {
                 }
             }
             
-            battleActions.push(`used ${itemsUsed.join(', ')} to kill monster instantly`);
+            const localizedItemNames = itemsUsed.map(n => this.getItemDisplayName(n)).join(', ');
+            battleActions.push({k:'battle.killedByItems', a:[localizedItemNames]});
             
             console.log('Monster killed with items. Applying victory rewards...');
             // Apply victory rewards
@@ -6613,7 +6617,7 @@ class Game {
             const defenseCount = player.weapon?.currentDefenseDice || 0;
             monsterAttacksFirst = this.checkBattleOrder(monster.effectId, defenseCount);
             if (monsterAttacksFirst) {
-                battleActions.push(`⚠️ Monster attacks first! (${player.name}'s defense: ${defenseCount})`);
+                battleActions.push({k:'battle.monsterAttacksFirstWarning', a:[this.getPlayerDisplayName(player), defenseCount]});
             }
         }
 
@@ -6656,7 +6660,7 @@ class Game {
         }
         
         while (currentPlayerHP > 0 && currentMonsterHP > 0 && canAttack) {
-            battleActions.push(`--- Round ${battleRound} ---`);
+            battleActions.push({k:'battle.roundN', a:[battleRound]});
 
             // MONSTER ATTACKS FIRST (if effect active)
             if (monsterAttacksFirst) {
@@ -8082,12 +8086,14 @@ class Game {
             case 8: // Other monsters gain +1 HP this round
             case 16: // Other monsters gain +1 HP this round
             case 33: // Other monsters gain +1 HP this round
-                // Only add the bonus once (check if it already exists)
-                const hpBonusExists = this.activeMonsterEffects.some(effect => effect.type === 'otherMonstersHPBonus');
-                if (!hpBonusExists) {
+                // Accumulate: each monster with this effect adds +1 HP to subsequent monsters
+                const existingBonus = this.activeMonsterEffects.find(effect => effect.type === 'otherMonstersHPBonus');
+                if (existingBonus) {
+                    existingBonus.value += 1;
+                } else {
                     this.activeMonsterEffects.push({ type: 'otherMonstersHPBonus', value: 1 });
-                    this.showEffectNotificationT('effect.boostOthers.notify', []);
                 }
+                this.showEffectNotificationT('effect.boostOthers.notify', []);
                 break;
                 
             case 9: // Players not in forest lose 1 HP
@@ -8423,12 +8429,21 @@ class Game {
         const battleHp = monster.hp; // This should be the actual HP they'll face in battle
 
         const hpDisplay = document.getElementById('monster-hp-display');
-        if (player && player.tokens.apprentice === 7 && originalHp !== battleHp) {
-            // Apprentice is in Forest and HP is reduced - show both values
-            hpDisplay.innerHTML = `${originalHp} → ${battleHp}`;
+        const hpEffectBonus = monster.hpBonusFromEffect || 0;
+        const apprenticeReduction = (player && player.tokens.apprentice === 7 && originalHp !== battleHp) ? (originalHp - battleHp) : 0;
+
+        if (hpEffectBonus > 0 || apprenticeReduction > 0) {
+            // Show base HP + effect bonus (red) + apprentice reduction
+            let html = `${monster.baseHp || (originalHp - hpEffectBonus)}`;
+            if (hpEffectBonus > 0) {
+                html += ` <span style="color: #e74c3c; font-weight: bold;">+${hpEffectBonus}</span>`;
+            }
+            if (apprenticeReduction > 0) {
+                html += ` → ${battleHp}`;
+            }
+            hpDisplay.innerHTML = html;
             hpDisplay.classList.add('hp-bonus');
         } else {
-            // Normal display
             hpDisplay.textContent = monster.hp;
             hpDisplay.classList.remove('hp-bonus');
         }
@@ -8501,14 +8516,17 @@ class Game {
             this.playerShownMonsters[playerId].add(newMonster.index);
 
             // Apply the same bonuses as the original monster selection
+            newMonster.baseHp = newMonster.hp;
             newMonster.maxHp = newMonster.hp;
+            newMonster.hpBonusFromEffect = 0;
 
             // Apply other monsters HP bonus if active (effects 8, 16, 33)
             const hpBonus = this.activeMonsterEffects.find(effect => effect.type === 'otherMonstersHPBonus');
             if (hpBonus) {
                 newMonster.hp += hpBonus.value;
                 newMonster.maxHp += hpBonus.value;
-                console.log(`Other monster HP bonus applied: +${hpBonus.value} HP (${newMonster.maxHp - hpBonus.value} -> ${newMonster.maxHp})`);
+                newMonster.hpBonusFromEffect = hpBonus.value;
+                console.log(`Other monster HP bonus applied: +${hpBonus.value} HP (${newMonster.baseHp} -> ${newMonster.maxHp})`);
             }
 
             // Check if player's apprentice is also in Forest for -1 HP bonus
@@ -8808,14 +8826,17 @@ class Game {
         this.playerShownMonsters[playerId].add(selectedMonster.index);
 
         // Store original HP
+        selectedMonster.baseHp = selectedMonster.hp;
         selectedMonster.maxHp = selectedMonster.hp;
+        selectedMonster.hpBonusFromEffect = 0;
 
         // Apply other monsters HP bonus if active (effects 8, 16, 33)
         const hpBonus = this.activeMonsterEffects.find(effect => effect.type === 'otherMonstersHPBonus');
         if (hpBonus) {
             selectedMonster.hp += hpBonus.value;
             selectedMonster.maxHp += hpBonus.value;
-            console.log(`Other monster HP bonus applied: +${hpBonus.value} HP (${selectedMonster.maxHp - hpBonus.value} -> ${selectedMonster.maxHp})`);
+            selectedMonster.hpBonusFromEffect = hpBonus.value;
+            console.log(`Other monster HP bonus applied: +${hpBonus.value} HP (${selectedMonster.baseHp} -> ${selectedMonster.maxHp})`);
         }
 
         // Check if player's apprentice is also in Forest for -1 HP bonus
@@ -10040,7 +10061,13 @@ class Game {
         this.logBattleActionT('battle.knifeLv3Activate', [player, extraDamage], player);
         
         // Update monster HP display
-        document.getElementById('battle-monster-hp').textContent = `${Math.max(0, battle.monster.hp)}/${battle.monster.maxHp}`;
+        const monsterHpEl = document.getElementById('battle-monster-hp');
+        const effectBonus = battle.monster.hpBonusFromEffect || 0;
+        if (effectBonus > 0) {
+            monsterHpEl.innerHTML = `${Math.max(0, battle.monster.hp)}/${battle.monster.baseHp}<span style="color:#e74c3c;font-weight:bold">+${effectBonus}</span>`;
+        } else {
+            monsterHpEl.textContent = `${Math.max(0, battle.monster.hp)}/${battle.monster.maxHp}`;
+        }
         
         // Check if monster is defeated
         if (battle.monster.hp <= 0) {
@@ -10410,34 +10437,13 @@ class Game {
     applyBatPower(player, level, battleActions = null) {
         switch (level) {
             case 1:
-                // 徒弟在資源區域撞其他獵人+1區域資源 (Apprentice gets +1 resource when bumping into other hunters in resource areas)
                 player.batPower = { apprenticeBonus: true };
-                const message1 = `${player.name}'s apprentice now gets bonus resources when sharing locations!`;
-                if (battleActions) {
-                    battleActions.push(message1);
-                } else {
-                    this.logBattleAction(message1, player);
-                }
                 break;
             case 2:
-                // 回合開始+1血袋+1體力 (Start of round +1 blood bag +1 energy)
                 player.batPower = { ...player.batPower, roundStart: { bloodBag: 1, energy: 1 } };
-                const message2 = `${player.name} will gain +1 blood bag and +1 energy at round start!`;
-                if (battleActions) {
-                    battleActions.push(message2);
-                } else {
-                    this.logBattleAction(message2, player);
-                }
                 break;
             case 3:
-                // 命中的骰子再骰，直到沒有骰子命中，傷害為所有傷害加總 (Re-roll hit dice until no dice hit, damage is sum of all damage)
                 player.batPower = { ...player.batPower, explosiveDice: true };
-                const message3 = `${player.name}'s attacks now have explosive dice - keep rolling hits!`;
-                if (battleActions) {
-                    battleActions.push(message3);
-                } else {
-                    this.logBattleAction(message3, player);
-                }
                 break;
         }
     }
@@ -10445,92 +10451,22 @@ class Game {
     applyKatanaPower(player, level, battleActions = null) {
         switch (level) {
             case 1:
-                // 1血袋換1體力 (1 blood bag converts to 1 energy)
                 player.katanaPower = { bloodToEnergy: true };
-                const message1 = `${player.name} can now convert blood bags to energy efficiently!`;
-                if (battleActions) {
-                    battleActions.push(message1);
-                } else {
-                    this.logBattleAction(message1, player);
-                }
                 break;
             case 2:
-                // 打敗怪獸+2經驗 (Defeating monsters gives +2 experience)
                 player.katanaPower = { ...player.katanaPower, bonusExp: 2 };
-                const message2 = `${player.name} gains +2 extra experience from defeating monsters!`;
-                if (battleActions) {
-                    battleActions.push(message2);
-                } else {
-                    this.logBattleAction(message2, player);
-                }
                 break;
             case 3:
-                // 攻擊骰總點數大於27則一擊必殺 (If attack dice total > 27, instant kill)
                 player.katanaPower = { ...player.katanaPower, instantKill: 27 };
-                const message3 = `${player.name} can instant kill monsters with attack dice total > 27!`;
-                if (battleActions) {
-                    battleActions.push(message3);
-                } else {
-                    this.logBattleAction(message3, player);
-                }
                 break;
         }
     }
     
     applyPlasmaPower(player, level, battleActions = null) {
-        switch (level) {
-            case 1:
-                // Level 1: Needs batteries to attack
-                const message1 = `${player.name}'s Plasma weapon now requires batteries to attack!`;
-                if (battleActions) {
-                    battleActions.push(message1);
-                } else {
-                    this.logBattleAction(message1, player);
-                }
-                break;
-            case 2:
-                // Level 2: +3$ at round start
-                const message2 = `${player.name} will gain +3$ at round start!`;
-                if (battleActions) {
-                    battleActions.push(message2);
-                } else {
-                    this.logBattleAction(message2, player);
-                }
-                break;
-            case 3:
-                // Level 3: Infinite ammunition - batteries no longer take up space
-                // Set all existing batteries to size 0
-                let batteryCount = 0;
-                player.inventory.forEach(item => {
-                    if (item.name === 'Battery') {
-                        item.size = 0;
-                        batteryCount++;
-                    }
-                });
-                
-                const message3 = `${player.name}'s Plasma weapon now has infinite ammunition! Batteries no longer take up inventory space.`;
-                if (batteryCount > 0) {
-                    const capacityMessage = `${batteryCount} batteries in inventory now have 0 size, freeing up ${batteryCount} capacity!`;
-                    if (battleActions) {
-                        battleActions.push(message3);
-                        battleActions.push(capacityMessage);
-                    } else {
-                        this.logBattleAction(message3, player);
-                        this.logBattleAction(capacityMessage, player);
-                    }
-                } else {
-                    if (battleActions) {
-                        battleActions.push(message3);
-                    } else {
-                        this.logBattleAction(message3, player);
-                    }
-                }
-                
-                // Update inventory display to reflect the capacity change
-                this.updateInventoryDisplay(player.id);
-                this.updateResourceDisplay();
-                break;
-        }
+        // All Plasma power effects are handled elsewhere:
+        // Lv1: battery requirement checked in battle ammo logic
+        // Lv2: +2$ at round start in applyRoundStartPowers()
+        // Lv3: +2 EXP at round start in applyRoundStartPowers()
     }
     
     logBattleAction(message, player = null) {
@@ -14907,8 +14843,18 @@ class Game {
         const hpDisplay = document.getElementById('monster-hp-display');
         const originalHp = monsterData.maxHp || monsterData.hp;
         const battleHp = monsterData.hp;
-        if (player && player.tokens.apprentice === 7 && originalHp !== battleHp) {
-            hpDisplay.innerHTML = `${originalHp} → ${battleHp}`;
+        const hpEffectBonus = monsterData.hpBonusFromEffect || 0;
+        const apprenticeReduction = (player && player.tokens.apprentice === 7 && originalHp !== battleHp) ? (originalHp - battleHp) : 0;
+
+        if (hpEffectBonus > 0 || apprenticeReduction > 0) {
+            let html = `${monsterData.baseHp || (originalHp - hpEffectBonus)}`;
+            if (hpEffectBonus > 0) {
+                html += ` <span style="color: #e74c3c; font-weight: bold;">+${hpEffectBonus}</span>`;
+            }
+            if (apprenticeReduction > 0) {
+                html += ` → ${battleHp}`;
+            }
+            hpDisplay.innerHTML = html;
             hpDisplay.classList.add('hp-bonus');
         } else {
             hpDisplay.textContent = monsterData.hp;
@@ -15294,13 +15240,16 @@ class Game {
             console.warn(`No available monsters at level ${level} for guest`);
             return;
         }
+        monster.baseHp = monster.hp;
         monster.maxHp = monster.hp;
+        monster.hpBonusFromEffect = 0;
 
         // Apply other monsters HP bonus if active (effects 8, 16, 33)
         const hpBonus = this.activeMonsterEffects.find(effect => effect.type === 'otherMonstersHPBonus');
         if (hpBonus) {
             monster.hp += hpBonus.value;
             monster.maxHp += hpBonus.value;
+            monster.hpBonusFromEffect = hpBonus.value;
         }
 
         // Check if player's apprentice is in Forest for -1 HP bonus
@@ -15418,13 +15367,16 @@ class Game {
             }
             this.playerShownMonsters[player.id].add(newMonster.index);
 
+            newMonster.baseHp = newMonster.hp;
             newMonster.maxHp = newMonster.hp;
+            newMonster.hpBonusFromEffect = 0;
 
             // Apply HP bonuses
             const hpBonus = this.activeMonsterEffects.find(effect => effect.type === 'otherMonstersHPBonus');
             if (hpBonus) {
                 newMonster.hp += hpBonus.value;
                 newMonster.maxHp += hpBonus.value;
+                newMonster.hpBonusFromEffect = hpBonus.value;
             }
             if (player.tokens.apprentice === 7) {
                 newMonster.hp = Math.max(1, newMonster.hp - 1);

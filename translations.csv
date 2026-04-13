@@ -413,6 +413,9 @@ status.allPlayersSelected,All players have selected locations! Game proceeding..
 gameStats.view,View Game Stats,查看遊戲統計
 dataCollection.results,Data Collection Results,資料收集結果
 battle.weaponPowerReward,+{0} Weapon Power,+{0} 武器能力
+battle.killedByItems,Used {0} to kill monster instantly,使用 {0} 瞬間擊殺怪獸
+battle.monsterAttacksFirstWarning,⚠️ Monster attacks first! ({0}'s defense: {1}),⚠️ 怪獸先攻！（{0} 的防禦：{1}）
+battle.roundN,--- Round {0} ---,--- 第 {0} 回合 ---
 battle.attack,Attack!,攻擊！
 battle.tame,Tame!,收服！
 battle.tameWithCost,Tame! ({0} EP),收服！（{0} 體力）
