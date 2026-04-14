@@ -415,7 +415,7 @@ dataCollection.results,Data Collection Results,資料收集結果
 battle.weaponPowerReward,+{0} Weapon Power,+{0} 武器能力
 battle.killedByItems,Used {0} to kill monster instantly,使用 {0} 瞬間擊殺怪獸
 battle.monsterAttacksFirstWarning,⚠️ Monster attacks first! ({0}'s defense: {1}),⚠️ 怪獸先攻！（{0} 的防禦：{1}）
-battle.roundN,--- Round {0} ---,--- 第 {0} 回合 ---
+battle.roundN,--- Turn {0} ---,--- 第 {0} 回合 ---
 battle.attack,Attack!,攻擊！
 battle.tame,Tame!,收服！
 battle.tameWithCost,Tame! ({0} EP),收服！（{0} 體力）
@@ -462,6 +462,7 @@ battle.fakeBloodBonus,{0} uses {1} Fake Blood for +{2} bonus points,{0} 使用 {
 battle.monsterDefeatedByItems,Monster defeated by items!,怪獸被物品擊敗！
 battle.tameSuccess,{0} tames the Level {1} monster! Spent {2} EP,{0} 收服了等級 {1} 怪獸！消耗 {2} 體力
 battle.defeatMonster,{0} defeats the Level {1} monster!,{0} 擊敗了等級 {1} 怪獸！
+battle.defeatMonsterWithRewards,{0} defeats the Level {1} monster!  {2},{0} 擊敗了等級 {1} 怪獸！  {2}
 battle.gainMoney,+{0} money,+{0} 金錢
 battle.gainBeer,+{0} beer,+{0} 啤酒
 battle.gainBlood,+{0} blood bags,+{0} 血袋
@@ -524,7 +525,7 @@ log.botStationPreferred,💰 <strong>{0}</strong> (Bot) chose {1} at Station (we
 log.botStationRandom,💰 <strong>{0}</strong> (Bot) chose {1} at Station (random),💰 <strong>{0}</strong>（電腦）在車站隨機選擇了 {1}
 log.batLv1Apprentice,🦇 <strong>{0}</strong>'s apprentice received +1 {1} (Bat Lv1 Power),🦇 <strong>{0}</strong> 的徒弟獲得 +1 {1}（球棒 Lv1 能力）
 log.playerSelected,"📍 <strong>{0}</strong> selected: Hunter → {1}, Apprentice → {2}","📍 <strong>{0}</strong> 選擇了：獵人 → {1}，徒弟 → {2}"
-log.receivedFromLocation,💰 <strong>{0}</strong> received {1} {2} from {3},💰 <strong>{0}</strong> 從 {3} 獲得 {1} {2}
+log.receivedFromLocation,{2} <strong>{0}</strong> received {1} from {3},{2} <strong>{0}</strong> 從 {3} 獲得 {1}
 log.botBought,🛒 <strong>{0}</strong> (Bot) bought: {1},🛒 <strong>{0}</strong>（電腦）購買了：{1}
 log.botBoughtNothing,🛒 <strong>{0}</strong> (Bot) bought nothing,🛒 <strong>{0}</strong>（電腦）沒有購買任何物品
 log.botAutoManaged,💰 <strong>{0}</strong> (Bot) auto-managed: {1},💰 <strong>{0}</strong>（電腦）自動管理：{1}

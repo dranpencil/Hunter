@@ -2773,6 +2773,35 @@ class Game {
     }
 
     /**
+     * Returns the display emoji for a reward/resource type.
+     * Uses the same icon vocabulary as the monster stats modal and popularity track.
+     */
+    getResourceIcon(type) {
+        switch (type) {
+            case 'money':    return '💰';
+            case 'beer':     return '🍺';
+            case 'bloodBag': return '🩸';
+            case 'exp':      return '⭐';
+            case 'score':
+            case 'points':   return '🏆';
+            default:         return '';
+        }
+    }
+
+    /**
+     * Build a compact reward summary like "🏆5  💰2  🍺1".
+     * Only non-zero rewards are included; entries are separated by two spaces.
+     */
+    buildRewardsIconString(points, money, beer, blood) {
+        const parts = [];
+        if (points > 0) parts.push(`🏆${points}`);
+        if (money  > 0) parts.push(`💰${money}`);
+        if (beer   > 0) parts.push(`🍺${beer}`);
+        if (blood  > 0) parts.push(`🩸${blood}`);
+        return parts.join('  ');
+    }
+
+    /**
      * Translate a weapon power description (Lv1/Lv2/Lv3) to the current language.
      */
     getWeaponPowerDesc(weaponName, level) {
@@ -6978,8 +7007,7 @@ class Game {
         }
         
         player.monstersDefeated[`level${monster.level}`]++;
-        battleActions.push({k:'battle.totalDefeated', a:[this.getPlayerDisplayName(player), player.monstersDefeated.level1, player.monstersDefeated.level2, player.monstersDefeated.level3]});
-        
+
         // Knife Lv1 Power: defeating a monster doubles non-point rewards
         const knifeMultiplier = (player.weapon.name === 'Knife' && player.weapon.powerTrackPosition >= 1) ? 2 : 1;
 
@@ -7003,11 +7031,12 @@ class Game {
         }
 
         // Sword Lv3 Power: +X bonus points where X = monster level (categorized as 'other')
-        if (player.weapon.name === 'Sword' && player.weapon.powerTrackPosition >= 7) {
+        const swordLv3Active = player.weapon.name === 'Sword' && player.weapon.powerTrackPosition >= 7;
+        if (swordLv3Active) {
             this.addScore(player.id, monster.level, 'other');
             battleActions.push({k:'battle.swordLv3Bonus', a:[monster.level]});
         }
-        
+
         // Add items to inventory
         if (finalEnergy > 0) {
             for (let i = 0; i < finalEnergy; i++) {
@@ -7019,13 +7048,11 @@ class Game {
                 player.inventory.push({ name: 'Blood Bag', size: 1, effect: 'gain_1_blood' });
             }
         }
-        
-        let rewardText = t('battle.victoryGained', finalMoney);
-        if (finalEnergy > 0) rewardText += t('battle.victoryGainedBeer', finalEnergy);
-        if (finalBlood > 0) rewardText += t('battle.victoryGainedBlood', finalBlood);
-        rewardText += t('battle.victoryGainedPoints', monster.pts + battle.bonusPts);
 
-        battleActions.push(rewardText);
+        // Consolidated victory line (defeat + all numeric rewards) — mirrors the human path
+        const totalPoints = (monster.pts || 0) + (battle.bonusPts || 0) + (swordLv3Active ? monster.level : 0);
+        const rewardsStr = this.buildRewardsIconString(totalPoints, finalMoney, finalEnergy, finalBlood);
+        battleActions.push({k:'battle.defeatMonsterWithRewards', a:[this.getPlayerDisplayName(player), monster.level, rewardsStr]});
         
         // Advance weapon power track based on monster level
         this.advanceWeaponPowerTrack(player.id, monster.level, battleActions);
@@ -7339,10 +7366,9 @@ class Game {
             
             if (resourceType === 'money' || resourceType === 'exp') {
                 this.modifyResource(parseInt(playerId), resourceType, rewardAmount);
-                const resourceKey = resourceType === 'money' ? 'common.money' : 'common.exp';
                 this.addLogEntryT(
                     'log.receivedFromLocation',
-                    [player, rewardAmount, this.tArg(resourceKey), this.tArg('location.station')],
+                    [player, rewardAmount, this.getResourceIcon(resourceType), this.tArg('location.station')],
                     'resource-gain',
                     player
                 );
@@ -7351,10 +7377,9 @@ class Game {
                 // Also add items to inventory
                 const itemName = resourceType === 'beer' ? 'Beer' : 'Blood Bag';
                 this.addItemToInventory(parseInt(playerId), itemName, rewardAmount);
-                const itemKey = resourceType === 'beer' ? 'item.beer.name' : 'item.bloodBag.name';
                 this.addLogEntryT(
                     'log.receivedFromLocation',
-                    [player, rewardAmount, this.tArg(itemKey), this.tArg('location.station')],
+                    [player, rewardAmount, this.getResourceIcon(resourceType), this.tArg('location.station')],
                     'resource-gain',
                     player
                 );
@@ -8917,7 +8942,8 @@ class Game {
             doubleDamageUsed: false, // Track if Knife Lv1 double damage was used
             canUseDoubleDamage: false, // Track if Knife Lv3 double damage is available
             lastAttackDamage: 0, // Track last attack damage for double damage calculation
-            ammunitionConsumed: false // Track if ammunition was consumed for this battle
+            ammunitionConsumed: false, // Track if ammunition was consumed for this battle
+            battleRound: 1 // Current combat round number (used for the "Round N" log marker)
         };
         
         console.log('Current battle set up:', this.currentBattle);
@@ -9592,6 +9618,16 @@ class Game {
             // If ammunitionConsumed is true, proceed with attack (entrance fee paid)
         }
         
+        // Log the turn marker at the top of each human combat round.
+        // Uses the same code path the bot flow uses (flushBattleAction → addLogEntryT('__battlePrefix__'))
+        // so the rendered game-log entry is byte-identical and the battle modal is left alone.
+        this.addLogEntryT(
+            '__battlePrefix__',
+            [{ __t__: 'battle.roundN', args: [battle.battleRound] }],
+            'battle',
+            player
+        );
+
         // Player attacks
         let playerDamage = 0;
         let allRolls = [];
@@ -10010,6 +10046,10 @@ class Game {
             // Allow item usage before player's next attack
             battle.turn = 'player_items_after_monster';
 
+            // End of this combat round — advance the counter so the next
+            // player attack logs "--- Round N+1 ---"
+            battle.battleRound = (battle.battleRound || 1) + 1;
+
             // Hide Knife Lv3 2x damage button during monster attack (don't clear the flag —
             // it persists until used, so it re-appears on the next player turn)
             const doubleDamageBtn = document.getElementById('battle-double-damage-btn');
@@ -10140,8 +10180,6 @@ class Game {
         const player = this.players.find(p => p.id === battle.playerId);
         const monster = battle.monster;
 
-        this.logBattleActionT('battle.defeatMonster', [player, monster.level], player);
-
         // Track monsters defeated for statistics
         if (!player.monstersDefeated) {
             player.monstersDefeated = { level1: 0, level2: 0, level3: 0 };
@@ -10160,52 +10198,47 @@ class Game {
             this.logBattleActionT('battle.knifeLv1Doubled', [], player);
         }
 
-        // Award rewards
+        // Award resource rewards (silently — consolidated message emitted below)
         if (finalMoney > 0) {
             this.modifyResource(battle.playerId, 'money', finalMoney);
-            this.logBattleActionT('battle.gainMoney', [finalMoney], player);
         }
         if (finalEnergy > 0) {
             player.resources.beer += finalEnergy;
             this.addItemToInventory(battle.playerId, 'Beer', finalEnergy);
-            this.logBattleActionT('battle.gainBeer', [finalEnergy], player);
         }
         if (finalBlood > 0) {
             player.resources.bloodBag += finalBlood;
             this.addItemToInventory(battle.playerId, 'Blood Bag', finalBlood);
-            this.logBattleActionT('battle.gainBlood', [finalBlood], player);
         }
+
+        // Score bookkeeping (fake blood is split into its own category, sword lv3 adds extra points)
+        let totalPoints = 0;
         if (monster.pts > 0) {
-            let totalScore = monster.pts;
-            
-            // Add Fake Blood bonus points
-            if (battle.bonusPts) {
-                totalScore += battle.bonusPts;
-            }
-            
-            if (battle.bonusPts) {
-                this.logBattleActionT('battle.gainScoreFakeBlood', [monster.pts, battle.bonusPts, totalScore], player);
+            const fakeBloodBonus = battle.bonusPts || 0;
+            const basePts = monster.pts;
+            totalPoints = basePts + fakeBloodBonus;
+
+            if (fakeBloodBonus > 0) {
+                this.addScore(battle.playerId, basePts, 'monster');
+                this.addScore(battle.playerId, fakeBloodBonus, 'fakeblood');
             } else {
-                this.logBattleActionT('battle.gainScoreSimple', [monster.pts], player);
-            }
-            
-            // Score from monster battle (already split if fake blood was used)
-            if (!battle.bonusPts || battle.bonusPts === 0) {
-                this.addScore(battle.playerId, totalScore, 'monster');
-            } else {
-                // Already handled in executeBotBattle
-                this.addScore(battle.playerId, totalScore - battle.bonusPts, 'monster');
-                this.addScore(battle.playerId, battle.bonusPts, 'fakeblood');
+                this.addScore(battle.playerId, basePts, 'monster');
             }
         }
 
         // Sword Lv3 Power: +X bonus points where X = monster level (categorized as 'other')
-        if (player.weapon.name === 'Sword' && player.weapon.powerTrackPosition >= 7) {
+        const swordLv3Active = player.weapon.name === 'Sword' && player.weapon.powerTrackPosition >= 7;
+        if (swordLv3Active) {
             this.addScore(battle.playerId, monster.level, 'other');
             this.logBattleActionT('battle.swordLv3Bonus', [monster.level], player);
+            totalPoints += monster.level;
         }
 
-        // Advance weapon power track based on monster level
+        // Consolidated victory line: defeat + all numeric rewards on one row with icons
+        const rewardsStr = this.buildRewardsIconString(totalPoints, finalMoney, finalEnergy, finalBlood);
+        this.logBattleActionT('battle.defeatMonsterWithRewards', [player, monster.level, rewardsStr], player);
+
+        // Advance weapon power track based on monster level (intentionally separate message)
         this.advanceWeaponPowerTrack(battle.playerId, monster.level);
 
         // Apply death effects only if the monster was killed, not tamed
@@ -10226,10 +10259,11 @@ class Game {
     playerDefeated(playerId) {
         const player = this.players.find(p => p.id === playerId);
         if (!player) return;
-        
+
         // No score penalty (removed)
-        this.logBattleActionT('battle.defeatedByMonster', [player], player);
-        
+        // "was defeated by the monster" line intentionally omitted —
+        // the earlier "has been defeated!" log covers it.
+
         // Set HP to 1
         player.resources.hp = 1;
         this.logBattleActionT('battle.playerHPSet1', [player], player);
@@ -11781,10 +11815,9 @@ class Game {
                     const locKey = 'location.' + ({1:'workSite',2:'bar',3:'station',4:'hospital',5:'dojo',6:'plaza',7:'forest'}[location.id] || 'workSite');
                     if (location.resource === 'money' || location.resource === 'exp') {
                         this.modifyResource(player.id, location.resource, rewardAmount);
-                        const resourceKey = location.resource === 'money' ? 'common.money' : 'common.exp';
                         this.addLogEntryT(
                             'log.receivedFromLocation',
-                            [player, rewardAmount, this.tArg(resourceKey), this.tArg(locKey)],
+                            [player, rewardAmount, this.getResourceIcon(location.resource), this.tArg(locKey)],
                             'resource-gain',
                             player
                         );
@@ -11793,10 +11826,9 @@ class Game {
                         // Also add items to inventory
                         const itemName = location.resource === 'beer' ? 'Beer' : 'Blood Bag';
                         this.addItemToInventory(player.id, itemName, rewardAmount);
-                        const itemKey = location.resource === 'beer' ? 'item.beer.name' : 'item.bloodBag.name';
                         this.addLogEntryT(
                             'log.receivedFromLocation',
-                            [player, rewardAmount, this.tArg(itemKey), this.tArg(locKey)],
+                            [player, rewardAmount, this.getResourceIcon(location.resource), this.tArg(locKey)],
                             'resource-gain',
                             player
                         );
@@ -11806,7 +11838,7 @@ class Game {
                         if (rewardAmount > 0) {
                             this.addLogEntryT(
                                 'log.receivedFromLocation',
-                                [player, rewardAmount, this.tArg('common.points'), this.tArg(locKey)],
+                                [player, rewardAmount, this.getResourceIcon('points'), this.tArg(locKey)],
                                 'resource-gain',
                                 player
                             );
@@ -11833,10 +11865,9 @@ class Game {
                         // Give +1 resource of this location type
                         if (location.resource === 'money' || location.resource === 'exp') {
                             this.modifyResource(player.id, location.resource, 1);
-                            const resourceKey = location.resource === 'money' ? 'common.money' : 'common.exp';
                             this.addLogEntryT(
                                 'log.batLv1Apprentice',
-                                [player, this.tArg(resourceKey)],
+                                [player, this.getResourceIcon(location.resource)],
                                 'resource-gain',
                                 player
                             );
@@ -11844,10 +11875,9 @@ class Game {
                             player.resources[location.resource] += 1;
                             const itemName = location.resource === 'beer' ? 'Beer' : 'Blood Bag';
                             this.addItemToInventory(player.id, itemName, 1);
-                            const itemKey = location.resource === 'beer' ? 'item.beer.name' : 'item.bloodBag.name';
                             this.addLogEntryT(
                                 'log.batLv1Apprentice',
-                                [player, this.tArg(itemKey)],
+                                [player, this.getResourceIcon(location.resource)],
                                 'resource-gain',
                                 player
                             );
