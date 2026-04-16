@@ -1750,8 +1750,8 @@ h1 {
 .player-status-panel {
     display: flex;
     justify-content: center;
-    gap: 20px;
-    padding: 15px;
+    gap: 8px;
+    padding: 10px 8px;
     background-color: rgba(0, 0, 0, 0.3);
     border-radius: 8px;
     margin-bottom: 15px;
@@ -1771,18 +1771,21 @@ h1 {
     display: flex;
     flex-direction: row;
     align-items: center;
-    gap: 8px;
-    padding: 5px;
+    gap: 4px;
+    padding: 3px 4px;
+    flex-shrink: 1;
+    min-width: 0;
 }
 
 .player-status .player-name {
     font-weight: bold;
-    font-size: 16px;
+    font-size: 13px;
     text-align: center;
+    white-space: nowrap;
 }
 
 .player-status .status-icon {
-    font-size: 24px;
+    font-size: 16px;
     line-height: 1;
 }
 
@@ -4343,7 +4346,7 @@ button {
 /* Phase Timer */
 .phase-timer {
     font-family: 'Courier New', monospace;
-    font-size: 12px;
+    font-size: 10px;
     color: #ecf0f1;
     margin-left: 6px;
     font-weight: bold;
