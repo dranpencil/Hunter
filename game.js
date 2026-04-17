@@ -104,6 +104,13 @@ class BotPlayer {
     
     // Hunter subsystem: probabilistic location selection
     selectHunterLocation(gameState, availableLocations) {
+        // Tutorial: scripted bot overrides AI when active
+        if (window.tutorialManager && window.tutorialManager.isActive()) {
+            const round = (window.game && window.game.currentRound) || 1;
+            const forced = window.tutorialManager.getBotMove(round, 'hunterLocation');
+            if (forced && availableLocations.includes(forced)) return forced;
+        }
+
         const player = gameState.players[this.playerId];
         const entries = {};
         
@@ -320,8 +327,15 @@ class BotPlayer {
     
     // Apprentice subsystem: social-aware location selection
     selectApprenticeLocation(gameState, availableLocations, hunterLocation) {
+        // Tutorial: scripted bot overrides AI when active
+        if (window.tutorialManager && window.tutorialManager.isActive()) {
+            const round = (window.game && window.game.currentRound) || 1;
+            const forced = window.tutorialManager.getBotMove(round, 'apprenticeLocation');
+            if (forced && availableLocations.includes(forced) && forced !== hunterLocation) return forced;
+        }
+
         const entries = {};
-        
+
         // Initialize all available locations (except hunter's location) with 4 base entries
         for (let i = 1; i <= 7; i++) {
             if (i !== hunterLocation && availableLocations.includes(i)) {
@@ -1118,6 +1132,7 @@ class Game {
         // Data collection and automation properties
         this.isAutomatedMode = false; // Flag for automated game running
         this.isDataCollectionMode = false; // Flag for data collection mode
+        this.isTutorialMode = false; // Flag for guided tutorial mode (see tutorial.js)
         this.collectedGameData = []; // Store all collected game data
         this.currentGameId = null; // Track current game ID
         this.automatedGamesTotal = 0; // Total games to run
@@ -2688,6 +2703,27 @@ class Game {
         }
     }
 
+    // ==================== TUTORIAL HOOK HELPERS ====================
+    // tutorialBlocks(actionType, params) — returns true if the tutorial
+    // wants this action blocked. Side effect: when blocking, shows a
+    // "please follow the instruction" warning toast so the player knows
+    // why nothing happened. All buttons stay enabled in tutorial mode;
+    // wrong actions just don't advance and surface this warning.
+    tutorialBlocks(actionType, params) {
+        if (!this.isTutorialMode || !window.tutorialManager) return false;
+        if (window.tutorialManager.canPerform(actionType, params)) return false;
+        try { window.tutorialManager.showWarning(); } catch (e) { /* ignore */ }
+        return true;
+    }
+    // tutorialNotify — fire-and-forget notification after a successful
+    // action so the tutorial can advance to the next step.
+    tutorialNotify(actionType, params) {
+        if (this.isTutorialMode && window.tutorialManager) {
+            window.tutorialManager.notifyAction(actionType, params);
+        }
+    }
+    // ===============================================================
+
     /**
      * Translate an internal English location name to the current language.
      * Internal names are used as identifiers throughout the code; this helper
@@ -2812,6 +2848,28 @@ class Game {
         const key = 'weapon.' + weaponName.toLowerCase() + '.lv' + level;
         const translated = t(key);
         return (translated && translated.indexOf('[MISSING') !== 0) ? translated : '';
+    }
+
+    /**
+     * Translate the store tooltip for an item by internal English name.
+     * Falls back to the item's own description field if the key is missing.
+     */
+    getItemStoreDescription(internalName, fallback) {
+        if (!internalName) return fallback || '';
+        const map = {
+            'Beer': 'store.itemDesc.beer',
+            'Blood Bag': 'store.itemDesc.bloodBag',
+            'Fake Blood': 'store.itemDesc.fakeBlood',
+            'Grenade': 'store.itemDesc.grenade',
+            'Bomb': 'store.itemDesc.bomb',
+            'Dynamite': 'store.itemDesc.dynamite',
+            'Bullet': 'store.itemDesc.bullet',
+            'Battery': 'store.itemDesc.battery'
+        };
+        const key = map[internalName];
+        if (!key) return fallback || '';
+        const translated = t(key);
+        return (translated && translated.indexOf('[MISSING') !== 0) ? translated : (fallback || '');
     }
 
     /**
@@ -4495,6 +4553,7 @@ class Game {
     restoreHP(playerId) {
         const player = this.players.find(p => p.id === playerId);
         if (!player) return;
+        if (this.tutorialBlocks('restoreHP', { playerId })) return;
 
         // Only allow interacting with own player in online mode
         if (this.gameMode === 'online' && playerId !== this.localPlayerId && !this.suppressAlerts) return;
@@ -4555,11 +4614,13 @@ class Game {
         if (this.gameMode === 'online' && this.isHost) {
             this.pushOnlineBoardUpdate();
         }
+        this.tutorialNotify('restoreHP', { playerId });
     }
 
     restoreEP(playerId) {
         const player = this.players.find(p => p.id === playerId);
         if (!player) return;
+        if (this.tutorialBlocks('restoreEP', { playerId })) return;
 
         // Only allow interacting with own player in online mode
         if (this.gameMode === 'online' && playerId !== this.localPlayerId && !this.suppressAlerts) return;
@@ -4620,6 +4681,7 @@ class Game {
         if (this.gameMode === 'online' && this.isHost) {
             this.pushOnlineBoardUpdate();
         }
+        this.tutorialNotify('restoreEP', { playerId });
     }
 
     refreshPlayerBoard(playerId) {
@@ -4655,8 +4717,10 @@ class Game {
     }
 
     toggleAllPlayerBoards() {
+        if (this.tutorialBlocks('toggleBoards', {})) return;
         // Toggle the collapse state
         this.boardsCollapsed = !this.boardsCollapsed;
+        this.tutorialNotify('toggleBoards', {});
 
         const container = document.getElementById('player-boards-container');
         if (!container) return;
@@ -5104,7 +5168,8 @@ class Game {
     
     selectCard(locationId, tokenType) {
         if (this.roundPhase !== 'selection') return;
-        
+        if (this.tutorialBlocks('selectCard', { locationId, tokenType })) return;
+
         console.log(`Attempting to select location ${locationId} for ${tokenType}`);
         
         // Check if this card is disabled (already selected by the other token type)
@@ -5218,8 +5283,9 @@ class Game {
 
         // Check if both selections are made
         this.checkSelectionComplete();
+        this.tutorialNotify('selectCard', { locationId, tokenType });
     }
-    
+
     // Removed duplicate - using the version at line 1917
     
     getLocationName(locationId) {
@@ -5238,6 +5304,9 @@ class Game {
     }
     
     confirmSelection() {
+        if (this.tutorialBlocks('confirmSelection', {})) return;
+        this.tutorialNotify('confirmSelection', {});
+
         // Branch based on game mode
         if (this.gameMode === 'online') {
             this.confirmSelectionOnline();
@@ -5750,6 +5819,16 @@ class Game {
 
         // Always disable when game is over
         if (this.roundPhase === 'gameover') return true;
+
+        // When a capacity overflow modal is open, only the overflow player's buttons
+        // are enabled (modulo online-mode local-player restriction). This short-circuits
+        // the store-phase rule below, which otherwise wrongly disables the overflow
+        // player after currentStorePlayer has advanced past all players.
+        if (this.currentOverflowPlayer != null) {
+            if (this.currentOverflowPlayer !== playerId) return true;
+            if (this.gameMode === 'online') return playerId !== this.localPlayerId;
+            return false;
+        }
 
         // In simultaneous mode, human players are always enabled
         if (this.gameMode === 'simultaneous') return false;
@@ -7261,6 +7340,8 @@ class Game {
     
     selectStationResource(resourceType) {
         if (this.pendingStationPlayer === null) return;
+        if (this.tutorialBlocks('selectStationResource', { resourceType })) return;
+        this.tutorialNotify('selectStationResource', { resourceType });
 
         if (this.gameMode === 'online' && !this.isHost) {
             this.selectStationResourceOnline(resourceType);
@@ -7759,6 +7840,8 @@ class Game {
     addToUpgrade(playerId, upgradeType) {
         const player = this.players.find(p => p.id === playerId);
         if (!player) return;
+        if (this.tutorialBlocks('addToUpgrade', { playerId, upgradeType })) return;
+        this.tutorialNotify('addToUpgrade', { playerId, upgradeType });
 
         // Online non-host: send action to host
         if (this.gameMode === 'online' && !this.isHost) {
@@ -7799,6 +7882,10 @@ class Game {
                 this.updateInventoryDisplay(player.id);
             });
             this.updateResourceDisplay();
+
+            // Re-evaluate button disabled states (HP/EP upgrade, restore, etc.)
+            // so the expanded board reflects the just-consumed Blood Bag / Beer.
+            this.refreshAllPlayerButtonStates();
 
             // Refresh collapsed board if in collapsed mode
             if (this.boardsCollapsed) {
@@ -7868,14 +7955,25 @@ class Game {
         }
     }
     
-    rollDice(numDice) {
+    rollDice(numDice, category = null) {
+        // Tutorial mode: if the current step has a forced roll for this category,
+        // consume it instead of rolling randomly. Falls back to random if the queue
+        // is empty, the counts don't match, or we're not in tutorial mode.
+        if (this.isTutorialMode && category && window.tutorialManager &&
+            typeof window.tutorialManager.consumeForcedRoll === 'function') {
+            const forced = window.tutorialManager.consumeForcedRoll(category);
+            if (Array.isArray(forced) && forced.length === numDice) {
+                return forced.slice();
+            }
+        }
+
         const results = [];
         for (let i = 0; i < numDice; i++) {
             results.push(Math.floor(Math.random() * 6) + 1);
         }
         return results;
     }
-    
+
     calculateDamage(playerId, diceRolls) {
         const player = this.players.find(p => p.id === playerId);
         if (!player) return 0;
@@ -7966,6 +8064,8 @@ class Game {
     upgradeWeapon(playerId, upgradeType) {
         const player = this.players.find(p => p.id === playerId);
         if (!player) return false;
+        if (this.tutorialBlocks('upgradeWeapon', { playerId, upgradeType })) return false;
+        this.tutorialNotify('upgradeWeapon', { playerId, upgradeType });
 
         // Online non-host: send action to host
         if (this.gameMode === 'online' && !this.isHost) {
@@ -8409,6 +8509,12 @@ class Game {
     }
 
     selectRandomAvailableMonster(level, playerId = null) {
+        // Tutorial: if a forced monster is configured for this round + level, use it.
+        if (this.isTutorialMode && window.tutorialManager) {
+            const forced = window.tutorialManager.getForcedMonster(level);
+            if (forced) return forced;
+        }
+
         // Get all monsters of the specified level
         const monsters = this.monsters[level] || [];
 
@@ -8694,6 +8800,8 @@ class Game {
     }
 
     confirmMonsterSelection() {
+        if (this.tutorialBlocks('confirmMonsterSelection', {})) return;
+        this.tutorialNotify('confirmMonsterSelection', {});
         // Hide the monster selection modal
         document.getElementById('monster-selection-modal').style.display = 'none';
 
@@ -8771,6 +8879,8 @@ class Game {
     }
     
     selectMonsterLevel(playerId, level) {
+        if (this.tutorialBlocks('selectMonsterLevel', { level })) return;
+        this.tutorialNotify('selectMonsterLevel', { level });
         this.selectedMonsterLevel = level + 1; // Level 1 = 2 EP, Level 2 = 3 EP, Level 3 = 4 EP
         this.updateTotalEPCost();
 
@@ -8795,6 +8905,8 @@ class Game {
     }
 
     confirmBattleSelection() {
+        if (this.tutorialBlocks('confirmBattleSelection', {})) return;
+        this.tutorialNotify('confirmBattleSelection', {});
         const playerId = this.currentMonsterPlayer;
         const player = this.players.find(p => p.id === playerId);
         if (!player) return;
@@ -9569,7 +9681,10 @@ class Game {
     
     playerAttackMonster() {
         if (!this.currentBattle || (this.currentBattle.turn !== 'player' && this.currentBattle.turn !== 'player_items' && this.currentBattle.turn !== 'player_items_after_monster')) return;
-        
+        if (this.tutorialBlocks('playerAttackMonster', {})) return;
+        this.tutorialNotify('playerAttackMonster', {});
+
+
         const battle = this.currentBattle;
         const player = this.players.find(p => p.id === battle.playerId);
         
@@ -9668,7 +9783,7 @@ class Game {
             }
         } else {
             // Normal attack
-            const attackRolls = this.rollDice(player.weapon.currentAttackDice);
+            const attackRolls = this.rollDice(player.weapon.currentAttackDice, 'attack');
             playerDamage = this.calculateDamage(battle.playerId, attackRolls);
             totalDicePips = attackRolls.reduce((sum, roll) => sum + roll, 0);
             allRolls.push(`[${attackRolls.join(', ')}]`);
@@ -9798,7 +9913,9 @@ class Game {
 
     useBattleItem(itemName) {
         if (!this.currentBattle || (this.currentBattle.turn !== 'player_items' && this.currentBattle.turn !== 'player_items_after_monster')) return;
-        
+        if (this.tutorialBlocks('useBattleItem', { itemName })) return;
+        this.tutorialNotify('useBattleItem', { itemName });
+
         const battle = this.currentBattle;
         const player = this.players.find(p => p.id === battle.playerId);
         
@@ -9914,6 +10031,8 @@ class Game {
 
     playerDefense() {
         if (!this.currentBattle || this.currentBattle.turn !== 'player_items') return;
+        if (this.tutorialBlocks('playerDefense', {})) return;
+        this.tutorialNotify('playerDefense', {});
 
         const battle = this.currentBattle;
 
@@ -9951,7 +10070,7 @@ class Game {
         }
         
         // Player defends
-        const defenseRolls = this.rollDice(player.weapon.currentDefenseDice);
+        const defenseRolls = this.rollDice(player.weapon.currentDefenseDice, 'defense');
         let totalDefense = 0;
         defenseRolls.forEach(roll => {
             // Standard defense: 4,5,6 = 1 defense, 1,2,3 = 0 defense
@@ -10123,7 +10242,9 @@ class Game {
 
     tameMonster() {
         if (!this.currentBattle || (this.currentBattle.turn !== 'player' && this.currentBattle.turn !== 'player_items' && this.currentBattle.turn !== 'player_items_after_monster')) return;
-        
+        if (this.tutorialBlocks('tameMonster', {})) return;
+        this.tutorialNotify('tameMonster', {});
+
         const battle = this.currentBattle;
         const player = this.players.find(p => p.id === battle.playerId);
         const monster = battle.monster;
@@ -10724,8 +10845,9 @@ class Game {
             itemElement.className = 'store-item-card';
             if (item.isSpecial) itemElement.classList.add('special-item');
             // Add tooltip with item description
-            if (item.description) {
-                itemElement.title = item.description;
+            const translatedDesc = this.getItemStoreDescription(item.name, item.description);
+            if (translatedDesc) {
+                itemElement.title = translatedDesc;
             }
             
             const currentSize = this.getInventorySize(player);
@@ -10835,8 +10957,9 @@ class Game {
             itemElement.className = 'store-item-card';
             if (item.isSpecial) itemElement.classList.add('special-item');
             // Add tooltip with item description
-            if (item.description) {
-                itemElement.title = item.description;
+            const translatedDesc = this.getItemStoreDescription(item.name, item.description);
+            if (translatedDesc) {
+                itemElement.title = translatedDesc;
             }
 
             const currentSize = this.getInventorySize(player);
@@ -10987,7 +11110,28 @@ class Game {
                 { name: 'Beer', price: 2, size: 1 }
             ];
         }
-        
+
+        // Tutorial: scripted bot purchases (overrides AI priorities entirely).
+        if (window.tutorialManager && window.tutorialManager.isActive()) {
+            const round = this.currentRound || 1;
+            const scriptedBuys = window.tutorialManager.getBotMove(round, 'storeBuys');
+            if (Array.isArray(scriptedBuys)) {
+                const itemMeta = {
+                    'Beer':       { price: 2, size: 1 },
+                    'Blood Bag':  { price: 2, size: 1 },
+                    'Grenade':    { price: 2, size: 2 },
+                    'Bomb':       { price: 4, size: 3 },
+                    'Dynamite':   { price: 6, size: 4 },
+                    'Fake Blood': { price: 2, size: 2 },
+                    'Bullet':     { price: 2, size: 0 },
+                    'Battery':    { price: 2, size: 0 }
+                };
+                itemPriority = scriptedBuys
+                    .filter(name => itemMeta[name])
+                    .map(name => ({ name, ...itemMeta[name] }));
+            }
+        }
+
         // Bot shopping logic - buy items according to priority and budget
         for (let item of itemPriority) {
             while (player.resources.money >= item.price) {
@@ -11480,6 +11624,9 @@ class Game {
     }
     
     buyStoreItem(itemName, price, size) {
+        if (this.tutorialBlocks('buyStoreItem', { itemName })) return;
+        this.tutorialNotify('buyStoreItem', { itemName });
+
         // In online mode as guest, send purchase action to host
         if (this.gameMode === 'online' && !this.isHost) {
             this.onlineManager.pushAction({
@@ -11584,6 +11731,9 @@ class Game {
     }
     
     finishShopping() {
+        if (this.tutorialBlocks('finishShopping', {})) return;
+        this.tutorialNotify('finishShopping', {});
+
         if (this.gameMode === 'online') {
             this.finishShoppingOnline();
         } else if (this.gameMode === 'simultaneous') {
@@ -12908,12 +13058,14 @@ class Game {
     
     handleCapacityOverflow(overflowPlayers) {
         if (overflowPlayers.length === 0) {
+            this.currentOverflowPlayer = null;
             this.hidePlayerStatusIndicators();
             this.checkForestReadiness();
             return;
         }
 
         const playerId = overflowPlayers[0];
+        this.currentOverflowPlayer = playerId;
         const player = this.players.find(p => p.id === playerId);
 
         // Show phase title only (no red/green indicators)
@@ -13056,6 +13208,11 @@ class Game {
     }
     
     addToUpgradeFromOverflow(playerId, itemIndex) {
+        const _player = this.players.find(p => p.id === playerId);
+        const _item = _player && _player.inventory ? _player.inventory[itemIndex] : null;
+        const _itemName = _item ? _item.name : null;
+        if (this.tutorialBlocks('addToUpgradeFromOverflow', { playerId, itemName: _itemName })) return;
+        this.tutorialNotify('addToUpgradeFromOverflow', { playerId, itemName: _itemName });
         if (this.gameMode === 'online' && !this.isHost) {
             this.onlineManager.pushAction({
                 type: 'capacity_overflow_choice',

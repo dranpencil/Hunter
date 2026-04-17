@@ -63,6 +63,14 @@ menu.localPlay,Local Play,本機遊戲
 menu.onlinePlay,Online Play,線上遊戲
 menu.dataCollection,Data Collection Mode,資料收集模式
 menu.rulebook,Rulebook,規則書
+menu.tutorial,Tutorial,教學
+tutorial.next,Next,下一步
+tutorial.quit,Quit Tutorial,退出教學
+tutorial.completed,Tutorial Complete!,教學完成！
+tutorial.warningFollow,Please follow the instruction.,請依照教學指示操作。
+tutorial.quitConfirm,Are you sure you want to quit the tutorial? Your progress will be lost.,確定要退出教學嗎？你的進度將會遺失。
+tutorial.progress,Step {0} / {1},進度 {0} / {1}
+tutorial.step.welcome,"Welcome to Rock Paper Hunters! This tutorial will walk you through the basics of one round. Click Next to begin.","歡迎來到剪刀石頭獵人！本教學將帶你走過一回合的基本操作。點擊下一步開始。"
 menu.language,Language,語言
 language.title,Select Language / 選擇語言,Select Language / 選擇語言
 rules.title,Game Rules,遊戲規則
@@ -289,6 +297,14 @@ store.maxBullets,Max bullets!,子彈已達上限！
 store.maxBatteries,Max batteries!,電池已達上限！
 store.overCapacity,⚠️ Over capacity!,⚠️ 超出容量！
 store.buy,Buy,購買
+store.itemDesc.beer,Restores 1 EP / Upgrade EP max,恢復 1 體力 / 升級體力上限
+store.itemDesc.bloodBag,Restores 1 HP / Upgrade HP max,恢復 1 血量 / 升級血量上限
+store.itemDesc.fakeBlood,+2 points when defeating monster,擊敗怪獸時 +2 分
+store.itemDesc.grenade,+1 damage to monster,對怪獸 +1 傷害
+store.itemDesc.bomb,+2 damage to monster,對怪獸 +2 傷害
+store.itemDesc.dynamite,+3 damage to monster,對怪獸 +3 傷害
+store.itemDesc.bullet,Ammunition required for Rifle weapon,步槍所需的彈藥
+store.itemDesc.battery,Ammunition required for Plasma weapon,電漿砲所需的彈藥
 store.finishShopping,Finish Shopping,結束購物
 store.itemsHeading,Available Items,可購買物品
 store.inventoryHeading,Your Inventory,你的物品欄
@@ -733,3 +749,46 @@ button.cancelClose,✕,✕
 common.host,Host,房主
 common.guest,Guest,訪客
 common.connected,Connected,已連線
+tutorial.step.1,"Players take on the role of skilled hunters, each accompanied by their top apprentice, arriving in a town in desperate need of help. The surrounding forest is infested with terrifying monsters, and the townspeople are living in fear.",玩家將扮演身手不凡的精英獵人，每位獵人都帶著自己的首席學徒，抵達一座急需救援的小鎮。城鎮旁的森林已被恐怖的怪獸侵佔，居民們終日生活在恐懼之中。
+tutorial.step.2,"As many other hunters also flock to the town, they're not just there to help; they're also seeking fame and recognition. In this cutthroat environment, who will earn the Barlic's acclaim?",然而，隨著大批獵人湧入小鎮，他們的目的並不單純——除了提供援助，每個人都渴望贏得名聲與地位。在這個競爭激烈的環境下，究竟誰能脫穎而出，贏得大眾的喝采與榮耀？
+tutorial.step.3,"This town is divided into 6 locations; including the Forest, there are 7 in total. Note that in a 2-player game, certain locations will be temporarily closed. Don't worry, they will reopen next round.",這座城鎮分成6個區域，加上森林總共有7個。而2人遊戲某些區域會暫時關閉，別擔心，它們下回合就會開放了。
+tutorial.step.4,"First, please click ""Expand"" to make it easier for players to view detailed information about themselves and their opponents.",請先點擊「展開」方便玩家檢視自己和對手的詳細資料。
+tutorial.step.5,"To begin, players must choose one location to go each round. Let's make some money first. Working at the Work Site is a good way to get some funding. For the Hunter location, please select ""Work Site"".",首先，玩家每回合都要選擇1個區域前往工作。我們先來賺點錢，去工地工作正好可以補貼一些資金。獵人區域請選擇「工地」。
+tutorial.step.6,"However, you must be careful, as other Hunters are also secretly choosing their destinations at this time. If too many people flood into one location, the resources each person receives will decrease. This is the time to send out your Apprentice.",然而你要小心其他的獵人此時也正在秘密的選擇他們要去的地方。一個區域如果有太多人湧入，每人能夠分到的資源就會減少。此時，就是派出你徒弟的時候了。
+tutorial.step.7,"We guess the opponent will want to go to the Hospital this round to acquire Blood Bags. To make them get less, send your Apprentice to the Hospital as well! For the Apprentice location, please select ""Hospital"".",我們猜對手這回合會想去醫院獲取血袋，為了讓他少拿一些，將你的徒弟也派去醫院吧！徒弟區域請選擇「醫院」。
+tutorial.step.8,"Once both the Hunter and Apprentice have decided on their locations, click ""Confirm Selection"".",當獵人與徒弟都決定好區域後，點擊「確認選擇」。
+tutorial.step.9,"Lucky! The opponent's Hunter indeed went to the Hospital! We obtained 6 dollars from the Work Site! But remember, if there are two or more people at the Work Site, you can only get 4 dollars.",真幸運！對手獵人果然去到了醫院！我們從工地獲得了6塊錢！但如果工地有兩人以上的話，就只能拿到4塊錢喔。
+tutorial.step.10,"Your Apprentice obtained Blood Bags! But that's not important, because those items belong to him. The Apprentice's mission in this game is purely to interfere with the opponent and learn your martial arts techniques.",你的徒弟獲得了血袋！但那不重要，因為那些是屬於他的東西。徒弟這次的任務就純粹是干擾對手和學習你的武功技巧。
+tutorial.step.11,"Huh? It seems you have something extra on you. Check the inventory in the bottom left corner—there's actually an extra Beer! It rounds out that your lonely figure working at the Work Site touched the hearts of the local residents, causing your Popularity to rise!",咦？你的身上似乎多了些東西。看一下左下角的物品欄，居然多了一杯啤酒！原來是因為你那在工地工作的孤獨身影打動了當地居民的心，使你的人氣上升了！
+tutorial.step.12,"Take another look at the popularity Track on the right. Because you successfully existed alone in a location, your popularity has risen to Level 1. At this point, the ""Resource Token"" on the right moves up one space. Players receive all rewards at and below that position [1 Beer]. If the ""Point Token"" on the left is at a lower position, it moves to the same height as the Resource Token, and the player immediately gains the corresponding points [1 Point].",再看一下右邊的人氣軌道。因為你成功單獨存在區域內，人氣上升到等級1了。此時右側的「資源標記」會向上移動1格，玩家可獲得該位置以下的所有獎勵[1杯啤酒]。若左側的「分數標記」位置較低，它會移動到與資源標記相同的高度，玩家立即獲得相應的分數[1分]。
+tutorial.step.13,"After understanding popularity Rewards, next up is shopping Phase. Players can purchase the items they want. Each item has a different size, so be careful that the total volume after finishing purchase does not exceed your Capacity.",了解人氣獎勵之後，接下來是花錢時間。玩家可以購買想要的物品。每種物品都有不同的大小，留意購買後總體積不要超過你可攜帶的容量上限。
+tutorial.step.14,"We currently have 10 dollars. Let's buy one Grenade. These items can help us in future battles. Please click on ""Grenade,"" then click ""Finish Shopping"".",我們現在有10塊錢，讓我們購買1個手榴彈。這些物品可以幫助我們之後的戰鬥。請點擊「手榴彈」後，點擊「結束購物」。
+tutorial.step.15,"Excellent. Because no Hunters went to the Forest to fight this round, the Combat Phase will not occur, and this round ends.",很好。這個回合因為沒有獵人到森林戰鬥，所以戰鬥階段不會發生，此回合結束。
+tutorial.step.16,"A new round begins. Let's go to the Hospital. Since the opponent just visited the Hospital, they probably won't want to go there two rounds in a row. For the Hunter location, please select ""Hospital"".",新的回合開始。讓我們去醫院吧。因為對手才剛去過醫院，應該不會想要連續兩回合都去。獵人區域請選擇「醫院」。
+tutorial.step.17,"As for the Apprentice, let's send him to the Dojo; maybe the opponent wants to go there to train alone. For the Apprentice location, please select ""Dojo"" then click ""Confirm Selection"".",至於徒弟的部分，我們送他去道場好了，說不定對手想去獨自練功。徒弟區域請選擇「道場」後，點擊「確認選擇」。
+tutorial.step.18,"Wow! Although we didn't guess the opponent's thinking correctly, we successfully avoided the opponent's Apprentice. Both your popularity and the opponent's have risen! And we received rewards [2 dollars, 1 Beer] and score [2 Points]. You ask why there's a Beer? That's because players obtain all rewards at and below the Resource Token's position!","哇！雖然沒猜中對手的思路，但我們也成功躲過對手的徒弟。你跟對手的人氣值都上升了！而我們獲得了獎勵[2塊錢、1杯啤酒]和分數[2分]。你問說為什麼有啤酒？那是因為玩家可獲得資源標記位置以下的""所有""獎勵！"
+tutorial.step.19,"You obtained 4 units of Blood Bags at the Hospital. Blood Bags can be used to ""Heal"" or ""Upgrade Max HP"" Since we are currently at full health, let's ""Upgrade Max HP"" Click ""Max"" three times.","你在醫院獲得了4份血袋。血袋可以用來""補血""或""升級血量最大值""。因為我們目前滿血狀態，所以來""升級血量最大值""吧。點擊「最大」3次。"
+tutorial.step.20,"Great. Your Max HP is now 5. Remember, every 3 Blood Bags spent can increase Max HP by 1 point. Meanwhile, the opponent went to the Bar and obtained 6 Beers. Beers can be used to ""Restore energy"" or ""Upgrade Max EP"" Both are similar concepts.","太好了。你的最大血量變成5了。記得每花費3份血袋就可以提高1點的最大血量。而對手去到了酒吧，獲得了6杯啤酒。啤酒則可以拿來""補體力""或""升級體力最大值""。兩者為類似的概念。"
+tutorial.step.21,"We won't buy anything this round. Please click ""Finish Shopping"".",這回合我們什麼都先不買。請點擊「結束購物」。
+tutorial.step.22,"Remember what I said earlier? When ending shopping, the total volume of items cannot exceed your maximum carrying Capacity. Right now, you are over the limit. If you cannot immediately use up the excess items, you must discard them. Fortunately, we can continue to use Blood Bags to ""Upgrade Max HP"". Click ""Upgrade"" of the blood Bag.","還記得我之前說的嗎？在結束購物時，物品的總體積不能超過你可攜帶的容量上限。現在你超過了，如果無法立即使用掉多餘的物品就必須丟棄了。好在我們可以繼續拿血袋來""升級血量最大值""。請點擊血袋的「升級」。"
+tutorial.step.23,"Although the upgrade wasn't completed, the progress has been saved. Later, you just need to find a way to get 2 more Blood Bags to upgrade again.",雖然沒有完成升級，但進度已經被儲存了。之後只要再想辦法拿到2份血袋即可再次升級。
+tutorial.step.24,"Starting the third round, it's time to enter the Forest. After all, eliminating monsters for the people will surely add a lot of reputation. For the Hunter location, please select ""Forest"".",開始第三個回合，該是時候進森林了。畢竟為民除害肯定可以加很多分數。獵人區域請選擇「森林」。
+tutorial.step.25,"I don't know if you've noticed, but when the Hunter selects the Forest, the Apprentice can also follow to the Forest. This is because players in the Forest do not affect their own Popularity, so the Apprentice comes to the Forest for only one purpose: to assist you in battle. However, this might result in your opponent gaining Popularity in the city without any inhibition.",不知道你有沒有發現，當獵人選擇了森林，徒弟也可以跟著去森林了。那是因為玩家在森林裡並不會影響自身的人氣，所以徒弟來森林只剩下一個目的：協助你戰鬥。但是這樣可能會導致你的對手在城內毫無忌憚的獲得人氣。
+tutorial.step.26,"An Apprentice in the Forest can help you deal 1 point of damage to the monster. Just 1 point, no more, no less. Let's not do that for now. For the Apprentice location, please select ""Station"" then click ""Confirm Selection"".",在森林的徒弟可以幫你給予怪獸1點的傷害。就1點，不多也不少。我們先別這樣做。徒弟區域請選擇「車站」後，點擊「確認選擇」。
+tutorial.step.27,"Next, use the 2 Beers to ""Upgrade Max EP"" Click ""Max"" twice.","接下來把2杯啤酒拿來""升級體力最大值""。點擊「最大」2次。"
+tutorial.step.28,"You will notice you have 3 EXP (Experience Points). EXP can be used to enhance Attack Power and Defense. To boost Attack Power requires 5 EXP; unfortunately, we don't have that much right now. Click ""Defense"".",你會發現你身上有3點經驗值，經驗值可用來增強攻擊力和防禦力。提升攻擊力要5經驗值，可惜我們目前沒那麼多，點擊「防禦」。
+tutorial.step.29,"Very good, we have 1 point of Defense now. Next, purchase 1 ""Fake Blood"" and then click ""Finish Shopping"".",很好，我們有1點防禦力了。再來，購買1份「假血」後點擊「結束購物」。
+tutorial.step.30,"Here comes the main event. The first thing to do upon arriving at the Forest is to decide how difficult a monster to challenge. Monsters are divided into 3 levels. Players must pay different amounts of energy to fight monsters of different levels. Click ""Level 1"" and then press ""Confirm Battle"".",重頭戲來了。到了森林的第一件事就是，決定要挑戰多難的怪獸。怪獸分成3個等級。不同等級的怪獸玩家必須支付不同數量的體力來對抗。點擊「等級1」後按下「確認戰鬥」。
+tutorial.step.31,"You've encountered a monster! You can see this monster's HP, Attack, Effect, and Reward. If you don't like it, you can spend 1 energy to flee and look for other targets. This one looks fine; let's settle on this one. Click ""Ready"".",遇到怪獸了！你可以看到這隻怪獸的血量、攻擊力、效果和獎賞。若不喜歡，可以花1點體力逃跑取找其他目標。這隻看起來還行，就決定這隻吧。點擊「就緒」。
+tutorial.step.32,"The combat structure is round-based. Usually, the player attacks first. The player rolls dice equal to their Attack Dice quantity, calculating the final damage output based on the weapon's Hit Rate Click ""Attack!"".",戰鬥的架構屬於回合制。通常是由玩家先攻擊。玩家會投擲等同於其攻擊骰數量的骰子，依照武器的命中機率來計算最後的傷害輸出。點擊「攻擊！」。
+tutorial.step.33,"Lucky enough, we rolled 2 points of damage, but the monster is not dead yet. Before it's the monster's round to attack, we have a chance to use a Grenade to finish it off. But don't rush; I'll tell you why in a moment. Click ""Defend"".",運氣不錯我們骰出了2點傷害，怪獸還沒死亡。換怪獸攻擊前，我們有機會使用手榴彈來終結他。但先不要急，待會會告訴你為什麼。點擊「防禦」。
+tutorial.step.34,"The monster's Attack is 2, so the player would normally take 2 damage directly. But since you have 1 point of Defense, you will now roll dice equal to your Defense Dice quantity; each die rolling a 4 or higher grants 1 point of Defense blocking. Finally, the damage you take is calculated as 1.",怪獸的攻擊力為2，玩家會直接受到2點傷害。但由於你有1點防禦力，此時將擲等同於其防禦骰數量的骰子，骰到4以上即獲得1點防禦。最後計算你所受傷害為1。
+tutorial.step.35,"Although you are injured (-1 HP), you consequently gain an equal amount of experience (+1 EXP).",雖然你受傷了(-1)，但是也因此獲得等量的經驗值(+1)。
+tutorial.step.36,"A strange button has appeared, have you noticed? That's right, you can tame this monster; it can serve as your Pet to fight alongside you in the future. The condition for taming is that you must pay 1 energy when the monster has only 1 HP remaining. Click ""Fake Blood"" then click ""Tame (-1 energy)"".",有個奇特的按鈕出現了，有發現嗎？沒錯，你可以收服這隻怪物，日後其可作為你的寵物與你並肩作戰。收服的條件是必須在怪獸只剩下1點血量時，支付1點體力。點擊「假血」後再點擊「收服(-1體力)」。
+tutorial.step.37,"Taming successful! Although the monster didn't die, you are still considered to have defeated it, and you can still receive the rewards for winning. Furthermore, splashing Fake Blood on yourself is quite impressive. It earns you an extra 2 Points for defeating the monster.",收服成功！儘管怪獸沒有死，但仍然算是打敗了他，照樣可以獲得打贏的獎勵。另外你把假的血漿撒在自己身上，會令人印象深刻。它讓你擊敗怪獸獲得額外的2分。
+tutorial.step.38,"Please look closely. Just now, because you defeated a Level 1 monster, you gained 1 Weapon Power, thereby advancing the ""Weapon Power Track"" by 1 space. Reaching the 3rd and 7th spaces can even unlock new weapon powers for you.",請注意看，剛才因為打敗了等級1的怪獸，獲得的1點武器能力，進而推進「武器能力軌道」1格。當抵達第3格和第7格時更可以替你解鎖新的武器能力。
+tutorial.step.39,"When you reround to the Forest later, if you want to bring your Pet to fight together, you must pay extra energy to control it. The energy cost = Monster Level + 1.",之後再次到森林時，如果想帶寵物一起戰鬥，必須要支付額外的體力來控制他。支付體力=怪獸等級+1。
+tutorial.step.40,"This round, for the Hunter location, please select ""Station"" and for the Apprentice location, please select ""Plaza"" then click ""Confirm Selection"".",這個回合獵人區域請選擇「車站」，徒弟區域請選擇「廣場」後，點擊「確認選擇」。
+tutorial.step.41,"The Station is a busy place; people who come here can choose one of four basic resources (Blood Bags, money, Beer, EXP). The quantity obtained is determined by the total number of people at the Station. Click ""EXP"".",車站是個繁忙的地方，來這的人可以從4種基本資源(血袋、錢、啤酒、經驗值)中選一種。至於取得的數量則是由車站的總人數做判定。點擊「經驗值」。
+tutorial.step.42,"This time you have caught by the opponent's Apprentice. You can notice that the ""Resource Token"" on your popularity Track drops down 1 level, while the ""Point Token"" does not move down. You therefore receive a popularity reward (1 Beer) but no points.",這次被對手的徒弟抓到了。你可以注意到你的人氣軌道上的「資源標記」往下降1層；而「分數標記」卻不會往下移動。你因此獲得人氣獎勵(1杯啤酒)，但沒有分數。
+tutorial.step.43,"That's it. If there are detailed rules you wish to delve into, you can click ""Rulebook"" to read more. You now possess the knowledge to play this game! Thank you for playing this tutorial!",若有細節規則想要深究可以點擊「說明書」閱讀更多。而你現在已具備遊玩本遊戲的知識了！感謝遊玩本教學！

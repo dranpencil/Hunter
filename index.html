@@ -51,6 +51,9 @@
         <div id="main-menu" class="main-menu" style="display: none;">
             <div class="menu-content">
                 <h1 class="game-title" data-i18n="menu.title">Rock, Paper, Hunters</h1>
+                <button class="menu-button tutorial-btn" onclick="tutorialManager.start()" data-i18n-title="menu.tutorial" title="Tutorial">
+                    <span class="button-icon">🎓</span>
+                </button>
                 <button class="menu-button rulebook-btn" onclick="game.showRulebook()" data-i18n-title="menu.rulebook" title="Rulebook">
                     <span class="button-icon">📖</span>
                 </button>
@@ -718,6 +721,16 @@
         </div>
     </div>
 
+    <!-- Tutorial Floating Panel (docked at the bottom of the screen during tutorial mode) -->
+    <div id="tutorial-panel" class="tutorial-panel" style="display: none;">
+        <div class="tutorial-progress" id="tutorial-progress"></div>
+        <div class="tutorial-step-text" id="tutorial-step-text"></div>
+        <div class="tutorial-buttons">
+            <button id="tutorial-next-btn" onclick="tutorialManager.advanceFromButton()" data-i18n="tutorial.next">Next</button>
+            <button id="tutorial-quit-btn" onclick="tutorialManager.requestQuit()" data-i18n="tutorial.quit">Quit Tutorial</button>
+        </div>
+    </div>
+
     <!-- i18n: translations.js holds the embedded CSV, i18n.js consumes it. Both must load BEFORE game.js -->
     <script src="translations.js"></script>
     <script src="i18n.js"></script>
@@ -727,5 +740,9 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <script src="firebase-config.js"></script>
     <script src="game.js"></script>
+
+    <!-- Tutorial: data file + engine. Both must load AFTER game.js so window.game exists. -->
+    <script src="tutorial-steps.js"></script>
+    <script src="tutorial.js"></script>
 </body>
 </html>

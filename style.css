@@ -3746,6 +3746,148 @@ button {
     line-height: 1;
 }
 
+/* Tutorial Button (top-LEFT corner of the main menu) */
+.tutorial-btn {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    width: 60px;
+    height: 60px;
+    padding: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.tutorial-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: scale(1.1);
+}
+
+.tutorial-btn .button-icon {
+    font-size: 32px;
+    margin: 0;
+    line-height: 1;
+}
+
+/* Tutorial Floating Panel (docked at the bottom-center during tutorial) */
+.tutorial-panel {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10000;
+    background: rgba(20, 30, 48, 0.96);
+    color: #ecf0f1;
+    border: 2px solid #3498db;
+    border-radius: 12px;
+    padding: 18px 24px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+    min-width: 360px;
+    max-width: 700px;
+    display: none;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    font-family: 'Microsoft JhengHei', 'PingFang TC', sans-serif;
+}
+
+.tutorial-panel .tutorial-progress {
+    position: absolute;
+    bottom: 8px;
+    right: 14px;
+    font-size: 12px;
+    color: #bdc3c7;
+    font-weight: normal;
+    letter-spacing: 0.5px;
+    pointer-events: none;
+}
+
+.tutorial-panel .tutorial-step-text {
+    font-size: 16px;
+    line-height: 1.5;
+    color: #ecf0f1;
+    text-align: center;
+}
+
+.tutorial-panel .tutorial-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+}
+
+.tutorial-panel .tutorial-buttons button {
+    padding: 8px 18px;
+    font-size: 14px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background 0.2s;
+}
+
+#tutorial-next-btn {
+    background: #3498db;
+    color: #fff;
+}
+#tutorial-next-btn:hover {
+    background: #2980b9;
+}
+
+#tutorial-quit-btn {
+    background: #7f8c8d;
+    color: #fff;
+}
+#tutorial-quit-btn:hover {
+    background: #95a5a6;
+}
+
+/* Tutorial Highlight (glow + pulse on the element the player should click) */
+.tutorial-highlight {
+    box-shadow: 0 0 0 4px #f1c40f, 0 0 16px 4px rgba(241, 196, 15, 0.7) !important;
+    animation: tutorial-pulse 1.4s ease-in-out infinite;
+    position: relative;
+    z-index: 9999;
+}
+
+@keyframes tutorial-pulse {
+    0%, 100% { box-shadow: 0 0 0 4px #f1c40f, 0 0 16px 4px rgba(241, 196, 15, 0.7); }
+    50%      { box-shadow: 0 0 0 4px #f39c12, 0 0 28px 8px rgba(243, 156, 18, 0.9); }
+}
+
+/* (.tutorial-blocked is no longer used — the tutorial keeps every button
+   enabled and surfaces wrong actions via a warning toast instead. The
+   class is kept harmless in case stale DOM still has it.) */
+
+/* Tutorial Warning Toast (shown when the player clicks the wrong thing) */
+.tutorial-warning-toast {
+    position: fixed;
+    top: 32px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-12px);
+    z-index: 11000;
+    background: rgba(192, 57, 43, 0.96);
+    color: #fff;
+    border: 2px solid #f1c40f;
+    border-radius: 10px;
+    padding: 12px 22px;
+    font-size: 16px;
+    font-weight: bold;
+    font-family: 'Microsoft JhengHei', 'PingFang TC', sans-serif;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.tutorial-warning-toast.visible {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
 /* Game Stats Display */
 .game-stats-overlay {
     position: fixed;

@@ -6,7 +6,9 @@
       "Bash(grep:*)",
       "Bash(python:*)",
       "Bash(timeout:*)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(iconv -f BIG5 -t UTF-8 scripts.csv)",
+      "Read(//tmp/**)"
     ],
     "deny": []
   }
