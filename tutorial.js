@@ -148,6 +148,10 @@ class TutorialManager {
         }
         this.currentStepIndex = 0;
         this._rollCursors = {};
+        if (this._highlightRetryTimer) {
+            clearTimeout(this._highlightRetryTimer);
+            this._highlightRetryTimer = null;
+        }
         this.hidePanel();
         this.clearBlockedAndHighlight();
 
@@ -350,9 +354,9 @@ class TutorialManager {
 
         // Apply highlight / blocked classes after a tick so the DOM
         // reflects the current phase (e.g. cards exist) before we tag
-        // them. Use a larger delay to allow phase transitions / UI
-        // re-renders to finish.
-        setTimeout(() => this.applyHighlight(), 200);
+        // them. Polls for up to ~3s so slow phase transitions (e.g. the
+        // 2s next-round → selection delay) still catch the target.
+        this._scheduleHighlight();
     }
 
     renderCompletion() {
@@ -371,21 +375,54 @@ class TutorialManager {
     }
 
     /**
+     * Schedule applyHighlight() with bounded polling. The first attempt
+     * fires at 200ms (same as before). If the selector matches nothing,
+     * we retry every 150ms up to 3s total — enough to cover the 2s
+     * startNextRoundPhase delay before the new selection cards mount.
+     * Exits silently if the step advances or tutorial quits mid-wait.
+     */
+    _scheduleHighlight() {
+        if (this._highlightRetryTimer) {
+            clearTimeout(this._highlightRetryTimer);
+            this._highlightRetryTimer = null;
+        }
+        const stepAtSchedule = this.currentStepIndex;
+        const maxWaitMs = 3000;
+        const intervalMs = 150;
+        const start = Date.now();
+
+        const tryApply = () => {
+            this._highlightRetryTimer = null;
+            if (!this._active) return;
+            if (this.currentStepIndex !== stepAtSchedule) return;
+            if (this.applyHighlight()) return;
+            if (Date.now() - start >= maxWaitMs) return;
+            this._highlightRetryTimer = setTimeout(tryApply, intervalMs);
+        };
+
+        this._highlightRetryTimer = setTimeout(tryApply, 200);
+    }
+
+    /**
      * Add .tutorial-highlight to the element(s) the player should click.
      * All other buttons remain enabled — wrong actions are caught by
      * tutorialBlocks() and surfaced via showWarning() instead.
+     * Returns true if the step required no highlight or the selector
+     * matched at least one element; false if the selector matched zero
+     * elements (signals _scheduleHighlight to retry).
      */
     applyHighlight() {
         const step = this.getCurrentStep();
-        if (!step) return;
+        if (!step) return true;
 
         // Wipe previous highlight state only (no longer block anything).
         this.clearBlockedAndHighlight();
 
-        if (step.highlight) {
-            const targets = document.querySelectorAll(step.highlight);
-            targets.forEach(el => el.classList.add('tutorial-highlight'));
-        }
+        if (!step.highlight) return true;
+        const targets = document.querySelectorAll(step.highlight);
+        if (targets.length === 0) return false;
+        targets.forEach(el => el.classList.add('tutorial-highlight'));
+        return true;
     }
 
     clearBlockedAndHighlight() {

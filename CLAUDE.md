@@ -6,10 +6,14 @@ Rock, Paper, Hunters is a strategic digital board game for 2-4 players where eac
 ## Project Structure
 
 ### Source Files
-- **game.js** (~16,060 lines) - Core game engine: BotPlayer class + Game class
+- **game.js** (~16,200 lines) - Core game engine: BotPlayer class + Game class
 - **firebase-config.js** (~340 lines) - OnlineManager class for Firebase multiplayer
 - **index.html** - UI structure, modals, layout
 - **style.css** - Styling, responsive layout, animations
+- **i18n.js** - Runtime translation loader + `t()` function (EN/ZH)
+- **translations.js** - Auto-generated from `translations.csv` (embeds CSV for `file://`)
+- **tutorial.js** (~440 lines) - `TutorialManager` singleton (engine/gating/rendering)
+- **tutorial-steps.js** (~630 lines) - User-editable tutorial script, bot moves, and player overrides
 
 ### Data Files (CSV Lookup Tables)
 - `Weapon.csv` - 11 weapons with stats, capacities, powers, preferred locations
@@ -18,6 +22,8 @@ Rock, Paper, Hunters is a strategic digital board game for 2-4 players where eac
 - `exp需求組合(lv1-3).csv` - EXP/Dojo decision tables for bot AI
 - `森林需求組合(lv1-3).csv` - Forest entry decision tables for bot AI
 - `canned message.csv` - Pre-scripted chat messages (5 categories)
+- `translations.csv` - Bilingual UI strings (key, EN, ZH) — regenerated to `translations.js` by `convert-translations.bat`
+- `scripts.csv` / `scripts.xlsx` - Human-editable source for tutorial step text (Excel-friendly; translation keys mirror `tutorial.step.<id>` rows in `translations.csv`)
 
 ### Image Assets
 - **Locations** (7): `work_site.png`, `bar.png`, `station.png`, `hospital.png`, `dojo.png`, `plaza.png`, `forest.png`
@@ -54,9 +60,10 @@ Rock, Paper, Hunters is a strategic digital board game for 2-4 players where eac
 ## Complete Game Flow
 
 ### Startup
-1. Main menu: Local Play / Online Play / Data Collection / Rulebook
+1. Main menu: Local Play / Online Play / Data Collection / Rulebook / Tutorial (🎓) / Language (🌐)
 2. **Local**: Player count (2-4) -> Weapon selection -> Game starts
 3. **Online**: Create/Join room -> Preferences (color, weapon, name) -> Ready -> Game starts
+4. **Tutorial**: One-click guided 4-round game; see Tutorial System section
 
 ### Round Phases
 
@@ -287,6 +294,142 @@ Dummy tokens for balance: 2 players (Bar + Dojo), 3 players (Station), 4 players
 - Tiebreaker: Popularity track level (0-5)
 - Shared ranks for identical score AND level
 
+## Language Selection (i18n)
+
+Bilingual UI (English + Traditional Chinese / 繁體中文), switchable at runtime via the 🌐 button next to the rulebook button on the main menu. Translations live in a plain CSV the author can edit in Excel/Google Sheets, and a 1-click batch file rebuilds the runtime data.
+
+### Pipeline
+
+```
+translations.csv  (author edits)
+       │  node convert-translations.js  (run via convert-translations.bat)
+       ▼
+translations.js   (sets window.__TRANSLATIONS_CSV__ = "...")
+       │  <script> loads it in index.html before i18n.js
+       ▼
+i18n.js           (parses CSV in-memory; exposes t(), setLanguage(), getLanguage())
+```
+
+The embedded-string path is the primary loader (works under `file://`, no CORS issues); `i18n.js` falls back to `fetch('translations.csv')` when served over `http://`.
+
+### Key Files
+
+| File | Role |
+|------|------|
+| `translations.csv` | Source of truth: columns `key, en, zh`. ~500+ keys organized by prefix (`menu.`, `lobby.`, `weapon.`, `battle.`, `log.`, `alert.`, `tutorial.step.`, …). |
+| `translations.js` | Auto-generated. Assigns the full CSV text as `window.__TRANSLATIONS_CSV__` (via `JSON.stringify` for safe escaping). Do not edit by hand. |
+| `convert-translations.js` | Node script: reads `translations.csv`, writes `translations.js`. |
+| `convert-translations.bat` | Windows one-click: `node convert-translations.js` + `pause`. |
+| `i18n.js` | Runtime module. Parses CSV (with quoted-field support), stores `{ key: { en, zh } }`, persists language to `localStorage['rph_language']`, detects browser `zh*` on first load. |
+| `Rules_EN.htm` / `Rules_ZH.htm` | Dual rulebook files swapped based on active language. |
+
+### Runtime API (exposed on `window`)
+
+- `t(key, ...args)` — returns the translated string for the active language, with `{0}`, `{1}`, … placeholders replaced by `args`. Missing key → `[MISSING: key]`. Blank cell → falls back to the other language, else `[UNTRANSLATED: key]`.
+- `setLanguage('en' | 'zh')` — switches language, persists to `localStorage`, calls `window.game.onLanguageChanged(lang)` if present, dispatches a `languagechange` CustomEvent on `window`.
+- `getLanguage()` — returns current language code.
+- `window.i18n.onReady(cb)` — fires `cb` once CSV has loaded (or immediately if already loaded).
+
+### DOM Translation
+
+Static UI elements in `index.html` are tagged with data attributes; `Game.applyTranslationsToDOM()` (game.js ~1852) walks the DOM on i18n ready and after every language change.
+
+- `data-i18n="key"` → sets `textContent` to `t(key)`
+- `data-i18n-title="key"` → sets `title` attribute
+- `data-i18n-placeholder="key"` → sets `placeholder` attribute
+
+Dynamic strings (battle logs, alerts, status messages, game stats, player-board content) call `t()` directly when constructed.
+
+### Display-Name Helpers (game.js ~2732–2909)
+
+Because weapon/item/location internal identifiers are English strings (`"Bat"`, `"Blood Bag"`, `"Work Site"`) used as data keys, four helpers translate them at render time:
+
+- `getLocationDisplayName(internalName)` — `"Work Site"` → `工地`
+- `getWeaponDisplayName(internalName)` — `"Bat"` → `棒球棍`
+- `getItemDisplayName(internalName)` — `"Blood Bag"` → `血袋`
+- `getPlayerDisplayName(player)` — `"Player 1"` / `"Bot 2"` → localized variant
+
+Use these whenever inserting a game entity's name into user-facing text; never pass the raw internal string through `t()`.
+
+### Runtime Re-render (`Game.onLanguageChanged()` — game.js ~1888)
+
+When the user switches language mid-game, the game object's hook re-renders every piece of dynamic UI that doesn't use `data-i18n`:
+
+- `applyTranslationsToDOM()` for the static DOM
+- `refreshPlayerBoard(id)` per player (weapon names, button labels)
+- `updateResourceDisplay()`, `refreshAllPlayerButtonStates()`, `forceLocationDisplayUpdate()`
+- Conditional re-renders: solo player-config slots (if on setup screen), battle item buttons / battle phase / monster rewards (if in battle), capacity overflow modal, game stats overlay
+- `tutorial.js` listens for the `languagechange` CustomEvent and calls `renderCurrentStep()` so the tutorial panel updates too.
+
+### Adding a New String
+
+1. Pick a stable key (prefix by area: `battle.`, `store.`, `alert.`, …).
+2. Add a row `key,en_text,zh_text` to `translations.csv`. Use `""` to escape quotes; commas/newlines inside a field must be wrapped in quotes.
+3. In HTML: add `data-i18n="the.key"` (or `-title` / `-placeholder`). In JS: call `t('the.key')` — or `t('the.key', arg0, arg1)` for placeholders.
+4. Double-click `convert-translations.bat`.
+5. Refresh the browser.
+
+### Persistence & First-Run Detection
+
+`i18n.js` checks `localStorage['rph_language']` on boot. If unset, it detects `navigator.language.toLowerCase().startsWith('zh')` and defaults to `zh`; otherwise `en`. `setLanguage()` writes the choice back to `localStorage`.
+
+## Tutorial System
+
+A guided, scripted playthrough that teaches new players the core mechanics in ~4 rounds. Launched from the main menu's 🎓 button (`tutorialManager.start()`). The tutorial uses the real game engine — it spins up a normal 1-human + 1-bot solo game with customized weapons, scripted bot moves, a forced monster, and forced dice rolls so the narrative plays out deterministically.
+
+### Architecture
+
+Two files plus 15 hook points in `game.js`:
+
+| File | Role |
+|------|------|
+| `tutorial.js` | `TutorialManager` singleton — lifecycle, step gating, rendering, warning toast, language-change re-render |
+| `tutorial-steps.js` | Three globals: `TUTORIAL_STEPS` (step list), `TUTORIAL_BOT_SCRIPTS` (per-round bot moves), `TUTORIAL_PLAYER_OVERRIDES` (weapons + `forcedMonsters` + `forcedRolls`) |
+
+The engine never writes to the steps file — all tutorial content edits happen in `tutorial-steps.js` + `translations.csv` + `scripts.csv`.
+
+### Step Gating Flow
+
+Each `game.js` hook wraps a user action with two calls on `tutorialManager`:
+
+1. **`canPerform(actionType, params)`** — before executing the action. Returns `false` if the click doesn't match the current step's `expectedAction`; the hook aborts silently and a warning toast ("Please follow the instruction") is shown via `showWarning()`.
+2. **`notifyAction(actionType, params)`** — after the action succeeds. If it matches the current step, the tutorial advances to the next step (`advance()`).
+
+Outside tutorial mode (`isTutorialMode === false`) both calls are no-ops, so the hooks are free at runtime in normal play.
+
+### 18 Hook Action Types
+
+Declared in `tutorial-steps.js` header comments — each is an `expectedAction` shape:
+`selectCard`, `confirmSelection`, `buyStoreItem`, `finishShopping`, `selectStationResource`, `selectMonsterLevel`, `confirmBattleSelection`, `confirmMonsterSelection`, `playerAttackMonster`, `tameMonster`, `useBattleItem`, `playerDefense`, `upgradeWeapon`, `restoreHP`, `restoreEP`, `addToUpgrade`, `addToUpgradeFromOverflow`, `toggleBoards`.
+
+### Scripting Hooks
+
+- **Bot moves**: `BotPlayer.selectHunterLocation()` / `selectApprenticeLocation()` and the bot store-buys path consult `tutorialManager.getBotMove(round, moveType)` first; a scripted value shortcuts the normal AI. `moveType`: `hunterLocation` | `apprenticeLocation` | `stationChoice` | `storeBuys` | `battleAction`.
+- **Forced monster**: `startBattlePhase()` path calls `tutorialManager.getForcedMonster(level)`. Accepts a full monster object or compact `{ level, effectId }` looked up from `Monster.csv`.
+- **Forced dice**: `Game.rollDice(numDice, category)` consults `tutorialManager.consumeForcedRoll(category)` before rolling. Each call pops one entry from the per-round per-category queue (e.g. `{ 3: { attack: [[4,4]], defense: [[4]] } }`), so the same `rollDice()` sequence is reproducible across sessions.
+
+### Step Structure
+
+Each step in `TUTORIAL_STEPS` has:
+- `id` — short slug used as the i18n key suffix (`tutorial.step.<id>`)
+- `round`, `phase` — organisational only, not enforced
+- `text` — either a plain string or `{ i18nKey: 'tutorial.step.welcome' }`
+- `expectedAction` — shape matching one of the 18 hook types, or `null` for text-only (advances via Next button)
+- `highlight` — CSS selector(s); the engine adds `.tutorial-highlight` glow class to matches (200 ms delay for phase transitions to settle)
+
+Multiple consecutive steps can share the same `i18nKey` (e.g. `14a` + `14b` both show the Row 14 text but gate on Grenade purchase, then Finish Shopping). The progress indicator ("Step X / Y") collapses these into a single logical step via `_uniqueKeys` so the displayed number matches the narrative.
+
+### Tutorial Panel UI
+
+`#tutorial-panel` (in `index.html`, hidden by default) docks at the bottom during tutorial mode. Contents: `#tutorial-progress` ("Step X / Y"), `#tutorial-step-text`, Next button (`advanceFromButton()` — only shown for `expectedAction: null` steps), Quit button (`requestQuit()` — confirmation modal then `quit()`). Quit/completion tears down via `game.exitToMainMenu()`.
+
+### Adding a New Tutorial Step
+
+1. Append a step object to `TUTORIAL_STEPS` in `tutorial-steps.js`.
+2. Add a `tutorial.step.<id>` row to `translations.csv` (EN + ZH).
+3. Double-click `convert-translations.bat` to rebuild `translations.js`.
+4. Refresh the browser.
+
 ## UI Systems
 
 ### Modal Dialogs
@@ -347,6 +490,20 @@ Dummy tokens for balance: 2 players (Bar + Dojo), 3 players (Station), 4 players
 | `initPhaseTimers()` | ~15175 | Phase timer setup |
 | `recordGameData()` | ~11803 | Data collection per game |
 | `exportToCSV()` | ~11837 | CSV file generation |
+| `Game.applyTranslationsToDOM()` | ~1852 | Walks `[data-i18n]` / `-title` / `-placeholder` and re-renders |
+| `Game.onLanguageChanged()` | ~1888 | Mid-game re-render of dynamic UI after language switch |
+| `Game.getLocationDisplayName()` | ~2732 | Translate location internal name for display |
+| `Game.getWeaponDisplayName()` | ~2749 | Translate weapon internal name for display |
+| `Game.getItemDisplayName()` | ~2878 | Translate item internal name for display |
+| `Game.getPlayerDisplayName()` | ~2909 | Translate player / bot name for display |
+| `t()` / `setLanguage()` / `getLanguage()` | i18n.js | Global translation API + language switch |
+| `Game.tutorialBlocks()` | ~2713 | Hook gate: returns true if action blocked by tutorial |
+| `Game.notifyTutorial()` | ~2721 | Hook: advances tutorial after successful action |
+| `TutorialManager.start()` | tutorial.js ~58 | Boots tutorial: overrides, solo game, step 0 |
+| `TutorialManager.canPerform()` | tutorial.js ~175 | Check if click matches current `expectedAction` |
+| `TutorialManager.getBotMove()` | tutorial.js ~233 | Scripted bot move for round/type (null = AI fallback) |
+| `TutorialManager.getForcedMonster()` | tutorial.js ~247 | Scripted monster for `forcedMonsters[round]` |
+| `TutorialManager.consumeForcedRoll()` | tutorial.js ~273 | Pop next scripted dice roll from queue |
 
 ## Technical Stack
 - **Frontend**: Vanilla JavaScript ES6, HTML5, CSS3
@@ -355,5 +512,5 @@ Dummy tokens for balance: 2 players (Bar + Dojo), 3 players (Station), 4 players
 - **Data Export**: CSV format with comprehensive game metrics
 
 ---
-*Last Updated: 2025-03-18*
-*Game Version: 1.3 - Online Multiplayer with Chat & Kick System*
+*Last Updated: 2026-04-18*
+*Game Version: 1.4 - Bilingual (EN/ZH) + Guided Tutorial*
