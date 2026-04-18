@@ -1905,6 +1905,17 @@ class Game {
             if (typeof this.forceLocationDisplayUpdate === 'function' && this.playerCount > 0) {
                 this.forceLocationDisplayUpdate();
             }
+            // Re-label existing tokens on the board
+            document.querySelectorAll('.token.hunter').forEach(el => {
+                el.textContent = t('token.hunter');
+            });
+            document.querySelectorAll('.token.apprentice').forEach(el => {
+                el.textContent = t('token.apprentice');
+            });
+            document.querySelectorAll('.token.dummy-token').forEach(el => {
+                el.textContent = t('token.dummy');
+                el.title = t('token.dummyTooltip');
+            });
             // Re-render player config slot UI if visible
             const setupScreen = document.getElementById('player-count-selection');
             if (setupScreen && setupScreen.style.display !== 'none' && typeof this.updateSoloPlayerSlotsDisplay === 'function') {
@@ -5591,7 +5602,7 @@ class Game {
         
         const token = document.createElement('div');
         token.className = `token ${tokenType} player-${playerId}`;
-        token.textContent = tokenType[0].toUpperCase();
+        token.textContent = tokenType === 'hunter' ? t('token.hunter') : t('token.apprentice');
         
         // Apply player colors to the token
         const playerColors = this.getPlayerColors(playerId);
@@ -5660,8 +5671,8 @@ class Game {
             if (location) {
                 const dummyToken = document.createElement('div');
                 dummyToken.className = 'token dummy-token';
-                dummyToken.textContent = 'D';
-                dummyToken.title = 'Dummy Token';
+                dummyToken.textContent = t('token.dummy');
+                dummyToken.title = t('token.dummyTooltip');
                 location.appendChild(dummyToken);
             }
         });
@@ -12794,7 +12805,7 @@ class Game {
                                 return `
                                     <div class="stat-row">
                                         <span class="stat-label">${this.getLocationDisplayName(name)}:</span>
-                                        <span class="stat-value">H: ${hunterCount} | A: ${apprenticeCount}</span>
+                                        <span class="stat-value">${t('token.hunter')}: ${hunterCount} | ${t('token.apprentice')}: ${apprenticeCount}</span>
                                     </div>
                                 `;
                             }).join('')}
