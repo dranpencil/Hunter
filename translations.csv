@@ -343,7 +343,7 @@ monster.hp,HP:,血量：
 monster.att,ATT:,攻擊：
 monster.rewards,Rewards:,獎勵：
 monster.money,💰 Money:,💰 金錢：
-monster.energy,⚡ Energy:,⚡ 體力：
+monster.energy,🍺 Beer:,🍺 啤酒：
 monster.blood,🩸 Blood:,🩸 血量：
 monster.points,🏆 Points:,🏆 分數：
 monster.effect,Effect:,效果：
@@ -779,7 +779,7 @@ tutorial.step.27,"Next, use the 2 Beers to ""Upgrade Max EP"" Click ""Max"" twic
 tutorial.step.28,"You will notice you have 3 EXP (Experience Points). EXP can be used to enhance Attack Power and Defense. To boost Attack Power requires 5 EXP; unfortunately, we don't have that much right now. Click ""Defense"".",你會發現你身上有3點經驗值，經驗值可用來增強攻擊力和防禦力。提升攻擊力要5經驗值，可惜我們目前沒那麼多，點擊「防禦」。
 tutorial.step.29,"Very good, we have 1 point of Defense now. Next, purchase 1 ""Fake Blood"" and then click ""Finish Shopping"".",很好，我們有1點防禦力了。再來，購買1份「假血」後點擊「結束購物」。
 tutorial.step.30,"Here comes the main event. The first thing to do upon arriving at the Forest is to decide how difficult a monster to challenge. Monsters are divided into 3 levels. Players must pay different amounts of energy to fight monsters of different levels. Click ""Level 1"" and then press ""Confirm Battle"".",重頭戲來了。到了森林的第一件事就是，決定要挑戰多難的怪獸。怪獸分成3個等級。不同等級的怪獸玩家必須支付不同數量的體力來對抗。點擊「等級1」後按下「確認戰鬥」。
-tutorial.step.31,"You've encountered a monster! You can see this monster's HP, Attack, Effect, and Reward. If you don't like it, you can spend 1 energy to flee and look for other targets. This one looks fine; let's settle on this one. Click ""Ready"".",遇到怪獸了！你可以看到這隻怪獸的血量、攻擊力、效果和獎賞。若不喜歡，可以花1點體力逃跑取找其他目標。這隻看起來還行，就決定這隻吧。點擊「就緒」。
+tutorial.step.31,"You've encountered a monster! You can see this monster's HP, Attack, Effect, and Reward. If you don't like it, you can spend 1 energy to flee and look for other targets. This one looks fine; let's settle on this one. Click ""Ready"".",遇到怪獸了！你可以看到這隻怪獸的血量、攻擊力、效果和獎賞。若不喜歡，可以花1點體力逃跑去找其他目標。這隻看起來還行，就決定這隻吧。點擊「就緒」。
 tutorial.step.32,"The combat structure is round-based. Usually, the player attacks first. The player rolls dice equal to their Attack Dice quantity, calculating the final damage output based on the weapon's Hit Rate Click ""Attack!"".",戰鬥的架構屬於回合制。通常是由玩家先攻擊。玩家會投擲等同於其攻擊骰數量的骰子，依照武器的命中機率來計算最後的傷害輸出。點擊「攻擊！」。
 tutorial.step.33,"Lucky enough, we rolled 2 points of damage, but the monster is not dead yet. Before it's the monster's round to attack, we have a chance to use a Grenade to finish it off. But don't rush; I'll tell you why in a moment. Click ""Defend"".",運氣不錯我們骰出了2點傷害，怪獸還沒死亡。換怪獸攻擊前，我們有機會使用手榴彈來終結他。但先不要急，待會會告訴你為什麼。點擊「防禦」。
 tutorial.step.34,"The monster's Attack is 2, so the player would normally take 2 damage directly. But since you have 1 point of Defense, you will now roll dice equal to your Defense Dice quantity; each die rolling a 4 or higher grants 1 point of Defense blocking. Finally, the damage you take is calculated as 1.",怪獸的攻擊力為2，玩家會直接受到2點傷害。但由於你有1點防禦力，此時將擲等同於其防禦骰數量的骰子，骰到4以上即獲得1點防禦。最後計算你所受傷害為1。

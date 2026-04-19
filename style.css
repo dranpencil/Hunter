@@ -3602,6 +3602,10 @@ button {
     color: #343a40;
 }
 
+.monster-rewards h4 {
+    color: white;
+}
+
 /* HP bonus display styling */
 #monster-hp-display {
     font-weight: bold;

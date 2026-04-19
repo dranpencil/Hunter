@@ -310,6 +310,7 @@ window.TUTORIAL_STEPS = [
         phase: 'next-round',
         text: { i18nKey: 'tutorial.step.23' },
         expectedAction: null,
+        highlight: '#player-0-board .hp-section .upgrade-bar, #player-0-board .collapsed-hp-section .collapsed-buttons',
     },
 
     // ---------- Round 3: selection ----------

@@ -114,11 +114,11 @@ class BotPlayer {
         const player = gameState.players[this.playerId];
         const entries = {};
         
-        // Initialize all locations with 4 base entries
+        // Initialize all locations with 2 base entries
         for (let i = 1; i <= 7; i++) {
-            entries[i] = 4;
+            entries[i] = 2;
         }
-        
+
         // Apply availability check (-100 for unavailable locations)
         for (let locationId = 1; locationId <= 7; locationId++) {
             if (!availableLocations.includes(locationId)) {
@@ -4956,8 +4956,12 @@ class Game {
                 }
             }
         }
+
+        if (this.isTutorialMode && window.tutorialManager && window.tutorialManager.isActive()) {
+            window.tutorialManager.applyHighlight();
+        }
     }
-    
+
     createCard(location, tokenType) {
         const card = document.createElement('div');
         card.className = `location-card ${tokenType}-card`;
