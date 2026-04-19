@@ -13103,7 +13103,8 @@ class Game {
         player.inventory.forEach((item, index) => {
             const itemElement = document.createElement('div');
             itemElement.className = 'capacity-item';
-            
+            itemElement.dataset.itemName = item.name;
+
             let buttonsHTML = '';
             
             // Different buttons based on item type

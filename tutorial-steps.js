@@ -300,7 +300,7 @@ window.TUTORIAL_STEPS = [
         phase: 'capacity-overflow',
         text: { i18nKey: 'tutorial.step.22' },
         expectedAction: { type: 'addToUpgradeFromOverflow', playerId: 0, itemName: 'Blood Bag' },
-        highlight: '#capacity-items .upgrade-btn',
+        highlight: '#capacity-items .capacity-item[data-item-name="Blood Bag"] .upgrade-btn',
     },
 
     // ---------- Round 2: next-round recap ----------
@@ -454,6 +454,14 @@ window.TUTORIAL_STEPS = [
         round: 3,
         phase: 'battle',
         text: { i18nKey: 'tutorial.step.36' },
+        expectedAction: null,
+        highlight: '#battle-tame-btn',
+    },
+    {
+        id: '36-1',
+        round: 3,
+        phase: 'battle',
+        text: { i18nKey: 'tutorial.step.36-1' },
         expectedAction: { type: 'useBattleItem', itemName: 'Fake Blood' },
         highlight: '#battle-item-buttons .battle-item-btn:nth-child(6)',
     },
@@ -461,7 +469,7 @@ window.TUTORIAL_STEPS = [
         id: '36b',
         round: 3,
         phase: 'battle',
-        text: { i18nKey: 'tutorial.step.36' },
+        text: { i18nKey: 'tutorial.step.36-1' },
         expectedAction: { type: 'tameMonster' },
         highlight: '#battle-tame-btn',
     },
@@ -575,7 +583,7 @@ window.TUTORIAL_BOT_SCRIPTS = {
         storeBuys: [],
     },
     3: {
-        hunterLocation: 1,        // Work Site
+        hunterLocation: 6,        // Plaza
         apprenticeLocation: 2,    // Bar
         storeBuys: [],
     },
