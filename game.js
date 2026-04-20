@@ -114,9 +114,9 @@ class BotPlayer {
         const player = gameState.players[this.playerId];
         const entries = {};
         
-        // Initialize all locations with 2 base entries
+        // Initialize all locations with 3 base entries
         for (let i = 1; i <= 7; i++) {
-            entries[i] = 2;
+            entries[i] = 3;
         }
 
         // Apply availability check (-100 for unavailable locations)
@@ -457,10 +457,10 @@ class BotPlayer {
         if (this.weapon.name === 'Rifle') {
             // Rifle: Bullet highest priority, buy at least 3
             const currentBullets = player.inventory.filter(item => item.name === 'Bullet').length;
-            if (currentBullets < 3) {
+            if (currentBullets < 1) {
                 // Prioritize bullets until we have at least 3
                 itemPriority = [
-                    { name: 'Bullet', price: 2, size: 0 },
+                    { name: 'Bullet', price: 2, size: 1 },
                     { name: 'Dynamite', price: 6, size: 4 },
                     { name: 'Bomb', price: 4, size: 3 },
                     { name: 'Grenade', price: 2, size: 2 },
@@ -475,7 +475,7 @@ class BotPlayer {
                     { name: 'Bomb', price: 4, size: 3 },
                     { name: 'Grenade', price: 2, size: 2 },
                     { name: 'Fake Blood', price: 2, size: 2 },
-                    { name: 'Bullet', price: 2, size: 0 },
+                    { name: 'Bullet', price: 2, size: 1 },
                     { name: 'Blood Bag', price: 2, size: 1 },
                     { name: 'Beer', price: 2, size: 1 }
                 ];
@@ -483,10 +483,10 @@ class BotPlayer {
         } else if (this.weapon.name === 'Plasma') {
             // Plasma: Battery highest priority, buy at least 3
             const currentBatteries = player.inventory.filter(item => item.name === 'Battery').length;
-            if (currentBatteries < 3) {
+            if (currentBatteries < 1) {
                 // Prioritize batteries until we have at least 3
                 itemPriority = [
-                    { name: 'Battery', price: 2, size: 0 }, // Plasma Lv1: batteries cost $2
+                    { name: 'Battery', price: 2, size: 1 }, // Plasma Lv1: batteries cost $2
                     { name: 'Dynamite', price: 6, size: 4 },
                     { name: 'Bomb', price: 4, size: 3 },
                     { name: 'Grenade', price: 2, size: 2 },
@@ -501,7 +501,7 @@ class BotPlayer {
                     { name: 'Bomb', price: 4, size: 3 },
                     { name: 'Grenade', price: 2, size: 2 },
                     { name: 'Fake Blood', price: 2, size: 2 },
-                    { name: 'Battery', price: 2, size: 0 }, // Plasma Lv1: batteries cost $2
+                    { name: 'Battery', price: 2, size: 1 }, // Plasma Lv1: batteries cost $2
                     { name: 'Blood Bag', price: 2, size: 1 },
                     { name: 'Beer', price: 2, size: 1 }
                 ];
@@ -527,14 +527,12 @@ class BotPlayer {
             let shouldBuy = true;
             if (this.weapon.name === 'Rifle' && item.name === 'Bullet') {
                 const currentBullets = player.inventory.filter(i => i.name === 'Bullet').length;
-                if (currentBullets >= 3 && itemPriority.indexOf(item) === 0) {
-                    // Skip buying more bullets if we already have 3+ and this is the priority phase
+                if (currentBullets >= 1 && itemPriority.indexOf(item) === 0) {
                     continue;
                 }
             } else if (this.weapon.name === 'Plasma' && item.name === 'Battery') {
                 const currentBatteries = player.inventory.filter(i => i.name === 'Battery').length;
-                if (currentBatteries >= 3 && itemPriority.indexOf(item) === 0) {
-                    // Skip buying more batteries if we already have 3+ and this is the priority phase
+                if (currentBatteries >= 1 && itemPriority.indexOf(item) === 0) {
                     continue;
                 }
             }
@@ -554,12 +552,12 @@ class BotPlayer {
                 // For Rifle/Plasma, stop after reaching minimum requirement in priority phase
                 if (this.weapon.name === 'Rifle' && item.name === 'Bullet') {
                     const bulletCount = player.inventory.filter(i => i.name === 'Bullet').length;
-                    if (bulletCount >= 3 && itemPriority.indexOf(item) === 0) {
+                    if (bulletCount >= 1 && itemPriority.indexOf(item) === 0) {
                         break;
                     }
                 } else if (this.weapon.name === 'Plasma' && item.name === 'Battery') {
                     const batteryCount = player.inventory.filter(i => i.name === 'Battery').length;
-                    if (batteryCount >= 3 && itemPriority.indexOf(item) === 0) {
+                    if (batteryCount >= 1 && itemPriority.indexOf(item) === 0) {
                         break;
                     }
                 }
@@ -7559,7 +7557,7 @@ class Game {
         // Show bullet display only for Rifle players with Level 1 power
         if (player.weapon.name === 'Rifle' && player.weapon.powerTrackPosition >= 1) {
             const bullets = player.inventory.filter(item => item.name === 'Bullet').length;
-            bulletCount.textContent = `${bullets}/6`;
+            bulletCount.textContent = `${bullets}`;
             bulletStat.style.display = 'flex';
         } else {
             bulletStat.style.display = 'none';
@@ -7585,7 +7583,7 @@ class Game {
                 batteryCount.textContent = '∞/∞';
             } else {
                 const batteries = player.inventory.filter(item => item.name === 'Battery').length;
-                batteryCount.textContent = `${batteries}/6`;
+                batteryCount.textContent = `${batteries}`;
             }
             batteryStat.style.display = 'flex';
         } else {
@@ -9199,7 +9197,7 @@ class Game {
         const battleBulletCount = document.getElementById('battle-bullet-count');
         if (player.weapon.name === 'Rifle' && player.weapon.powerTrackPosition >= 1) {
             const bullets = player.inventory.filter(item => item.name === 'Bullet').length;
-            battleBulletCount.textContent = `${bullets}/6`;
+            battleBulletCount.textContent = `${bullets}`;
             battleBulletsInfo.style.display = 'block';
         } else {
             battleBulletsInfo.style.display = 'none';
@@ -9214,7 +9212,7 @@ class Game {
                 battleBatteryCount.textContent = '∞/∞';
             } else {
                 const batteries = player.inventory.filter(item => item.name === 'Battery').length;
-                battleBatteryCount.textContent = `${batteries}/6`;
+                battleBatteryCount.textContent = `${batteries}`;
             }
             battleBatteriesInfo.style.display = 'block';
         } else {
@@ -9722,7 +9720,7 @@ class Game {
             // Update bullet display (in case it changed from items)
             if (this.currentBattle && this.currentBattle.playerId === player.id) {
                 const bullets = player.inventory.filter(item => item.name === 'Bullet').length;
-                document.getElementById('battle-bullet-count').textContent = `${bullets}/6`;
+                document.getElementById('battle-bullet-count').textContent = `${bullets}`;
             }
             // If ammunitionConsumed is true, proceed with attack (entrance fee paid)
         }
@@ -9746,7 +9744,7 @@ class Game {
             // Update battery display (in case it changed from items)
             if (this.currentBattle && this.currentBattle.playerId === player.id) {
                 const batteries = player.inventory.filter(item => item.name === 'Battery').length;
-                document.getElementById('battle-battery-count').textContent = `${batteries}/6`;
+                document.getElementById('battle-battery-count').textContent = `${batteries}`;
             }
             // If ammunitionConsumed is true, proceed with attack (entrance fee paid)
         }
@@ -10829,13 +10827,12 @@ class Game {
         if (player.weapon.name === 'Rifle' && player.weapon.powerTrackPosition >= 1) {
             const bulletItem = {
                 name: 'Bullet',
-                size: 0,
+                size: 1,
                 price: 2,
                 effect: 'rifle_ammo',
                 icon: '🔫',
                 description: 'Ammunition required for Rifle weapon',
-                isSpecial: true,
-                maxCount: 6
+                isSpecial: true
             };
             availableItems.unshift(bulletItem); // Add bullets at the beginning
         }
@@ -10844,13 +10841,12 @@ class Game {
         if (player.weapon.name === 'Plasma' && player.weapon.powerTrackPosition >= 1) {
             const batteryItem = {
                 name: 'Battery',
-                size: 0,
+                size: 1,
                 price: 2, // Level 1 power: batteries cost $2 instead of $3
                 effect: 'plasma_power',
                 icon: '🔋',
                 description: 'Ammunition required for Plasma weapon',
-                isSpecial: true,
-                maxCount: 6
+                isSpecial: true
             };
             availableItems.unshift(batteryItem); // Add batteries at the beginning
         }
@@ -10875,21 +10871,8 @@ class Game {
             
             const canAfford = player.resources.money >= actualPrice;
             const exceedsCapacity = (currentSize + item.size) > player.maxInventoryCapacity;
-            
-            // Check if player already has max special items
-            let hasMaxSpecialItems = false;
-            let maxWarning = '';
-            if (item.name === 'Bullet') {
-                const bulletCount = player.inventory.filter(inv => inv.name === 'Bullet').length;
-                hasMaxSpecialItems = bulletCount >= 6;
-                maxWarning = t('store.maxBullets');
-            } else if (item.name === 'Battery') {
-                const batteryCount = player.inventory.filter(inv => inv.name === 'Battery').length;
-                hasMaxSpecialItems = batteryCount >= 6;
-                maxWarning = t('store.maxBatteries');
-            }
 
-            const isDisabled = !canAfford || hasMaxSpecialItems;
+            const isDisabled = !canAfford;
             const priceDisplay = actualPrice !== item.price ?
                 `<span class="original-price">$${item.price}</span> $${actualPrice}` :
                 `$${actualPrice}`;
@@ -10899,9 +10882,7 @@ class Game {
                 <h4 class="item-name">${this.getItemDisplayName(item.name)}</h4>
                 <div class="item-price">${priceDisplay}</div>
                 <div class="item-size">${t('store.size')} ${item.size}</div>
-                ${(item.name === 'Bullet' || item.name === 'Battery') ? `<div class="bullet-count">${t('store.maxLabel')} 6</div>` : ''}
                 ${exceedsCapacity ? `<div class="capacity-warning">${t('store.overCapacity')}</div>` : ''}
-                ${hasMaxSpecialItems ? `<div class="capacity-warning">⚠️ ${maxWarning}</div>` : ''}
                 <button class="buy-btn" onclick="game.buyStoreItem('${item.name}', ${actualPrice}, ${item.size})" ${isDisabled ? 'disabled' : ''}>
                     ${t('store.buy')}
                 </button>
@@ -10941,13 +10922,12 @@ class Game {
         if (player.weapon.name === 'Rifle' && player.weapon.powerTrackPosition >= 1) {
             const bulletItem = {
                 name: 'Bullet',
-                size: 0,
+                size: 1,
                 price: 2,
                 effect: 'rifle_ammo',
                 icon: '🔫',
                 description: 'Ammunition required for Rifle weapon',
-                isSpecial: true,
-                maxCount: 6
+                isSpecial: true
             };
             availableItems.unshift(bulletItem); // Add bullets at the beginning
         }
@@ -10956,13 +10936,12 @@ class Game {
         if (player.weapon.name === 'Plasma' && player.weapon.powerTrackPosition >= 1) {
             const batteryItem = {
                 name: 'Battery',
-                size: 0,
+                size: 1,
                 price: 2, // Level 1 power: batteries cost $2 instead of $3
                 effect: 'plasma_power',
                 icon: '🔋',
                 description: 'Ammunition required for Plasma weapon',
-                isSpecial: true,
-                maxCount: 6
+                isSpecial: true
             };
             availableItems.unshift(batteryItem); // Add batteries at the beginning
         }
@@ -10988,20 +10967,7 @@ class Game {
             const canAfford = player.resources.money >= actualPrice;
             const exceedsCapacity = (currentSize + item.size) > player.maxInventoryCapacity;
 
-            // Check if player already has max special items
-            let hasMaxSpecialItems = false;
-            let maxWarning = '';
-            if (item.name === 'Bullet') {
-                const bulletCount = player.inventory.filter(inv => inv.name === 'Bullet').length;
-                hasMaxSpecialItems = bulletCount >= 6;
-                maxWarning = t('store.maxBullets');
-            } else if (item.name === 'Battery') {
-                const batteryCount = player.inventory.filter(inv => inv.name === 'Battery').length;
-                hasMaxSpecialItems = batteryCount >= 6;
-                maxWarning = t('store.maxBatteries');
-            }
-
-            const isDisabled = !canAfford || hasMaxSpecialItems;
+            const isDisabled = !canAfford;
             const priceDisplay = actualPrice !== item.price ?
                 `<span class="original-price">$${item.price}</span> $${actualPrice}` :
                 `$${actualPrice}`;
@@ -11011,9 +10977,7 @@ class Game {
                 <h4 class="item-name">${this.getItemDisplayName(item.name)}</h4>
                 <div class="item-price">${priceDisplay}</div>
                 <div class="item-size">${t('store.size')} ${item.size}</div>
-                ${(item.name === 'Bullet' || item.name === 'Battery') ? `<div class="bullet-count">${t('store.maxLabel')} 6</div>` : ''}
                 ${exceedsCapacity ? `<div class="capacity-warning">${t('store.overCapacity')}</div>` : ''}
-                ${hasMaxSpecialItems ? `<div class="capacity-warning">⚠️ ${maxWarning}</div>` : ''}
                 <button class="buy-btn" onclick="game.buyStoreItem('${item.name}', ${actualPrice}, ${item.size})" ${isDisabled ? 'disabled' : ''}>
                     ${t('store.buy')}
                 </button>
@@ -11072,9 +11036,9 @@ class Game {
         // Weapon-specific item priorities
         if (player.weapon.name === 'Rifle') {
             const currentBullets = player.inventory.filter(item => item.name === 'Bullet').length;
-            if (currentBullets < 3) {
+            if (currentBullets < 1) {
                 itemPriority = [
-                    { name: 'Bullet', price: 2, size: 0 },
+                    { name: 'Bullet', price: 2, size: 1 },
                     { name: 'Dynamite', price: 6, size: 4 },
                     { name: 'Bomb', price: 4, size: 3 },
                     { name: 'Grenade', price: 2, size: 2 },
@@ -11094,7 +11058,7 @@ class Game {
             }
         } else if (player.weapon.name === 'Plasma') {
             const currentBatteries = player.inventory.filter(item => item.name === 'Battery').length;
-            if (currentBatteries < 3) {
+            if (currentBatteries < 1) {
                 itemPriority = [
                     { name: 'Battery', price: 2, size: 1 }, // Plasma Lv1 power: batteries cost $2
                     { name: 'Dynamite', price: 6, size: 4 },
@@ -11138,8 +11102,8 @@ class Game {
                     'Bomb':       { price: 4, size: 3 },
                     'Dynamite':   { price: 6, size: 4 },
                     'Fake Blood': { price: 2, size: 2 },
-                    'Bullet':     { price: 2, size: 0 },
-                    'Battery':    { price: 2, size: 0 }
+                    'Bullet':     { price: 2, size: 1 },
+                    'Battery':    { price: 2, size: 1 }
                 };
                 itemPriority = scriptedBuys
                     .filter(name => itemMeta[name])
@@ -11155,15 +11119,6 @@ class Game {
                 // Check capacity constraints
                 if (currentSize + item.size > player.maxInventoryCapacity) {
                     break; // Can't buy more due to capacity
-                }
-                
-                // Check special item limits
-                if (item.name === 'Bullet') {
-                    const bulletCount = player.inventory.filter(inv => inv.name === 'Bullet').length;
-                    if (bulletCount >= 6) break;
-                } else if (item.name === 'Battery') {
-                    const batteryCount = player.inventory.filter(inv => inv.name === 'Battery').length;
-                    if (batteryCount >= 6) break;
                 }
                 
                 // Apply weapon discounts
@@ -11661,21 +11616,6 @@ class Game {
         if (player.resources.money < price) {
             alert(t('alert.notEnoughMoney', player.name));
             return;
-        }
-        
-        // Special check for bullets and batteries
-        if (itemName === 'Bullet') {
-            const bulletCount = player.inventory.filter(inv => inv.name === 'Bullet').length;
-            if (bulletCount >= 6) {
-                alert(t('store.maxBulletsReached', player.name));
-                return;
-            }
-        } else if (itemName === 'Battery') {
-            const batteryCount = player.inventory.filter(inv => inv.name === 'Battery').length;
-            if (batteryCount >= 6) {
-                alert(t('store.maxBatteriesReached', player.name));
-                return;
-            }
         }
         
         // Note: Capacity warnings are shown beneath each item in the store UI
@@ -15295,17 +15235,13 @@ class Game {
         if (!item) {
             // Bullets and Batteries are dynamically added for Rifle/Plasma players
             if (itemName === 'Bullet') {
-                item = { name: 'Bullet', size: 0, price: 2, effect: 'rifle_ammo', icon: '🔫' };
+                item = { name: 'Bullet', size: 1, price: 2, effect: 'rifle_ammo', icon: '🔫' };
             } else if (itemName === 'Battery') {
                 item = { name: 'Battery', size: 1, price: 2, effect: 'plasma_power', icon: '🔋' };
             } else {
                 return;
             }
         }
-
-        // Validate max ammo
-        if (itemName === 'Bullet' && guestPlayer.inventory.filter(i => i.name === 'Bullet').length >= 6) return;
-        if (itemName === 'Battery' && guestPlayer.inventory.filter(i => i.name === 'Battery').length >= 6) return;
 
         // Validate purchase
         let price = item.price;
