@@ -253,7 +253,7 @@ weapon.sword.lv2,+2 exp when hunter is alone,單獨存在區域+2經驗
 weapon.sword.lv3,"+X points when defeating monsters(X=monster )",打敗怪獸+X分(X=怪獸等級)
 weapon.knife.name,Knife,小刀
 weapon.knife.lv1,Monster rewards are doubled(except points),打敗怪獸資源x2
-weapon.knife.lv2,+2 points when hunter is alone,單獨存在區域+2分
+weapon.knife.lv2,+1 point when hunter is alone,單獨存在區域+1分
 weapon.knife.lv3,Double damage for one time attack,可將一次的攻擊力x2
 weapon.gloves.name,Gloves,拳套
 weapon.gloves.lv1,"base attack=1. +1 if your hp is below 50%.","基礎攻擊力=1，當hp少於一半時攻擊力+1"
@@ -584,7 +584,7 @@ log.maxResourceReached,⚠️ {0} reached max {1} ({2}). Lost {3} {1}!,⚠️ {0
 log.maxResourceUpgraded,⬆️ {0}'s max {1} increased to {2}!,⬆️ {0} 的最大 {1} 提升至 {2}！
 log.usedBeer,{0} used beer to restore 1 EP ({1}/{2}),{0} 使用啤酒恢復 1 體力 ({1}/{2})
 log.usedBloodBag,{0} used blood bag to restore 1 HP ({1}/{2}),{0} 使用血袋恢復 1 血量 ({1}/{2})
-log.knifeLv2Alone,🔪 {0} receives +2 points from Knife Lv2 Power,🔪 {0} 從小刀 Lv2 能力獲得 +2 分
+log.knifeLv2Alone,🔪 {0} receives +1 point from Knife Lv2 Power,🔪 {0} 從小刀 Lv2 能力獲得 +1 分
 log.batLv2Power,🦇 {0}'s Bat Lv2 Power: Both HP and EP are full,no bonus,🦇 {0} 的球棒 Lv2 能力：血量和體力均已滿，沒有加成
 log.batLv2HP,🦇 {0} chooses +1 HP from Bat Lv2 Power,🦇 {0} 從球棒 Lv2 能力選擇 +1 血量
 log.batLv2EP,🦇 {0} chooses +1 EP from Bat Lv2 Power,🦇 {0} 從球棒 Lv2 能力選擇 +1 體力

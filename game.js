@@ -1066,7 +1066,7 @@ class Game {
               lv1Power: '可購買電池:2$，每次戰鬥花費1電池', lv2Power: '回合開始+2$', lv3Power: '回合開始+2exp', preferLocation: 'work site' },
             { name: 'Chain', reqExpAttack: 4, reqExpDefense: 3, capacity: 6, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 1, 1, 1], priority: 6,
               lv1Power: '怪獸於血量3以下即可收服', lv2Power: '回合開始+2啤酒', lv3Power: '寵物攻擊x2', preferLocation: 'bar' },
-            { name: 'Axe', reqExpAttack: 4, reqExpDefense: 3, capacity: 6, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 0, 1, 1], priority: 4,
+            { name: 'Axe', reqExpAttack: 4, reqExpDefense: 3, capacity: 6, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 1, 1, 1], priority: 4,
               lv1Power: '玩家受傷時反擊怪獸受1點傷害(受傷時獲得經驗-1)', lv2Power: '回合開始+1血袋', lv3Power: '玩家受傷時反擊怪獸受一樣的傷害', preferLocation: 'hospital' },
             { name: 'Whip', reqExpAttack: 4, reqExpDefense: 3, capacity: 6, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 1, 1, 1], priority: 5,
               lv1Power: '寵物和收服怪獸體力-1', lv2Power: '回合開始+2啤酒', lv3Power: '寵物和收服不耗體力', preferLocation: 'bar' },
@@ -1075,7 +1075,7 @@ class Game {
             { name: 'Sword', reqExpAttack: 5, reqExpDefense: 3, capacity: 4, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 1, 1, 2], priority: 9,
               lv1Power: '無', lv2Power: '單獨存在區域+2經驗', lv3Power: '打敗怪獸+X分(X=怪獸等級)', preferLocation: 'dojo' },
             { name: 'Knife', reqExpAttack: 3, reqExpDefense: 3, capacity: 10, initialMoney: 8, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 0, 1, 1], priority: 2,
-              lv1Power: '打敗怪獸資源x2', lv2Power: '單獨存在區域+2分', lv3Power: '可將一次的攻擊力x2', preferLocation: 'plaza' },
+              lv1Power: '打敗怪獸資源x2', lv2Power: '單獨存在區域+1分', lv3Power: '可將一次的攻擊力x2', preferLocation: 'plaza' },
             { name: 'Gloves', reqExpAttack: 4, reqExpDefense: 3, capacity: 6, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 1, 1, 1], priority: 7,
               lv1Power: '基礎攻擊力=1，當hp少於一半時攻擊力+1', lv2Power: '回合開始+1血袋', lv3Power: '每次遭受攻擊而扣血，攻擊力+1', preferLocation: 'hospital' }
         ];
@@ -7656,11 +7656,11 @@ class Game {
                     }
                 }
 
-                // Knife Lv2 Power: +2 points when hunter is alone at location
+                // Knife Lv2 Power: +1 point when hunter is alone at location
                 if (player.weapon.name === 'Knife' && player.weapon.powerTrackPosition >= 3) {
-                    this.addScore(player.id, 2, 'other');
+                    this.addScore(player.id, 1, 'other');
                     if (!this.isAutomatedMode) {
-                        console.log(`Knife Lv2 Power: ${player.name} receives +2 points for being alone at location`);
+                        console.log(`Knife Lv2 Power: ${player.name} receives +1 point for being alone at location`);
                         this.addLogEntryT('log.knifeLv2Alone', [player], 'power', player);
                     }
                 }
