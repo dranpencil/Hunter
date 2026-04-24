@@ -130,11 +130,18 @@ class TutorialManager {
      */
     requestQuit() {
         if (!this._active) return;
-        const msg = (typeof t === 'function') ? t('tutorial.quitConfirm')
-            : 'Are you sure you want to quit the tutorial? Your progress will be lost.';
-        if (confirm(msg)) {
+        const modal = document.getElementById('tutorial-quit-confirm-modal');
+        if (modal) {
+            modal.style.display = 'flex';
+        } else {
             this.quit();
         }
+    }
+
+    confirmQuit(shouldQuit) {
+        const modal = document.getElementById('tutorial-quit-confirm-modal');
+        if (modal) modal.style.display = 'none';
+        if (shouldQuit) this.quit();
     }
 
     /**

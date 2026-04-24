@@ -70,7 +70,7 @@ tutorial.completed,Tutorial Complete!,教學完成！
 tutorial.warningFollow,Please follow the instruction.,請依照教學指示操作。
 tutorial.quitConfirm,Are you sure you want to quit the tutorial? Your progress will be lost.,確定要退出教學嗎？你的進度將會遺失。
 tutorial.progress,Step {0} / {1},進度 {0} / {1}
-tutorial.step.welcome,"Welcome to Rock Paper Hunters! This tutorial will walk you through the basics of one round. Click Next to begin.","歡迎來到剪刀石頭獵人！本教學將帶你走過一回合的基本操作。點擊下一步開始。"
+tutorial.step.welcome,"Welcome to Rock Paper Hunters! This tutorial will walk you through the basic rule of the game. Click Next to begin.","歡迎來到剪刀石頭獵人！本教學將帶你走過遊戲的基本操作。點擊下一步開始。"
 menu.language,Language,語言
 language.title,Select Language / 選擇語言,Select Language / 選擇語言
 rules.title,Game Rules,遊戲規則

@@ -221,6 +221,18 @@
             </div>
         </div>
 
+        <!-- Tutorial Quit Confirmation Modal -->
+        <div id="tutorial-quit-confirm-modal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <h3 data-i18n="tutorial.quit">Quit Tutorial</h3>
+                <p data-i18n="tutorial.quitConfirm">Are you sure you want to quit the tutorial? Your progress will be lost.</p>
+                <div class="kick-vote-buttons">
+                    <button class="kick-vote-yes-btn" onclick="tutorialManager.confirmQuit(true)" data-i18n="kickVote.yes">Yes</button>
+                    <button class="kick-vote-no-btn" onclick="tutorialManager.confirmQuit(false)" data-i18n="kickVote.no">No</button>
+                </div>
+            </div>
+        </div>
+
         <!-- Player Count Selection Screen -->
         <div id="player-count-selection" class="player-count-selection" style="display: none;">
             <div class="selection-content">

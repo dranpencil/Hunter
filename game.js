@@ -9313,7 +9313,12 @@ class Game {
                 requiredEP = 0;
             }
         }
-        
+
+        // Monster effect 20: requires +1 EP to tame (matches tameMonster() logic)
+        if (battle.monster.effectId === 20) {
+            requiredEP += 1;
+        }
+
         if (player.weapon.name === 'Chain' && player.weapon.powerTrackPosition >= 1) {
             // Chain Level 1: Can tame monsters with HP < 4
             canTame = battle.monster.hp < 4 && player.resources.ep >= requiredEP;
@@ -11622,12 +11627,25 @@ class Game {
         // Players can buy items that exceed capacity, they'll be prompted to manage overflow after shopping
 
         // Create item object
+        const iconMap = {
+            'Beer': '🍺', 'Blood Bag': '🩸', 'Fake Blood': '🩹',
+            'Grenade': '💣', 'Bomb': '💥', 'Dynamite': '🧨',
+            'Bullet': '🔫', 'Battery': '🔋'
+        };
+        const effectMap = {
+            'Bullet': 'rifle_ammo', 'Battery': 'plasma_power',
+            'Beer': 'gain_1_energy', 'Blood Bag': 'gain_1_blood',
+            'Fake Blood': 'bonus_points_on_kill',
+            'Grenade': 'reduce_1_monster_hp',
+            'Bomb': 'reduce_2_monster_hp',
+            'Dynamite': 'reduce_3_monster_hp'
+        };
         const item = {
             name: itemName,
             size: size,
             price: price,
-            effect: itemName === 'Bullet' ? 'rifle_ammo' : itemName === 'Battery' ? 'plasma_power' : 'unknown',
-            icon: itemName === 'Bullet' ? '🔫' : itemName === 'Battery' ? '🔋' : '❓'
+            effect: effectMap[itemName] || 'unknown',
+            icon: iconMap[itemName] || '❓'
         };
 
         // Deduct money and add item to inventory
