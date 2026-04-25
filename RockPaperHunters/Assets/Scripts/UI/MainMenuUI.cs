@@ -3,6 +3,7 @@ using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 using TMPro;
 using System.Collections.Generic;
+using System.IO;
 
 /// <summary>
 /// Title screen with main menu and local play setup.
@@ -16,6 +17,7 @@ public class MainMenuUI : MonoBehaviour
     [SerializeField] private Button onlinePlayButton;
     [SerializeField] private Button dataCollectionButton;
     [SerializeField] private Button rulebookButton;
+    [SerializeField] private Button tutorialButton;
 
     [Header("Local Play Setup Panel")]
     [SerializeField] private GameObject localSetupPanel;
@@ -78,7 +80,59 @@ public class MainMenuUI : MonoBehaviour
 
     public void OnRulebookClicked()
     {
-        // TODO: Open rulebook viewer
+        OpenRulebook();
+    }
+
+    /// <summary>
+    /// Start the scripted tutorial. Spins up a customized 1-human + 1-bot game
+    /// (the TutorialManager supplies bot scripts + forced monsters + forced
+    /// rolls) so the narrative plays out deterministically. Hook the tutorial
+    /// launch button's OnClick event here in the Inspector.
+    /// </summary>
+    public void OnTutorialClicked()
+    {
+        var mgr = TutorialManager.Instance;
+        if (mgr == null)
+        {
+            Debug.LogError("TutorialManager not present in the scene. Add it before starting the tutorial.");
+            return;
+        }
+
+        // Default tutorial setup: 2 players, the local human (slot 0) gets the
+        // first tutorial-scripted weapon, bot gets the second. Actual weapon
+        // assignment should follow whatever tutorial-steps.js-equivalent data
+        // the content author specifies.
+        var setups = new System.Collections.Generic.List<PlayerSetup>
+        {
+            new PlayerSetup { isBot = false, playerName = "Player 1", weaponName = availableWeapons.Length > 0 ? availableWeapons[0].weaponName : "Bat" },
+            new PlayerSetup { isBot = true,  playerName = "Bot 2",   weaponName = availableWeapons.Length > 1 ? availableWeapons[1].weaponName : "Knife" }
+        };
+
+        GameManager.Instance.StartNewGame(2, GameMode.Simultaneous, setups);
+        mgr.StartTutorial();
+        SceneManager.LoadScene("Game");
+    }
+
+    /// <summary>
+    /// Open the EN or ZH rulebook HTML in the player's default browser.
+    /// Files live in StreamingAssets/Rulebook and ship with the built game.
+    /// Language picked from PlayerPrefs "rph_language" (set "zh" for Chinese),
+    /// defaulting to English. Future i18n port should write that same key.
+    /// </summary>
+    private void OpenRulebook()
+    {
+        string lang = PlayerPrefs.GetString("rph_language", "en");
+        string fileName = (lang == "zh") ? "Rules_ZH.htm" : "Rules_EN.htm";
+        string path = Path.Combine(Application.streamingAssetsPath, "Rulebook", fileName);
+
+        if (!File.Exists(path))
+        {
+            Debug.LogError($"Rulebook not found at: {path}");
+            return;
+        }
+
+        // Application.OpenURL handles the file:// prefix on desktop targets.
+        Application.OpenURL("file:///" + path.Replace('\\', '/'));
     }
 
     private void SetPlayerCount(int count)

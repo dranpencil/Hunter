@@ -589,16 +589,21 @@ public class NetworkGameManager : MonoBehaviour
         var payload = JsonConvert.DeserializeObject<KickVotePayload>(dataJson);
         if (payload == null) return;
 
-        // Publish vote event for the kick vote system to process
-        // The kick vote system is typically managed by a separate UI/manager
         EventBus.Publish(new GameLogEvent
         {
             message = $"{player.playerName} voted to {(payload.vote ? "kick" : "keep")} player {payload.targetId}",
             logType = GameLogType.System
         });
 
-        // Actual kick vote tallying would be handled by a KickVoteManager
-        // that subscribes to these events. For now, relay the vote.
+        // Forward the network vote to the scene's KickVoteManager so the
+        // central tally stays authoritative on the host.
+        var voteMgr = FindObjectOfType<KickVoteManager>();
+        if (voteMgr != null && voteMgr.VoteInProgress
+            && voteMgr.ActiveTargetId.HasValue
+            && voteMgr.ActiveTargetId.Value == payload.targetId)
+        {
+            voteMgr.RegisterVote(player.id, payload.vote);
+        }
     }
 
     private void HandleChatMessage(GameManager gm, PlayerData player, string dataJson)

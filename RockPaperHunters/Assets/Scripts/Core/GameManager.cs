@@ -163,6 +163,31 @@ public class GameManager : MonoBehaviour
         EventBus.Publish(new RoundStartedEvent { roundNumber = CurrentRound });
     }
 
+    /// <summary>
+    /// Remove a player from the game after a kick vote passes. Clears their
+    /// location tokens and marks them kicked; game loop iterations should check
+    /// <see cref="PlayerData.isKicked"/> and skip them. Publishes PlayerKickedEvent.
+    /// </summary>
+    public void KickPlayer(int playerId)
+    {
+        if (playerId < 0 || playerId >= Players.Count) return;
+        var player = Players[playerId];
+        if (player.isKicked) return;
+
+        player.isKicked = true;
+        player.hunterLocation = null;
+        player.apprenticeLocation = null;
+        player.selectedHunterCard = null;
+        player.selectedApprenticeCard = null;
+
+        EventBus.Publish(new PlayerKickedEvent { playerId = playerId });
+        EventBus.Publish(new GameLogEvent
+        {
+            message = $"{player.playerName} has been removed from the game.",
+            logType = GameLogType.System
+        });
+    }
+
     public bool CheckWinCondition()
     {
         foreach (var player in Players)

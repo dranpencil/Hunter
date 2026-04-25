@@ -210,13 +210,63 @@ public struct ChatMessageEvent
     public string message;
 }
 
+// Tutorial lifecycle
+public struct TutorialStartedEvent { }
+public struct TutorialEndedEvent { }
+
+public struct TutorialStepChangedEvent
+{
+    public int stepIndex;
+    public int stepCount;
+    public TutorialStep step;
+}
+
+public struct TutorialWarningEvent
+{
+    public string expectedAction;
+    public string attemptedAction;
+}
+
+// Localization: fired when the user switches EN/ZH. UI elements should
+// subscribe and re-render any strings they didn't look up via LocalizedText.
+public struct LanguageChangedEvent
+{
+    public string languageCode; // "en" or "zh"
+}
+
+// Phase timers (online only)
+public struct PlayerTimerTickEvent
+{
+    public int playerId;
+    public float remainingSeconds;
+}
+
+public struct PlayerTimerExpiredEvent
+{
+    public int playerId;
+}
+
 // Kick vote
 public struct KickVoteStartedEvent
 {
     public int[] targetPlayerIds;
 }
 
+public struct KickVoteTallyUpdatedEvent
+{
+    public int targetPlayerId;
+    public int yesCount;
+    public int noCount;
+    public float remainingSeconds;
+}
+
 public struct KickVoteEndedEvent
 {
     public int[] kickedPlayerIds;
+}
+
+// Player kicked from the game (vote passed, or auto-kick when only bots left)
+public struct PlayerKickedEvent
+{
+    public int playerId;
 }

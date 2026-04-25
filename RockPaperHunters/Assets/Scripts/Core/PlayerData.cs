@@ -14,6 +14,10 @@ public class PlayerData
     public bool isBot;
     public PlayerColor color;
 
+    // Set true when a kick vote passes (or when only bots remain to vote).
+    // Iterations in GameManager/DistributionPhase/etc. should skip kicked players.
+    public bool isKicked;
+
     // Token placement
     public LocationId? hunterLocation;
     public LocationId? apprenticeLocation;

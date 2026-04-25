@@ -50,9 +50,27 @@ public class PlayerBoardUI : MonoBehaviour
     [SerializeField] private Button addToHPUpgradeButton;
     [SerializeField] private Button addToEPUpgradeButton;
 
+    [Header("Layout Variants (compact vs expanded)")]
+    [Tooltip("Root GameObject containing the full expanded board UI (inventory grid, power track, upgrade buttons, etc.)")]
+    [SerializeField] private GameObject expandedLayoutRoot;
+    [Tooltip("Root GameObject containing the compact summary UI (name + resources + score + weapon name).")]
+    [SerializeField] private GameObject compactLayoutRoot;
+
     public void SetPlayerId(int id)
     {
         playerId = id;
+        UpdateAllStats();
+    }
+
+    /// <summary>
+    /// Switch between compact summary and expanded detailed view. Data refs
+    /// (stat text, buttons) keep working in both — the designer decides which
+    /// widgets live in each layout subtree.
+    /// </summary>
+    public void SetCompactMode(bool compact)
+    {
+        if (expandedLayoutRoot != null) expandedLayoutRoot.SetActive(!compact);
+        if (compactLayoutRoot != null) compactLayoutRoot.SetActive(compact);
         UpdateAllStats();
     }
 
