@@ -453,9 +453,10 @@ public class BattleUI : MonoBehaviour
     {
         bool isPlayerTurn = (state.phase == BattlePhaseStep.PlayerAction) && !player.isBot;
 
-        // Attack button always available during player action
+        // Attack button — disabled when the weapon requires ammo and the player
+        // entered battle without any (Rifle/Plasma no-ammo: items/defense only).
         if (attackButton != null)
-            attackButton.interactable = isPlayerTurn;
+            attackButton.interactable = isPlayerTurn && !state.ammoExhausted;
 
         // Tame button: visible only for Chain/Whip when monster HP <= threshold
         bool canTame = isPlayerTurn
@@ -467,14 +468,14 @@ public class BattleUI : MonoBehaviour
             tameButton.interactable = canTame;
         }
 
-        // Double damage button: Knife Lv1+ only, one-time per battle
+        // Double damage button: Knife Lv3 only, one-time per battle
         bool canDouble = isPlayerTurn
             && state.doubleDamageAvailable
             && !state.doubleDamageUsed;
         if (doubleDamageButton != null)
         {
             doubleDamageButton.gameObject.SetActive(
-                player.weaponData.weaponName == "Knife" && player.GetCurrentPowerLevel() >= 1);
+                player.weaponData.weaponName == "Knife" && player.GetCurrentPowerLevel() >= 3);
             doubleDamageButton.interactable = canDouble;
         }
         if (doubleDamageLabel != null)

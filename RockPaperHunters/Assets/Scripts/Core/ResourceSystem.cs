@@ -35,34 +35,22 @@ public class ResourceSystem
 
     private void DistributeLocationResources(LocationData locData)
     {
-        // Get all hunters at this location, sorted by reward token (highest first for priority)
         var hunters = _gm.GetHuntersAtLocation(locData.locationId);
         if (hunters.Count == 0) return;
 
-        // Sort by reward token descending (higher reward token = higher priority)
-        hunters.Sort((a, b) => b.rewardToken.CompareTo(a.rewardToken));
-
-        // Count total tokens at location (hunters + apprentices + dummies)
+        // Total tokens = hunters + apprentices + dummies. Determines the reward
+        // tier. Every hunter at the location gets the same tier amount.
         int totalTokens = _gm.CountTokensAtLocation(locData.locationId);
-
-        // Get reward array based on total token density
         var rewards = locData.GetRewards(_gm.PlayerCount);
+        if (rewards == null || rewards.Length == 0) return;
 
-        for (int i = 0; i < hunters.Count && i < rewards.Length; i++)
-        {
-            int amount = GetRewardByDensity(totalTokens, i, rewards);
-            ApplyResource(hunters[i], locData.resourceType, amount);
-        }
-    }
-
-    private int GetRewardByDensity(int totalTokens, int rank, int[] rewards)
-    {
-        // Clamp rank to available rewards
-        if (rank >= rewards.Length) return 0;
-        // Use density to determine which reward tier
         int index = Mathf.Clamp(totalTokens - 1, 0, rewards.Length - 1);
-        // Players at same location share based on rank
-        return rank < rewards.Length ? rewards[Mathf.Min(rank, rewards.Length - 1)] : 0;
+        int amount = rewards[index];
+
+        foreach (var hunter in hunters)
+        {
+            ApplyResource(hunter, locData.resourceType, amount);
+        }
     }
 
     public void ApplyResource(PlayerData player, ResourceType type, int amount)

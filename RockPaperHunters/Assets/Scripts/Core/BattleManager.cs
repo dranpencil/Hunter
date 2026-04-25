@@ -112,26 +112,50 @@ public class BattleManager
         // Consume EP
         _gm.Resources.ChangeResource(player, "ep", -epCost);
 
-        // Consume ammo for Rifle/Plasma
+        // Consume the one-shot entrance-fee ammo for Rifle/Plasma. If the
+        // player entered Forest without ammo they can still fight, but weapon
+        // attacks are blocked — they can only defend and use combat items.
+        bool ammoExhausted = false;
         if (player.weaponData.requiresAmmo)
         {
-            _gm.Weapons.ConsumeAmmo(player);
+            if (!_gm.Weapons.ConsumeAmmo(player))
+                ammoExhausted = true;
         }
 
-        // Initialize combat state
+        // Initialize combat state. The HP boost is applied BEFORE the new
+        // monster's own effect increments it, so a monster with OtherMonstersPlus1HP
+        // doesn't buff itself — only subsequent monsters this round.
         _currentBattle.monster = monster;
         _currentBattle.monsterLevel = level;
         _currentBattle.monsterMaxHP = monster.hp + _monsterHPBoost;
+
+        // Apprentice-in-Forest bonus: -1 HP to the selected monster (min 1).
+        // Apprentice boosts the hunter even though only the hunter fights.
+        if (player.apprenticeLocation == LocationId.Forest)
+        {
+            _currentBattle.monsterMaxHP = Mathf.Max(1, _currentBattle.monsterMaxHP - 1);
+        }
+
         _currentBattle.monsterCurrentHP = _currentBattle.monsterMaxHP;
         _currentBattle.monsterATT = monster.att;
+
+        // If this monster boosts others, register the boost now (on selection)
+        // rather than on defeat — matches JS applyRoundEffect behavior so the
+        // bonus still applies even if the player dies to this monster.
+        if (_gm.MonsterEffects.BoostsOtherMonsters(monster.effectType))
+        {
+            _monsterHPBoost++;
+        }
         _currentBattle.combatRound = 0;
         _currentBattle.totalDamageTaken = 0;
         _currentBattle.doubleDamageUsed = false;
-        _currentBattle.doubleDamageAvailable = (player.weaponData.weaponName == "Knife"
-                                                  && player.GetCurrentPowerLevel() >= 1);
+        _currentBattle.doubleDamageAvailable = false;  // Becomes true after first attack that deals damage (Knife Lv3)
+        _currentBattle.lastAttackDamage = 0;
         _currentBattle.fakeBloodUsed = false;
         _currentBattle.bowDoubleDamageApplied = false;
         _currentBattle.swordBonusPoints = 0;
+        _currentBattle.glovesDamageCount = 0;
+        _currentBattle.ammoExhausted = ammoExhausted;
         _currentBattle.battleLog.Clear();
         _currentBattle.lastAttackDice = null;
         _currentBattle.lastDefenseDice = null;
@@ -174,33 +198,60 @@ public class BattleManager
     }
 
     /// <summary>
-    /// Human player presses Attack button.
+    /// Human player presses Attack button. Blocked when the weapon requires ammo
+    /// and the player entered battle without any — matches JS needsAmmoButHasNone.
     /// </summary>
     public void ProcessPlayerAttack(int playerId)
     {
         if (!ValidatePlayerAction(playerId, BattlePhaseStep.PlayerAction)) return;
-        ExecutePlayerAttack(false);
+        if (_currentBattle.ammoExhausted)
+        {
+            AddBattleLog($"{_gm.Players[playerId].playerName} cannot attack: no ammo!");
+            return;
+        }
+        ExecutePlayerAttack();
     }
 
     /// <summary>
-    /// Human player activates Knife double damage before attacking.
+    /// Knife Lv3: retroactively doubles the damage of the most recent attack by
+    /// applying an additional lastAttackDamage to the monster (capped by the
+    /// monster's damage cap, considering what was already dealt).
     /// </summary>
     public void ProcessDoubleDamage(int playerId)
     {
         if (!ValidatePlayerAction(playerId, BattlePhaseStep.PlayerAction)) return;
         if (!_currentBattle.doubleDamageAvailable || _currentBattle.doubleDamageUsed) return;
 
+        int extra = _currentBattle.lastAttackDamage;
+        int cap = _gm.MonsterEffects.GetDamageCap(_currentBattle.monster.effectType);
+        if (cap > 0)
+        {
+            int remaining = Mathf.Max(0, cap - _currentBattle.lastAttackDamage);
+            if (extra > remaining) extra = remaining;
+        }
+
+        if (extra > 0)
+        {
+            _currentBattle.monsterCurrentHP -= extra;
+        }
+
         _currentBattle.doubleDamageUsed = true;
         _currentBattle.doubleDamageAvailable = false;
-        AddBattleLog("Knife double damage activated!");
 
-        EventBus.Publish(new GameLogEvent
+        AddBattleLog($"Knife Lv3: +{extra} retroactive damage (monster HP: {Mathf.Max(0, _currentBattle.monsterCurrentHP)}/{_currentBattle.monsterMaxHP})");
+
+        EventBus.Publish(new MonsterDamagedEvent
         {
-            message = $"{_gm.Players[playerId].playerName} activates Knife double damage!",
-            logType = GameLogType.Battle
+            monsterId = _currentBattle.monster.monsterId,
+            damage = extra,
+            remainingHp = Mathf.Max(0, _currentBattle.monsterCurrentHP)
         });
 
-        ExecutePlayerAttack(true);
+        // If the retroactive damage kills the monster, end the battle immediately
+        if (_currentBattle.monsterCurrentHP <= 0)
+        {
+            OnMonsterDefeated();
+        }
     }
 
     /// <summary>
@@ -329,9 +380,18 @@ public class BattleManager
         }
     }
 
-    private void ExecutePlayerAttack(bool isDoubleDamage)
+    private void ExecutePlayerAttack()
     {
         var player = _gm.Players[_currentBattle.playerId];
+
+        // Ammo-exhausted weapons can't attack — silently skip the swing. The
+        // player/bot can still defend and use combat items.
+        if (_currentBattle.ammoExhausted)
+        {
+            AddBattleLog($"{player.playerName} cannot attack: no ammo!");
+            return;
+        }
+
         _currentBattle.combatRound++;
         _currentBattle.phase = BattlePhaseStep.PlayerAttack;
 
@@ -351,8 +411,9 @@ public class BattleManager
             AddBattleLog("Bat Lv3: Re-rolled hits and summed all damage!");
         }
 
-        // Gloves bonus damage
-        int gloveBonus = _gm.Combat.GetGlovesBonusDamage(player, attackDice);
+        // Gloves bonus damage (Lv1: +1 when HP<half, Lv3: +per-battle damage count)
+        int gloveBonus = _gm.Combat.GetGlovesBonusDamage(
+            player, attackDice, _currentBattle.glovesDamageCount);
         if (gloveBonus > 0)
         {
             damage += gloveBonus;
@@ -366,13 +427,6 @@ public class BattleManager
             damage = _gm.Combat.ApplyBowDoubleDamage(player, damage);
             _currentBattle.bowDoubleDamageApplied = true;
             AddBattleLog("Bow Lv3: Damage doubled!");
-        }
-
-        // Knife double damage (one-time)
-        if (isDoubleDamage)
-        {
-            damage = _gm.Combat.ApplyKnifeDoubleDamage(damage);
-            AddBattleLog("Knife: Double damage applied!");
         }
 
         // Pet damage
@@ -396,13 +450,16 @@ public class BattleManager
 
         // Apply damage to monster
         _currentBattle.monsterCurrentHP -= damage;
+        _currentBattle.lastAttackDamage = damage;
 
-        // Sword Lv3: bonus points per die showing 1
-        int swordBonus = _gm.Combat.GetSwordBonusPoints(player, attackDice);
-        if (swordBonus > 0)
+        // Knife Lv3: after an attack that dealt damage, the retroactive double-
+        // damage button becomes available (once per battle).
+        if (damage > 0
+            && !_currentBattle.doubleDamageUsed
+            && player.weaponData.weaponName == "Knife"
+            && player.GetCurrentPowerLevel() >= 3)
         {
-            _currentBattle.swordBonusPoints += swordBonus;
-            AddBattleLog($"Sword Lv3: +{swordBonus} bonus points from dice showing 1!");
+            _currentBattle.doubleDamageAvailable = true;
         }
 
         // EP drain effect
@@ -483,14 +540,24 @@ public class BattleManager
 
         int damageToPlayer = Mathf.Max(0, monsterATT - blocked);
 
-        // Axe counter-attack
+        // Axe counter-attack (clamped by monster damage cap if any)
         int axeCounter = _gm.Combat.GetAxeCounterDamage(player, damageToPlayer);
+        int axeCounterCap = _gm.MonsterEffects.GetDamageCap(_currentBattle.monster.effectType);
+        if (axeCounterCap > 0 && axeCounter > axeCounterCap)
+            axeCounter = axeCounterCap;
 
         // Apply damage to player
         if (damageToPlayer > 0)
         {
             _gm.Resources.ChangeResource(player, "hp", -damageToPlayer);
             _currentBattle.totalDamageTaken += damageToPlayer;
+
+            // Gloves Lv3: count per-event damage to scale future attacks this battle
+            if (player.weaponData.weaponName == "Gloves"
+                && player.GetCurrentPowerLevel() >= 3)
+            {
+                _currentBattle.glovesDamageCount++;
+            }
 
             AddBattleLog($"{_currentBattle.monster.monsterName} attacks for {monsterATT}, blocked {blocked}, {player.playerName} takes {damageToPlayer} damage! (HP: {player.hp}/{player.maxHp})");
 
@@ -560,53 +627,64 @@ public class BattleManager
         var player = _gm.Players[_currentBattle.playerId];
         var monster = _currentBattle.monster;
 
-        // Award EXP from damage taken (with effect caps)
-        int expFromDamage = _currentBattle.totalDamageTaken;
-        int expCap = _gm.MonsterEffects.GetExpCapFromDamage(monster.effectType);
-        if (expCap == 0)
+        // Award EXP from damage taken.
+        // Axe Lv1+ has its own rule (damage - 1 EXP, min 0) and bypasses the
+        // NoExpFromDamage / MaxExpFromDamageN caps entirely — matches JS.
+        int expFromDamage;
+        bool axeExpBranch = player.weaponData.weaponName == "Axe"
+                             && player.GetCurrentPowerLevel() >= 1;
+
+        if (axeExpBranch)
         {
-            expFromDamage = 0; // NoExpFromDamage
+            expFromDamage = Mathf.Max(0, _currentBattle.totalDamageTaken - 1);
         }
-        else if (expFromDamage > expCap)
+        else
         {
-            expFromDamage = expCap;
+            expFromDamage = _currentBattle.totalDamageTaken;
+            int expCap = _gm.MonsterEffects.GetExpCapFromDamage(monster.effectType);
+            if (expCap == 0)
+            {
+                expFromDamage = 0; // NoExpFromDamage
+            }
+            else if (expFromDamage > expCap)
+            {
+                expFromDamage = expCap;
+            }
         }
+
         if (expFromDamage > 0)
         {
             _gm.Resources.ChangeResource(player, "exp", expFromDamage);
             AddBattleLog($"{player.playerName} gains {expFromDamage} EXP from damage taken.");
         }
 
-        // Award monster rewards
+        // Award monster rewards. Knife Lv1+ doubles non-point rewards (money/beer/blood).
+        int knifeMult = (player.weaponData.weaponName == "Knife"
+                          && player.GetCurrentPowerLevel() >= 1) ? 2 : 1;
         if (monster.moneyReward > 0)
-            _gm.Resources.ChangeResource(player, "money", monster.moneyReward);
+            _gm.Resources.ChangeResource(player, "money", monster.moneyReward * knifeMult);
         if (monster.energyReward > 0)
-            _gm.Resources.ChangeResource(player, "ep", monster.energyReward);
+            _gm.Resources.ChangeResource(player, "beer", monster.energyReward * knifeMult);
         if (monster.bloodReward > 0)
-            _gm.Resources.ChangeResource(player, "bloodBag", monster.bloodReward);
+            _gm.Resources.ChangeResource(player, "bloodBag", monster.bloodReward * knifeMult);
 
-        // Award points
-        int points = monster.points;
+        // Award points (each source reported separately so stat-by-source totals stay correct)
+        if (monster.points > 0)
+            _gm.Resources.ChangeScore(player, monster.points, "monster");
 
-        // Sword bonus points
-        if (_currentBattle.swordBonusPoints > 0)
+        // Sword Lv3: +monster.level bonus points on defeat
+        if (player.weaponData.weaponName == "Sword" && player.GetCurrentPowerLevel() >= 3)
         {
-            points += _currentBattle.swordBonusPoints;
-            AddBattleLog($"Sword Lv3: +{_currentBattle.swordBonusPoints} bonus points!");
+            _gm.Resources.ChangeScore(player, monster.level, "other");
+            AddBattleLog($"Sword Lv3: +{monster.level} bonus points!");
         }
 
-        // Fake Blood bonus points
+        // Fake Blood: flat +2 points
         if (_currentBattle.fakeBloodUsed)
         {
-            int fakeBloodBonus = monster.level;
-            points += fakeBloodBonus;
-            AddBattleLog($"Fake Blood: +{fakeBloodBonus} bonus points!");
+            const int fakeBloodBonus = 2;
             _gm.Resources.ChangeScore(player, fakeBloodBonus, "fakeBlood");
-        }
-
-        if (points > 0)
-        {
-            _gm.Resources.ChangeScore(player, monster.points, "monster");
+            AddBattleLog($"Fake Blood: +{fakeBloodBonus} bonus points!");
         }
 
         // Track defeated monster
@@ -621,16 +699,13 @@ public class BattleManager
         // Apply death effects
         _gm.MonsterEffects.ApplyDeathEffects(monster, player);
 
-        // Check if this monster boosts other monsters' HP
-        if (_gm.MonsterEffects.BoostsOtherMonsters(monster.effectType))
-        {
-            _monsterHPBoost++;
-            AddBattleLog("This monster's defeat boosts remaining monsters +1 HP!");
-        }
+        // Note: HP boost for OtherMonstersPlus1HP is registered at battle start
+        // (see StartBattle), not on defeat, so the buff carries over even when
+        // the player loses the fight.
 
         AddBattleLog($"{player.playerName} defeated {monster.monsterName}! " +
                       $"+{monster.points} pts, +${monster.moneyReward}, " +
-                      $"+{monster.energyReward} EP, +{monster.bloodReward} blood bags");
+                      $"+{monster.energyReward} beer, +{monster.bloodReward} blood bags");
 
         EventBus.Publish(new MonsterDefeatedEvent
         {
@@ -858,7 +933,10 @@ public class BattleManager
                         }
                     }
                     // Fall through to attack if item not found
-                    ExecutePlayerAttack(decision.useDoubleDamage);
+                    ExecutePlayerAttack();
+                    if (decision.useDoubleDamage && _currentBattle != null
+                        && _currentBattle.doubleDamageAvailable)
+                        ProcessDoubleDamage(player.id);
                     break;
 
                 case BotBattleAction.Tame:
@@ -866,11 +944,14 @@ public class BattleManager
                     return;
 
                 case BotBattleAction.Attack:
-                    ExecutePlayerAttack(decision.useDoubleDamage);
+                    ExecutePlayerAttack();
+                    if (decision.useDoubleDamage && _currentBattle != null
+                        && _currentBattle.doubleDamageAvailable)
+                        ProcessDoubleDamage(player.id);
                     break;
 
                 default:
-                    ExecutePlayerAttack(false);
+                    ExecutePlayerAttack();
                     break;
             }
 
@@ -1028,13 +1109,21 @@ public class FullBattleState
     public int[] lastDefenseDice;
 
     // Weapon power flags
-    public bool doubleDamageAvailable;  // Knife Lv1+
+    public bool doubleDamageAvailable;  // Knife Lv3: true after an attack that dealt damage
     public bool doubleDamageUsed;
+    public int lastAttackDamage;        // Damage dealt by the most recent attack (for Knife Lv3 retroactive doubling)
     public bool bowDoubleDamageApplied; // Bow Lv3, once per battle
-    public int swordBonusPoints;        // Sword Lv3, accumulated
+    public int swordBonusPoints;        // Unused (kept for network-serialization compat)
 
     // Item usage tracking
     public bool fakeBloodUsed;
+
+    // Gloves Lv3: counts distinct player-damage events this battle
+    public int glovesDamageCount;
+
+    // Rifle/Plasma entered Forest without ammo: weapon attacks are blocked this
+    // battle, but the player can still defend and use combat items.
+    public bool ammoExhausted;
 
     // Battle log
     public List<string> battleLog = new List<string>();

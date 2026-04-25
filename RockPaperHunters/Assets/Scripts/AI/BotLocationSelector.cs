@@ -11,7 +11,7 @@ public class BotLocationSelector
     private readonly int _playerId;
     private int _lastPlazaRound = -10; // Track when bot last visited Plaza
 
-    private const int BASE_ENTRIES = 4;
+    private const int BASE_ENTRIES = 3;
 
     public BotLocationSelector(int playerId, GameManager gm)
     {

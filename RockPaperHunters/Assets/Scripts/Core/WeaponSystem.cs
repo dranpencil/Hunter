@@ -124,6 +124,9 @@ public class WeaponSystem
                 // Lv2: +2$
                 if (powerLevel >= 2)
                     _gm.Resources.ChangeResource(player, "money", 2);
+                // Lv3: +2 EXP
+                if (powerLevel >= 3)
+                    _gm.Resources.ChangeResource(player, "exp", 2);
                 break;
 
             case "Chain":

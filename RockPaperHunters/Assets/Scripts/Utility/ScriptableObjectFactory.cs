@@ -32,7 +32,7 @@ public class ScriptableObjectFactory
             new { name = "Rifle",   reqA = 6, reqD = 3, cap = 8, money = 4, aDice = 2, dDice = 0, dmg = new[]{0,0,0,1,2,2}, pri = 10, pref = LocationId.WorkSite,  ammo = true,  ammoName = "Bullets" },
             new { name = "Plasma",  reqA = 7, reqD = 3, cap = 8, money = 4, aDice = 2, dDice = 0, dmg = new[]{0,0,0,2,2,2}, pri = 11, pref = LocationId.WorkSite,  ammo = true,  ammoName = "Batteries" },
             new { name = "Chain",   reqA = 4, reqD = 3, cap = 6, money = 4, aDice = 2, dDice = 0, dmg = new[]{0,0,0,1,1,1}, pri = 6,  pref = LocationId.Bar,      ammo = false, ammoName = "" },
-            new { name = "Axe",     reqA = 4, reqD = 3, cap = 6, money = 4, aDice = 2, dDice = 0, dmg = new[]{0,0,0,0,1,1}, pri = 4,  pref = LocationId.Hospital,  ammo = false, ammoName = "" },
+            new { name = "Axe",     reqA = 4, reqD = 3, cap = 6, money = 4, aDice = 2, dDice = 0, dmg = new[]{0,0,0,1,1,1}, pri = 4,  pref = LocationId.Hospital,  ammo = false, ammoName = "" },
             new { name = "Whip",    reqA = 4, reqD = 3, cap = 6, money = 4, aDice = 2, dDice = 0, dmg = new[]{0,0,0,1,1,1}, pri = 5,  pref = LocationId.Bar,      ammo = false, ammoName = "" },
             new { name = "Bow",     reqA = 5, reqD = 3, cap = 6, money = 4, aDice = 2, dDice = 0, dmg = new[]{0,0,0,0,0,3}, pri = 1,  pref = LocationId.Plaza,    ammo = false, ammoName = "" },
             new { name = "Sword",   reqA = 5, reqD = 3, cap = 4, money = 4, aDice = 2, dDice = 0, dmg = new[]{0,0,0,1,1,2}, pri = 9,  pref = LocationId.Dojo,     ammo = false, ammoName = "" },
@@ -170,11 +170,11 @@ public class ScriptableObjectFactory
         CreateLocation(path, LocationId.Station, "Station", ResourceType.PlayerChoice,
             new int[0], new int[0], new int[0]);
         CreateLocation(path, LocationId.Hospital, "Hospital", ResourceType.BloodBag,
-            new[]{4,2}, new[]{5,3,2}, new[]{6,4,3,2});
+            new[]{4,2}, new[]{5,4,3}, new[]{6,5,4,3});
         CreateLocation(path, LocationId.Dojo, "Dojo", ResourceType.Exp,
-            new[]{4,2}, new[]{5,3,2}, new[]{6,4,3,2});
+            new[]{4,2}, new[]{5,4,3}, new[]{6,5,4,3});
         CreateLocation(path, LocationId.Plaza, "Plaza", ResourceType.Score,
-            new[]{4,2}, new[]{5,3,2}, new[]{6,4,3,2});
+            new[]{5,2}, new[]{5,3,2}, new[]{6,4,3,2});
         CreateLocation(path, LocationId.Forest, "Forest", ResourceType.None,
             new int[0], new int[0], new int[0]);
     }

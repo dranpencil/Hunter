@@ -46,8 +46,8 @@ public class BotCombatAI
             return decision;
         }
 
-        // 4. Use Knife double damage if available and monster has enough HP
-        if (player.weaponData.weaponName == "Knife" && player.GetCurrentPowerLevel() >= 1
+        // 4. Use Knife double damage (Lv3 only) if monster has enough HP
+        if (player.weaponData.weaponName == "Knife" && player.GetCurrentPowerLevel() >= 3
             && state.monsterCurrentHP >= 3)
         {
             decision.useDoubleDamage = true;

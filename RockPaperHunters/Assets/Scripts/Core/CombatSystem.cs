@@ -126,52 +126,29 @@ public class CombatSystem
     }
 
     /// <summary>
-    /// Calculate Knife double damage (Lv1+ power, once per battle).
+    /// Calculate Gloves bonus damage. Bonuses only apply to dice that already
+    /// hit (base damage &gt; 0). Lv1: +1 per hitting die when HP &lt; maxHp/2.
+    /// Lv3: +glovesDamageCount per hitting die, where glovesDamageCount is the
+    /// number of times the player has been damaged in THIS battle (not total
+    /// HP missing). Lv1 and Lv3 stack on the same die.
     /// </summary>
-    public int ApplyKnifeDoubleDamage(int damage)
-    {
-        return damage * 2;
-    }
-
-    /// <summary>
-    /// Calculate Gloves bonus damage.
-    /// Lv1: base attack = 1, +1 when HP < half.
-    /// Lv3: +1 damage on dice 5,6 per HP lost (from max).
-    /// </summary>
-    public int GetGlovesBonusDamage(PlayerData player, int[] diceResults)
+    public int GetGlovesBonusDamage(PlayerData player, int[] diceResults, int glovesDamageCount)
     {
         if (player.weaponData.weaponName != "Gloves") return 0;
         int powerLevel = player.GetCurrentPowerLevel();
+        if (powerLevel < 1) return 0;
 
-        if (powerLevel >= 3)
-        {
-            int hpLost = player.maxHp - player.hp;
-            int highDiceCount = 0;
-            foreach (int die in diceResults)
-            {
-                if (die >= 5) highDiceCount++;
-            }
-            return highDiceCount * hpLost;
-        }
+        bool hpBelowHalf = player.hp < player.maxHp / 2;
+        int bonus = 0;
 
-        return 0;
-    }
-
-    /// <summary>
-    /// Sword Lv3: +1 point per die showing 1.
-    /// Returns bonus points (not damage).
-    /// </summary>
-    public int GetSwordBonusPoints(PlayerData player, int[] diceResults)
-    {
-        if (player.weaponData.weaponName != "Sword") return 0;
-        if (player.GetCurrentPowerLevel() < 3) return 0;
-
-        int count = 0;
         foreach (int die in diceResults)
         {
-            if (die == 1) count++;
+            if (player.weaponData.GetDamage(die) <= 0) continue;
+            if (hpBelowHalf) bonus += 1;
+            if (powerLevel >= 3) bonus += glovesDamageCount;
         }
-        return count;
+
+        return bonus;
     }
 
     /// <summary>
@@ -194,13 +171,15 @@ public class CombatSystem
 
     /// <summary>
     /// Check if a monster can be tamed by this player.
-    /// Chain: HP <= 3 threshold. Whip: also has taming.
+    /// Chain Lv1+: HP &lt;= 3; everyone else (including Whip and un-powered Chain): HP &lt;= 1.
     /// </summary>
     public bool CanTame(PlayerData player, int monsterCurrentHP)
     {
         string weapon = player.weaponData.weaponName;
         if (weapon != "Chain" && weapon != "Whip") return false;
-        return monsterCurrentHP <= _gm.config.baseTameHPThreshold;
+        if (weapon == "Chain" && player.GetCurrentPowerLevel() >= 1)
+            return monsterCurrentHP <= _gm.config.baseTameHPThreshold;
+        return monsterCurrentHP <= 1;
     }
 
     /// <summary>

@@ -99,7 +99,7 @@ public class PopularityTrack
 
     /// <summary>
     /// Award Plaza bonus: 3 points if hunter is alone at Plaza.
-    /// Also applies to Knife Lv2+: +2 points if alone at any location.
+    /// Also applies to Knife Lv2+: +1 point if alone at any location.
     /// </summary>
     public void CheckPlazaAndAloneBonuses(PlayerData player)
     {
@@ -115,11 +115,11 @@ public class PopularityTrack
             _gm.Resources.ChangeScore(player, _gm.config.plazaAlonePoints, "plaza");
         }
 
-        // Knife Lv2/Lv3: +2 points if alone at any location (not Forest)
+        // Knife Lv2/Lv3: +1 point if alone at any location (not Forest)
         if (player.weaponData.weaponName == "Knife" && player.GetCurrentPowerLevel() >= 2
             && isAlone && loc != LocationId.Forest)
         {
-            _gm.Resources.ChangeScore(player, 2, "other");
+            _gm.Resources.ChangeScore(player, 1, "other");
         }
 
         // Katana/Bow/Sword Lv2: +2 EXP if alone at any location (not Forest)

@@ -30,11 +30,9 @@ public class BotShoppingAI
         bool lowEP = player.ep <= 3;
         bool lowHP = player.hp <= player.maxHp / 2;
 
-        // Buy ammo first
+        // Buy 1 ammo first, then move on to other items
         if (needsAmmo)
         {
-            TryBuy(gm, player, player.weaponData.ammoItemName);
-            TryBuy(gm, player, player.weaponData.ammoItemName);
             TryBuy(gm, player, player.weaponData.ammoItemName);
         }
 
