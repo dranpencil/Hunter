@@ -336,10 +336,10 @@ class BotPlayer {
 
         const entries = {};
 
-        // Initialize all available locations (except hunter's location) with 4 base entries
+        // Initialize all available locations (except hunter's location) with 3 base entries
         for (let i = 1; i <= 7; i++) {
             if (i !== hunterLocation && availableLocations.includes(i)) {
-                entries[i] = 4;
+                entries[i] = 3;
             } else {
                 entries[i] = 0; // Not available or hunter's location
             }
