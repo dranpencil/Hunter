@@ -262,7 +262,7 @@ h1 {
 }
 
 .upgrade-section {
-    font-size: 11px;
+    font-size: 12px;
 }
 
 .upgrade-bar {
@@ -274,8 +274,8 @@ h1 {
 
 .upgrade-bar button {
     padding: 0 4px;
-    font-size: 10px;
-    height: 18px;
+    font-size: 12px;
+    height: 22px;
 }
 
 .milestones {
@@ -288,7 +288,7 @@ h1 {
     display: flex;
     align-items: center;
     gap: 3px;
-    font-size: 10px;
+    font-size: 12px;
     color: #95a5a6;
 }
 
@@ -311,7 +311,7 @@ h1 {
     display: flex;
     align-items: center;
     gap: 5px;
-    font-size: 11px;
+    font-size: 12px;
 }
 
 .resource-label {
@@ -329,7 +329,7 @@ h1 {
 
 .inventory-compact h4 {
     margin: 0 0 5px 0;
-    font-size: 11px;
+    font-size: 12px;
     color: #3498db;
 }
 
@@ -372,7 +372,7 @@ h1 {
     display: flex;
     align-items: center;
     gap: 5px;
-    font-size: 11px;
+    font-size: 12px;
 }
 
 .dice-stat span:first-child {
@@ -389,25 +389,25 @@ h1 {
 
 .dice-stat button {
     padding: 0 4px;
-    font-size: 10px;
-    height: 18px;
+    font-size: 12px;
+    height: 22px;
 }
 
 .cost {
     color: #7f8c8d;
-    font-size: 10px;
+    font-size: 12px;
 }
 
 .weapon-ammo {
     background: #2c3e50;
     padding: 6px;
     border-radius: 5px;
-    font-size: 11px;
+    font-size: 12px;
 }
 
 .weapon-power-section h4 {
     margin: 5px 0;
-    font-size: 11px;
+    font-size: 12px;
     color: #3498db;
     text-align: center;
 }
@@ -423,7 +423,7 @@ h1 {
     padding: 4px;
     border-radius: 3px;
     text-align: center;
-    font-size: 9px;
+    font-size: 12px;
 }
 
 .power-level.active {
@@ -476,7 +476,7 @@ h1 {
 
 .popularity-section h4 {
     margin: 5px 0;
-    font-size: 11px;
+    font-size: 12px;
     color: #3498db;
 }
 
@@ -484,13 +484,13 @@ h1 {
     background: #2c3e50;
     padding: 6px;
     border-radius: 5px;
-    font-size: 10px;
+    font-size: 12px;
 }
 
 /* Pet Section Compact */
 .pet-section-compact h4 {
     margin: 5px 0;
-    font-size: 11px;
+    font-size: 12px;
     color: #3498db;
 }
 
@@ -506,7 +506,7 @@ h1 {
 .pet-row {
     display: flex;
     justify-content: space-between;
-    font-size: 11px;
+    font-size: 12px;
 }
 
 #player-1-board h2 {
@@ -784,7 +784,7 @@ h1 {
 }
 
 .power-desc {
-    font-size: 10px;
+    font-size: 12px;
     color: #ecf0f1;
     line-height: 1.1;
 }
@@ -868,7 +868,7 @@ h1 {
 
 .inventory-item-counter .small-btn {
     margin-top: 2px;
-    font-size: 10px;
+    font-size: 12px;
     padding: 1px 4px;
 }
 
@@ -908,7 +908,7 @@ h1 {
 }
 
 .damage-cell .damage-value {
-    font-size: 11px;
+    font-size: 12px;
     font-weight: bold;
     color: #e74c3c;
     background-color: rgba(44, 62, 80, 0.8);

@@ -30,7 +30,7 @@
 //                     Omit (or use null) to skip highlighting.
 //
 // =====================================================================
-// ACTION TYPES (matches the 18 hook points in game.js)
+// ACTION TYPES (matches the 19 hook points in game.js)
 // =====================================================================
 //   { type: 'selectCard',         tokenType: 'hunter'|'apprentice', locationId: 1..7 }
 //   { type: 'confirmSelection' }
@@ -41,6 +41,7 @@
 //   { type: 'selectMonsterLevel', level: 1|2|3 }
 //   { type: 'confirmBattleSelection' }
 //   { type: 'confirmMonsterSelection' }
+//   { type: 'changeMonster' }            // never matches; permanently blocked in tutorial
 //   { type: 'playerAttackMonster' }
 //   { type: 'tameMonster' }
 //   { type: 'useBattleItem',      itemName: 'Beer'|'Blood Bag'|'Grenade'|... }

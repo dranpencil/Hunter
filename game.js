@@ -8624,6 +8624,8 @@ class Game {
     }
 
     changeMonster() {
+        if (this.tutorialBlocks('changeMonster', {})) return;
+
         // Online guest: send action to host
         if (this.gameMode === 'online' && !this.isHost) {
             this.onlineManager.pushAction({

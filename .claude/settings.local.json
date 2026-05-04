@@ -8,7 +8,13 @@
       "Bash(timeout:*)",
       "WebSearch",
       "Bash(iconv -f BIG5 -t UTF-8 scripts.csv)",
-      "Read(//tmp/**)"
+      "Read(//tmp/**)",
+      "Bash(ls -la \"C:\\\\\\\\Users\\\\\\\\dranp\\\\\\\\claude_lab\\\\\\\\game.js\")",
+      "Bash(xargs head *)",
+      "Bash(cp -r C:/Users/dranp/claude_lab/Rules_EN.files C:/Users/dranp/claude_lab/RockPaperHunters/Assets/StreamingAssets/Rulebook/)",
+      "Bash(cp -r C:/Users/dranp/claude_lab/Rules_ZH.files C:/Users/dranp/claude_lab/RockPaperHunters/Assets/StreamingAssets/Rulebook/)",
+      "Bash(git add *)",
+      "Bash(git commit *)"
     ],
     "deny": []
   }
