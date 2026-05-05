@@ -1931,6 +1931,18 @@ class Game {
                 if (typeof this.updateMonsterRewards === 'function' && this.currentBattle.monster) {
                     try { this.updateMonsterRewards(this.currentBattle.monster); } catch (e) { /* ignore */ }
                 }
+                if (this.currentBattle.monster) {
+                    try { this.updateMonsterEffectDisplay(this.currentBattle.monster); } catch (e) { /* ignore */ }
+                }
+                // Re-render battle player weapon name + dice grid (translated labels)
+                try {
+                    const battlePlayer = this.players.find(p => p.id === this.currentBattle.playerId);
+                    if (battlePlayer) {
+                        const weaponEl = document.getElementById('battle-player-weapon');
+                        if (weaponEl) weaponEl.textContent = this.getWeaponDisplayName(battlePlayer.weapon.name);
+                        this.renderBattleDiceGrid(battlePlayer.weapon.damage, battlePlayer.weapon.name);
+                    }
+                } catch (e) { /* ignore */ }
             }
             // Re-render capacity overflow modal if visible
             const capacityModal = document.getElementById('capacity-modal');
@@ -2802,6 +2814,23 @@ class Game {
         if (!key) return monster.effect || '';
         const translated = t(key);
         return (translated && translated.indexOf('[MISSING') !== 0 && translated.indexOf('[UNTRANSLATED') !== 0) ? translated : monster.effect;
+    }
+
+    /**
+     * Render the monster effect block in the battle UI. Hides the box when the
+     * monster has no effect (raw '無' or empty).
+     */
+    updateMonsterEffectDisplay(monster) {
+        const box = document.getElementById('battle-monster-effect-box');
+        const text = document.getElementById('battle-monster-effect');
+        if (!box || !text) return;
+        if (!monster || !monster.effect || monster.effect === '無') {
+            box.style.display = 'none';
+            text.textContent = '';
+            return;
+        }
+        text.textContent = this.getMonsterEffectDisplay(monster);
+        box.style.display = 'block';
     }
 
     /**
@@ -5821,8 +5850,13 @@ class Game {
                 this.updateDamageGrid(player.id);
             }
         });
+
+        // Resources or inventory changed → re-evaluate button enable/disable
+        // (addToUpgrade hp/ep depend on Blood Bag/Beer presence, restores depend
+        // on hp/ep fullness, weapon upgrades depend on EXP, etc.).
+        this.refreshAllPlayerButtonStates();
     }
-    
+
     shouldDisablePlayerButtons(playerId) {
         const player = this.players.find(p => p.id === playerId);
         if (!player) return true;
@@ -7541,7 +7575,28 @@ class Game {
         
         damageGridElement.innerHTML = gridHTML;
     }
-    
+
+    renderBattleDiceGrid(damageArr, weaponName) {
+        const el = document.getElementById('battle-dice-grid');
+        if (!el) return;
+        if (!damageArr || damageArr.length === 0) {
+            el.innerHTML = '';
+            return;
+        }
+        const dicePips = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
+        const defenseArr = weaponName === 'Bow' ? [0, 0, 1, 1, 1, 1] : [0, 0, 0, 1, 1, 1];
+        let html = '<div class="bdg-row bdg-header"><span class="bdg-label"></span>';
+        dicePips.forEach(p => { html += `<span class="bdg-pip">${p}</span>`; });
+        html += '</div>';
+        html += `<div class="bdg-row"><span class="bdg-label">${t('battle.attackRow')}</span>`;
+        damageArr.forEach(v => { html += `<span class="bdg-val">${v}</span>`; });
+        html += '</div>';
+        html += `<div class="bdg-row"><span class="bdg-label">${t('battle.defenseRow')}</span>`;
+        defenseArr.forEach(v => { html += `<span class="bdg-val">${v}</span>`; });
+        html += '</div>';
+        el.innerHTML = html;
+    }
+
     updateBulletDisplay(playerId) {
         if (this.isAutomatedMode) return;
 
@@ -9191,6 +9246,8 @@ class Game {
         
         document.getElementById('monster-battle').style.display = 'flex';
         document.getElementById('battle-player-name').textContent = this.getPlayerDisplayName(player);
+        document.getElementById('battle-player-weapon').textContent = this.getWeaponDisplayName(player.weapon.name);
+        this.renderBattleDiceGrid(player.weapon.damage, player.weapon.name);
         document.getElementById('battle-player-hp').textContent = `${player.resources.hp}/${player.maxResources.hp}`;
         document.getElementById('battle-player-ep').textContent = `${player.resources.ep}/${player.maxResources.ep}`;
         
@@ -9225,11 +9282,7 @@ class Game {
         this.updateMonsterDisplay();
         
         // Display monster effect if present
-        const effectElement = document.getElementById('battle-monster-effect');
-        if (effectElement && battle.monster.effect) {
-            effectElement.textContent = battle.monster.effect;
-            effectElement.style.display = battle.monster.effect === '無' ? 'none' : 'block';
-        }
+        this.updateMonsterEffectDisplay(battle.monster);
         
         // Display monster rewards
         this.updateMonsterRewards(battle.monster);
@@ -13849,6 +13902,8 @@ class Game {
             playerEP: player ? player.resources.ep : 0,
             playerMaxEP: player ? player.maxResources.ep : 0,
             playerInventory: player ? player.inventory.map(i => ({ name: i.name || '', icon: i.icon || '', size: i.size || 0 })) : [],
+            playerWeaponName: player ? player.weapon.name : '',
+            playerWeaponDamage: player && player.weapon.damage ? [...player.weapon.damage] : [],
             monster: battle.monster ? {
                 level: battle.monster.level || 0,
                 hp: battle.monster.hp || 0,
@@ -14819,6 +14874,8 @@ class Game {
         // Show battle UI in read-only mode
         document.getElementById('monster-battle').style.display = 'flex';
         document.getElementById('battle-player-name').textContent = battleState.playerName;
+        document.getElementById('battle-player-weapon').textContent = battleState.playerWeaponName ? this.getWeaponDisplayName(battleState.playerWeaponName) : '';
+        this.renderBattleDiceGrid(battleState.playerWeaponDamage, battleState.playerWeaponName);
         document.getElementById('battle-player-hp').textContent = `${battleState.playerHP}/${battleState.playerMaxHP}`;
         document.getElementById('battle-player-ep').textContent = `${battleState.playerEP}/${battleState.playerMaxEP}`;
 
@@ -14826,6 +14883,9 @@ class Game {
             document.getElementById('battle-monster-level').textContent = battleState.monster.level;
             document.getElementById('battle-monster-hp').textContent = `${battleState.monster.hp}/${battleState.monster.maxHp}`;
             document.getElementById('battle-monster-att').textContent = battleState.monster.attack;
+            this.updateMonsterEffectDisplay(battleState.monster);
+        } else {
+            this.updateMonsterEffectDisplay(null);
         }
 
         // Show monster rewards
@@ -14853,6 +14913,8 @@ class Game {
         battleDiv.style.display = 'flex';
 
         document.getElementById('battle-player-name').textContent = playerName;
+        document.getElementById('battle-player-weapon').textContent = '';
+        this.renderBattleDiceGrid(null);
         document.getElementById('battle-player-hp').textContent = '';
         document.getElementById('battle-player-ep').textContent = '';
 
@@ -14861,6 +14923,7 @@ class Game {
         document.getElementById('battle-monster-hp').textContent = '?';
         document.getElementById('battle-monster-att').textContent = '?';
         document.getElementById('battle-monster-rewards').textContent = '';
+        this.updateMonsterEffectDisplay(null);
 
         // Hide all buttons
         document.getElementById('battle-attack-btn').style.display = 'none';
@@ -14878,6 +14941,8 @@ class Game {
         battleDiv.style.display = 'flex';
 
         document.getElementById('battle-player-name').textContent = playerName;
+        document.getElementById('battle-player-weapon').textContent = '';
+        this.renderBattleDiceGrid(null);
         document.getElementById('battle-player-hp').textContent = '';
         document.getElementById('battle-player-ep').textContent = '';
 
@@ -14885,6 +14950,7 @@ class Game {
         document.getElementById('battle-monster-level').textContent = monsterPreview.level;
         document.getElementById('battle-monster-hp').textContent = `${monsterPreview.hp}/${monsterPreview.maxHp || monsterPreview.hp}`;
         document.getElementById('battle-monster-att').textContent = monsterPreview.att || monsterPreview.attack;
+        this.updateMonsterEffectDisplay(monsterPreview);
 
         // Show rewards
         let rewards = [];
@@ -14909,6 +14975,8 @@ class Game {
         // Show full battle UI with controls for the guest
         document.getElementById('monster-battle').style.display = 'flex';
         document.getElementById('battle-player-name').textContent = battleState.playerName;
+        document.getElementById('battle-player-weapon').textContent = battleState.playerWeaponName ? this.getWeaponDisplayName(battleState.playerWeaponName) : '';
+        this.renderBattleDiceGrid(battleState.playerWeaponDamage, battleState.playerWeaponName);
         document.getElementById('battle-player-hp').textContent = `${battleState.playerHP}/${battleState.playerMaxHP}`;
         document.getElementById('battle-player-ep').textContent = `${battleState.playerEP}/${battleState.playerMaxEP}`;
 
@@ -14916,6 +14984,9 @@ class Game {
             document.getElementById('battle-monster-level').textContent = battleState.monster.level;
             document.getElementById('battle-monster-hp').textContent = `${battleState.monster.hp}/${battleState.monster.maxHp}`;
             document.getElementById('battle-monster-att').textContent = battleState.monster.attack;
+            this.updateMonsterEffectDisplay(battleState.monster);
+        } else {
+            this.updateMonsterEffectDisplay(null);
         }
 
         // Show monster rewards

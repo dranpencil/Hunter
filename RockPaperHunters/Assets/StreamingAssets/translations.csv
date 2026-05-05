@@ -47,11 +47,11 @@ board.popularityTrack,Popularity Track,人氣軌道
 board.popularity,Popularity:,人氣：
 board.pet,Pet,寵物
 board.petLabel,Pet:,寵物：
-board.milestone6Hp,6(+2pts),6(+2 分)
-board.milestone8Hp,8(+3pts),8(+3 分)
-board.milestone10Hp,10(+4pts),10(+4 分)
-board.milestone8Ep,8(+2pts),8(+2 分)
-board.milestone10Ep,10(+4pts),10(+4 分)
+board.milestone6Hp,Max 6: 2🏆,最大值 6: 2🏆
+board.milestone8Hp,Max 8: 3🏆,最大值 8: 3🏆
+board.milestone10Hp,Max 10: 4🏆,最大值 10: 4🏆
+board.milestone8Ep,Max 8: 2🏆,最大值 8: 2🏆
+board.milestone10Ep,Max 10: 4🏆,最大值 10: 4🏆
 tooltip.hpMax10,HP is at maximum (10),血量已達上限 (10)
 tooltip.epMax10,EP is at maximum (10),體力已達上限 (10)
 common.monster,Monster,怪獸
@@ -409,11 +409,14 @@ battle.title,Monster Battle,怪獸戰鬥
 battle.vs,VS,VS
 battle.playerHP,HP:,血量：
 battle.playerEP,EP:,體力：
+battle.attackRow,attack,攻擊
+battle.defenseRow,defense,防禦
 battle.bullets,Bullets:,子彈：
 battle.batteries,Batteries:,電池：
 battle.monsterLevel,"Level {0} Monster","等級 {0} 怪獸"
 battle.monsterATT,ATT:,攻擊：
 battle.rewards,Rewards:,獎勵：
+battle.effect,Effect:,效果：
 battle.rewardsLoading,Loading...,載入中...
 battle.yourTurn,Your turn to attack!,輪到你攻擊！
 battle.useItemsOrAttack,Use items or attack the monster!,使用物品或攻擊怪獸！

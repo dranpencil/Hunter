@@ -293,8 +293,33 @@ h1 {
 }
 
 .milestones input[type="checkbox"] {
+    appearance: none;
+    -webkit-appearance: none;
     width: 12px;
     height: 12px;
+    border: 1.5px solid #7f8c8d;
+    border-radius: 2px;
+    background-color: #2c3e50;
+    opacity: 1;
+    cursor: default;
+    position: relative;
+    flex-shrink: 0;
+}
+
+.milestones input[type="checkbox"]:checked {
+    background-color: #2ecc71;
+    border-color: #27ae60;
+}
+
+.milestones input[type="checkbox"]:checked::after {
+    content: '✓';
+    position: absolute;
+    top: -3px;
+    left: 1px;
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+    line-height: 1;
 }
 
 /* Resources Compact */
@@ -1312,6 +1337,27 @@ h1 {
     font-size: 14px;
 }
 
+.monster-effect-box {
+    margin-top: 6px;
+    padding: 5px;
+    background-color: rgba(142, 68, 173, 0.25);
+    border-radius: 3px;
+    font-size: 13px;
+}
+
+.monster-effect-box .effect-title {
+    font-weight: bold;
+    color: #c39bd3;
+    margin-bottom: 2px;
+    font-size: 14px;
+}
+
+#battle-monster-effect {
+    color: #ecf0f1;
+    font-size: 12px;
+    line-height: 1.3;
+}
+
 .rewards-title {
     font-weight: bold;
     color: #f39c12;
@@ -1328,6 +1374,67 @@ h1 {
     color: #f39c12;
     margin-bottom: 3px;
     font-size: 16px;
+}
+
+.battle-player-weapon {
+    color: #f1c40f;
+    font-size: 13px;
+    margin: 0 0 4px 0;
+    font-style: italic;
+    text-align: center;
+}
+
+.battle-player-hp-line {
+    color: #e74c3c;
+}
+
+.battle-player-ep-line {
+    color: #3498db;
+}
+
+.battle-player-weapon:empty {
+    display: none;
+}
+
+.battle-dice-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 6px auto 4px;
+    font-size: 12px;
+    color: #ecf0f1;
+    width: max-content;
+}
+
+.battle-dice-grid:empty {
+    display: none;
+}
+
+.battle-dice-grid .bdg-row {
+    display: grid;
+    grid-template-columns: 56px repeat(6, 22px);
+    align-items: center;
+    gap: 2px;
+}
+
+.battle-dice-grid .bdg-header .bdg-pip {
+    font-size: 14px;
+    text-align: center;
+    color: #95a5a6;
+}
+
+.battle-dice-grid .bdg-label {
+    text-align: right;
+    padding-right: 4px;
+    color: #bdc3c7;
+}
+
+.battle-dice-grid .bdg-val {
+    text-align: center;
+    background: #34495e;
+    border-radius: 3px;
+    padding: 1px 0;
+    color: #ecf0f1;
 }
 
 .battle-monster p {

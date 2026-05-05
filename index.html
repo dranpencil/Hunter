@@ -514,8 +514,10 @@
                 <div class="battle-info">
                     <div class="battle-player">
                         <h4 id="battle-player-name">Player 1</h4>
-                        <p><span data-i18n="battle.playerHP">HP:</span> <span id="battle-player-hp">4/4</span></p>
-                        <p><span data-i18n="battle.playerEP">EP:</span> <span id="battle-player-ep">6/6</span></p>
+                        <h5 id="battle-player-weapon" class="battle-player-weapon"></h5>
+                        <p class="battle-player-hp-line"><span data-i18n="battle.playerHP">HP:</span> <span id="battle-player-hp">4/4</span></p>
+                        <p class="battle-player-ep-line"><span data-i18n="battle.playerEP">EP:</span> <span id="battle-player-ep">6/6</span></p>
+                        <div id="battle-dice-grid" class="battle-dice-grid"></div>
                         <p id="battle-bullets-info" style="display: none;"><span data-i18n="battle.bullets">Bullets:</span> <span id="battle-bullet-count">0</span></p>
                         <p id="battle-batteries-info" style="display: none;"><span data-i18n="battle.batteries">Batteries:</span> <span id="battle-battery-count">0</span></p>
                         <div id="battle-pets-info" class="battle-pets-info">
@@ -530,6 +532,10 @@
                         <div class="monster-rewards">
                             <p class="rewards-title" data-i18n="battle.rewards">Rewards:</p>
                             <p id="battle-monster-rewards" data-i18n="battle.rewardsLoading">Loading...</p>
+                        </div>
+                        <div class="monster-effect-box" id="battle-monster-effect-box" style="display: none;">
+                            <p class="effect-title" data-i18n="battle.effect">Effect:</p>
+                            <p id="battle-monster-effect"></p>
                         </div>
                     </div>
                 </div>
