@@ -1059,7 +1059,7 @@ class Game {
             { name: 'Bat', reqExpAttack: 4, reqExpDefense: 3, capacity: 6, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 1, 1, 1], priority: 3, 
               lv1Power: '徒弟在資源區域撞其他獵人+1區域資源', lv2Power: '回合開始+1ep或+1hp', lv3Power: '命中的骰子再骰1次，傷害為所有傷害加總', preferLocation: 'plaza' },
             { name: 'Katana', reqExpAttack: 5, reqExpDefense: 3, capacity: 4, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 1, 1, 1, 1], priority: 8,
-              lv1Power: '無', lv2Power: '單獨存在區域+2經驗', lv3Power: '攻擊骰總點數大於27則一擊必殺', preferLocation: 'dojo' },
+              lv1Power: '無', lv2Power: '回合開始+1經驗', lv3Power: '攻擊骰總點數大於27則一擊必殺', preferLocation: 'dojo' },
             { name: 'Rifle', reqExpAttack: 6, reqExpDefense: 3, capacity: 8, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 1, 2, 2], priority: 10,
               lv1Power: '可購買子彈:2$，每次戰鬥花費1子彈', lv2Power: '回合開始+2$', lv3Power: '商店價格-1$', preferLocation: 'work site' },
             { name: 'Plasma', reqExpAttack: 7, reqExpDefense: 3, capacity: 8, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 2, 2, 2], priority: 11,
@@ -1073,11 +1073,13 @@ class Game {
             { name: 'Bow', reqExpAttack: 5, reqExpDefense: 3, capacity: 6, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 0, 0, 3], priority: 1,
               lv1Power: '閃避率+16%', lv2Power: '單獨存在區域+2經驗', lv3Power: '傷害x2', preferLocation: 'plaza' },
             { name: 'Sword', reqExpAttack: 5, reqExpDefense: 3, capacity: 4, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 1, 1, 2], priority: 9,
-              lv1Power: '無', lv2Power: '單獨存在區域+2經驗', lv3Power: '打敗怪獸+X分(X=怪獸等級)', preferLocation: 'dojo' },
+              lv1Power: '無', lv2Power: '回合開始+1經驗', lv3Power: '打敗怪獸+X分(X=怪獸等級)', preferLocation: 'dojo' },
             { name: 'Knife', reqExpAttack: 3, reqExpDefense: 3, capacity: 10, initialMoney: 8, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 0, 1, 1], priority: 2,
               lv1Power: '打敗怪獸資源x2', lv2Power: '單獨存在區域+1分', lv3Power: '可將一次的攻擊力x2', preferLocation: 'plaza' },
             { name: 'Gloves', reqExpAttack: 4, reqExpDefense: 3, capacity: 6, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 1, 1, 1], priority: 7,
-              lv1Power: '基礎攻擊力=1，當hp少於一半時攻擊力+1', lv2Power: '回合開始+1血袋', lv3Power: '每次遭受攻擊而扣血，攻擊力+1', preferLocation: 'hospital' }
+              lv1Power: '基礎攻擊力=1，當hp少於一半時攻擊力+1', lv2Power: '回合開始+1血袋', lv3Power: '每次遭受攻擊而扣血，攻擊力+1', preferLocation: 'hospital' },
+            { name: 'Flamethrower', reqExpAttack: 5, reqExpDefense: 3, capacity: 7, initialMoney: 5, attackDice: 2, defenseDice: 0, damage: [-1, 1, 1, 1, 1, 1], priority: 12,
+              lv1Power: '無', lv2Power: '回合開始+1血袋', lv3Power: '單獨存在區域人氣上升x2', preferLocation: 'station' }
         ];
         
         this.locations = [
@@ -1940,7 +1942,7 @@ class Game {
                     if (battlePlayer) {
                         const weaponEl = document.getElementById('battle-player-weapon');
                         if (weaponEl) weaponEl.textContent = this.getWeaponDisplayName(battlePlayer.weapon.name);
-                        this.renderBattleDiceGrid(battlePlayer.weapon.damage, battlePlayer.weapon.name);
+                        this.renderBattleDiceGrid(this.getEffectiveAttackArray(battlePlayer), battlePlayer.weapon.name);
                     }
                 } catch (e) { /* ignore */ }
             }
@@ -2769,7 +2771,8 @@ class Game {
      */
     getWeaponDisplayName(internalName) {
         if (!internalName) return '';
-        const key = 'weapon.' + internalName.toLowerCase() + '.name';
+        const slug = internalName.toLowerCase().replace(/ /g, '_');
+        const key = 'weapon.' + slug + '.name';
         const translated = t(key);
         // If missing, fall back to internal name
         return (translated && translated.indexOf('[MISSING') !== 0) ? translated : internalName;
@@ -3633,7 +3636,8 @@ class Game {
             { value: 'Bow', label: t('weapon.bow.name') },
             { value: 'Sword', label: t('weapon.sword.name') },
             { value: 'Knife', label: t('weapon.knife.name') },
-            { value: 'Gloves', label: t('weapon.gloves.name') }
+            { value: 'Gloves', label: t('weapon.gloves.name') },
+            { value: 'Flamethrower', label: t('weapon.flamethrower.name') }
         ];
     }
 
@@ -6944,6 +6948,17 @@ class Game {
 
             battleActions.push({k:'battle.playerAttacks', a:[this.getPlayerDisplayName(player), attackRolls.join(', '), playerDamage, petDamage > 0 ? t('battle.petDamageSuffix', petDamage) : '', totalDamage]});
 
+            // Flamethrower face-1 backfire: each die showing 1 deals 1 HP self-damage + 1 EXP
+            if (player.weapon.name === 'Flamethrower') {
+                const backfireCount = attackRolls.filter(r => r === 1).length;
+                if (backfireCount > 0) {
+                    currentPlayerHP -= backfireCount;
+                    player.resources.hp = Math.max(0, currentPlayerHP);
+                    player.resources.exp = Math.min(player.maxResources.exp, player.resources.exp + backfireCount);
+                    battleActions.push({k:'battle.flamethrowerBackfire', a:[backfireCount]});
+                }
+            }
+
 
             // Tactical item usage: Check if bot can finish monster with items
             if (currentMonsterHP > 0) {
@@ -7576,25 +7591,64 @@ class Game {
         damageGridElement.innerHTML = gridHTML;
     }
 
-    renderBattleDiceGrid(damageArr, weaponName) {
+    getEffectiveAttackArray(player) {
+        if (!player || !player.weapon || !player.weapon.damage) {
+            return { values: [], modified: [false, false, false, false, false, false] };
+        }
+        const base = [...player.weapon.damage];
+        const modified = [false, false, false, false, false, false];
+        const w = player.weapon;
+
+        if (w.name === 'Gloves' && w.powerTrackPosition >= 1 && this.currentBattle) {
+            const lowHp = player.resources.hp < player.maxResources.hp / 2;
+            const stack = (w.powerTrackPosition >= 7) ? (this.currentBattle.glovesPowerLevel || 0) : 0;
+            const bonus = (lowHp ? 1 : 0) + stack;
+            if (bonus > 0) {
+                for (let i = 0; i < 6; i++) {
+                    if (base[i] > 0) { base[i] += bonus; modified[i] = true; }
+                }
+            }
+        }
+
+        if (w.name === 'Bow' && w.powerTrackPosition >= 7) {
+            for (let i = 0; i < 6; i++) {
+                if (base[i] > 0) { base[i] *= 2; modified[i] = true; }
+            }
+        }
+
+        return { values: base, modified };
+    }
+
+    renderBattleDiceGrid(effective, weaponName) {
         const el = document.getElementById('battle-dice-grid');
         if (!el) return;
-        if (!damageArr || damageArr.length === 0) {
+        if (!effective || !effective.values || effective.values.length === 0) {
             el.innerHTML = '';
             return;
         }
+        const { values, modified } = effective;
         const dicePips = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
         const defenseArr = weaponName === 'Bow' ? [0, 0, 1, 1, 1, 1] : [0, 0, 0, 1, 1, 1];
         let html = '<div class="bdg-row bdg-header"><span class="bdg-label"></span>';
         dicePips.forEach(p => { html += `<span class="bdg-pip">${p}</span>`; });
         html += '</div>';
         html += `<div class="bdg-row"><span class="bdg-label">${t('battle.attackRow')}</span>`;
-        damageArr.forEach(v => { html += `<span class="bdg-val">${v}</span>`; });
+        values.forEach((v, i) => {
+            const cls = modified && modified[i] ? 'bdg-val bdg-val-boosted' : 'bdg-val';
+            html += `<span class="${cls}">${v}</span>`;
+        });
         html += '</div>';
         html += `<div class="bdg-row"><span class="bdg-label">${t('battle.defenseRow')}</span>`;
         defenseArr.forEach(v => { html += `<span class="bdg-val">${v}</span>`; });
         html += '</div>';
         el.innerHTML = html;
+    }
+
+    refreshBattleDiceGridForPlayer(playerId) {
+        if (!this.currentBattle || this.currentBattle.playerId !== playerId) return;
+        const player = this.players.find(p => p.id === playerId);
+        if (!player) return;
+        this.renderBattleDiceGrid(this.getEffectiveAttackArray(player), player.weapon.name);
     }
 
     updateBulletDisplay(playerId) {
@@ -7702,12 +7756,11 @@ class Game {
             let tokenMoved = false;
             
             if (isAlone) {
-                // Sword and Katana Level 2 Power: +2 EXP when hunter is alone
-                if ((player.weapon.name === 'Sword' || player.weapon.name === 'Katana' || player.weapon.name === 'Bow') &&
-                    player.weapon.powerTrackPosition >= 3) {
+                // Bow Level 2 Power: +2 EXP when hunter is alone
+                if (player.weapon.name === 'Bow' && player.weapon.powerTrackPosition >= 3) {
                     this.modifyResource(player.id, 'exp', 2);
                     if (!this.isAutomatedMode) {
-                        console.log(`${player.weapon.name} Lv2 Power: ${player.name} receives +2 EXP for being alone at location`);
+                        console.log(`Bow Lv2 Power: ${player.name} receives +2 EXP for being alone at location`);
                     }
                 }
 
@@ -7721,8 +7774,10 @@ class Game {
                 }
                 
                 const oldRewardLevel = player.popularityTrack.rewardToken;
-                player.popularityTrack.rewardToken = Math.min(5, player.popularityTrack.rewardToken + 1);
-                
+                const ftLv3 = (player.weapon.name === 'Flamethrower' && player.weapon.powerTrackPosition >= 7);
+                const advance = ftLv3 ? 2 : 1;
+                player.popularityTrack.rewardToken = Math.min(5, player.popularityTrack.rewardToken + advance);
+
                 // Check if token actually moved
                 if (player.popularityTrack.rewardToken > oldRewardLevel) {
                     tokenMoved = true;
@@ -7765,15 +7820,15 @@ class Game {
             if (newRewardLevel > player.popularityTrack.pointToken) {
                 const oldPointLevel = player.popularityTrack.pointToken;
                 player.popularityTrack.pointToken = newRewardLevel;
-                
-                // Give points for newly reached level
-                if (!player.popularityTrack.levelReached[newRewardLevel]) {
-                    player.popularityTrack.levelReached[newRewardLevel] = true;
-                    const points = this.getPopularityLevelPoints(newRewardLevel);
-                    this.addScore(player.id, points, 'popularity'); // Add correct point value for level
 
-                    // Add log entry for level up
-                    this.addLogEntryT('log.popularityLevelUp', [player, newRewardLevel, points], 'level-up', player);
+                // Award level-up points for every newly reached level (handles multi-tier advance)
+                for (let lvl = oldPointLevel + 1; lvl <= newRewardLevel; lvl++) {
+                    if (!player.popularityTrack.levelReached[lvl]) {
+                        player.popularityTrack.levelReached[lvl] = true;
+                        const points = this.getPopularityLevelPoints(lvl);
+                        this.addScore(player.id, points, 'popularity');
+                        this.addLogEntryT('log.popularityLevelUp', [player, lvl, points], 'level-up', player);
+                    }
                 }
             }
         });
@@ -8065,9 +8120,10 @@ class Game {
                 }
             }
             
-            totalDamage += baseDamage;
+            // Negative damage cells (e.g., Flamethrower face-1 backfire marker) don't reduce attack total
+            totalDamage += Math.max(0, baseDamage);
         });
-        
+
         return totalDamage;
     }
     
@@ -9247,7 +9303,7 @@ class Game {
         document.getElementById('monster-battle').style.display = 'flex';
         document.getElementById('battle-player-name').textContent = this.getPlayerDisplayName(player);
         document.getElementById('battle-player-weapon').textContent = this.getWeaponDisplayName(player.weapon.name);
-        this.renderBattleDiceGrid(player.weapon.damage, player.weapon.name);
+        this.renderBattleDiceGrid(this.getEffectiveAttackArray(player), player.weapon.name);
         document.getElementById('battle-player-hp').textContent = `${player.resources.hp}/${player.maxResources.hp}`;
         document.getElementById('battle-player-ep').textContent = `${player.resources.ep}/${player.maxResources.ep}`;
         
@@ -9925,20 +9981,39 @@ class Game {
         }
         this.logBattleAction(attackMessage, player);
         
+        // Flamethrower face-1 backfire: each die showing 1 deals 1 HP self-damage + 1 EXP
+        if (player.weapon.name === 'Flamethrower') {
+            const backfireCount = allAttackRolls.filter(r => r === 1).length;
+            if (backfireCount > 0) {
+                this.modifyResource(battle.playerId, 'hp', -backfireCount);
+                this.modifyResource(battle.playerId, 'exp', backfireCount);
+                this.logBattleActionT('battle.flamethrowerBackfire', [backfireCount], player);
+                if (!this.isAutomatedMode) {
+                    const hpEl = document.getElementById('battle-player-hp');
+                    if (hpEl) hpEl.textContent = `${player.resources.hp}/${player.maxResources.hp}`;
+                    this.refreshBattleDiceGridForPlayer(battle.playerId);
+                }
+            }
+        }
+
         if (battle.monster.hp <= 0) {
-            // Monster defeated!
+            // Monster defeated! (kill takes precedence over self-defeat for reward purposes)
             this.monsterDefeated();
+        } else if (player.resources.hp <= 0) {
+            // Player self-defeated via Flamethrower backfire
+            this.logBattleActionT('battle.playerDefeated', [player], player);
+            this.playerDefeated(battle.playerId);
         } else {
             // Move to item usage phase (post-attack)
             battle.turn = 'player_items';
-            
+
             // Knife Level 3 Power: Show 2x damage button after attack if damage was dealt
             if (player.weapon.name === 'Knife' && player.weapon.powerTrackPosition >= 7 &&
                 !battle.doubleDamageUsed && playerDamage > 0) {
                 battle.lastAttackDamage = playerDamage; // Store the damage for 2x calculation
                 battle.canUseDoubleDamage = true;
             }
-            
+
             this.updateBattlePhase();
             this.updateBattleItemButtons();
         }
@@ -10016,6 +10091,7 @@ class Game {
                 this.logBattleActionT('battle.usesBloodBag', [player, player.resources.hp], player);
                 // Update player HP display
                 document.getElementById('battle-player-hp').textContent = `${player.resources.hp}/${player.maxResources.hp}`;
+                this.refreshBattleDiceGridForPlayer(battle.playerId);
             } else {
                 this.logBattleActionT('battle.bloodBagMaxHP', [player], player);
             }
@@ -10168,6 +10244,7 @@ class Game {
 
             // Update player HP display
             document.getElementById('battle-player-hp').textContent = `${player.resources.hp}/${player.maxResources.hp}`;
+            this.refreshBattleDiceGridForPlayer(battle.playerId);
 
             // Player gains EXP equal to damage received (unless Axe or monster effect prevents it)
             if (player.weapon.name === 'Axe' && player.weapon.powerTrackPosition >= 1) {
@@ -10195,6 +10272,7 @@ class Game {
                 // Level 3: +1 attack for each time damaged (cumulative)
                 battle.glovesPowerLevel += 1;
                 this.logBattleActionT('battle.glovesLv3Bonus', [battle.glovesPowerLevel], player);
+                this.refreshBattleDiceGridForPlayer(battle.playerId);
             }
         }
         
@@ -13027,6 +13105,15 @@ class Game {
                 this.modifyResource(player.id, 'exp', 2);
                 this.addLogEntryT('log.plasmaLv3Power', [player], 'power', player);
             }
+
+            if ((player.weapon.name === 'Sword' || player.weapon.name === 'Katana') && player.weapon.powerTrackPosition >= 3) {
+                this.modifyResource(player.id, 'exp', 1);
+            }
+
+            if (player.weapon.name === 'Flamethrower' && player.weapon.powerTrackPosition >= 3) {
+                player.resources.bloodBag += 1;
+                this.addItemToInventory(player.id, 'Blood Bag', 1);
+            }
         });
     }
 
@@ -13903,7 +13990,7 @@ class Game {
             playerMaxEP: player ? player.maxResources.ep : 0,
             playerInventory: player ? player.inventory.map(i => ({ name: i.name || '', icon: i.icon || '', size: i.size || 0 })) : [],
             playerWeaponName: player ? player.weapon.name : '',
-            playerWeaponDamage: player && player.weapon.damage ? [...player.weapon.damage] : [],
+            playerEffectiveAttack: player ? this.getEffectiveAttackArray(player) : null,
             monster: battle.monster ? {
                 level: battle.monster.level || 0,
                 hp: battle.monster.hp || 0,
@@ -14875,7 +14962,7 @@ class Game {
         document.getElementById('monster-battle').style.display = 'flex';
         document.getElementById('battle-player-name').textContent = battleState.playerName;
         document.getElementById('battle-player-weapon').textContent = battleState.playerWeaponName ? this.getWeaponDisplayName(battleState.playerWeaponName) : '';
-        this.renderBattleDiceGrid(battleState.playerWeaponDamage, battleState.playerWeaponName);
+        this.renderBattleDiceGrid(battleState.playerEffectiveAttack, battleState.playerWeaponName);
         document.getElementById('battle-player-hp').textContent = `${battleState.playerHP}/${battleState.playerMaxHP}`;
         document.getElementById('battle-player-ep').textContent = `${battleState.playerEP}/${battleState.playerMaxEP}`;
 
@@ -14976,7 +15063,7 @@ class Game {
         document.getElementById('monster-battle').style.display = 'flex';
         document.getElementById('battle-player-name').textContent = battleState.playerName;
         document.getElementById('battle-player-weapon').textContent = battleState.playerWeaponName ? this.getWeaponDisplayName(battleState.playerWeaponName) : '';
-        this.renderBattleDiceGrid(battleState.playerWeaponDamage, battleState.playerWeaponName);
+        this.renderBattleDiceGrid(battleState.playerEffectiveAttack, battleState.playerWeaponName);
         document.getElementById('battle-player-hp').textContent = `${battleState.playerHP}/${battleState.playerMaxHP}`;
         document.getElementById('battle-player-ep').textContent = `${battleState.playerEP}/${battleState.playerMaxEP}`;
 

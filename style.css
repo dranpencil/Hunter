@@ -1437,6 +1437,13 @@ h1 {
     color: #ecf0f1;
 }
 
+.battle-dice-grid .bdg-val-boosted {
+    background: #b9770e;
+    color: #fffacd;
+    font-weight: bold;
+    box-shadow: 0 0 4px rgba(241, 196, 15, 0.6);
+}
+
 .battle-monster p {
     color: #ecf0f1;
     margin: 2px 0;

@@ -221,7 +221,7 @@ weapon.bat.lv2,+1 ep or +1 hp at the start of the round,回合開始+1體力或+
 weapon.bat.lv3,Reroll the hit die once and sum all values for the final damage,命中的骰子再骰1次，傷害為所有傷害加總
 weapon.katana.name,Katana,武士刀
 weapon.katana.lv1,None,無
-weapon.katana.lv2,+2 exp when hunter is alone,單獨存在區域+2經驗
+weapon.katana.lv2,+1 exp at the start of the round,回合開始+1經驗
 weapon.katana.lv3,Instant kill if total dice value is over 27,攻擊骰總點數大於27則一擊必殺
 weapon.rifle.name,Rifle,步槍
 weapon.rifle.lv1,"2$ for bullet, consume 1 bullet to forest","可購買子彈:2$，每次戰鬥花費1子彈"
@@ -249,7 +249,7 @@ weapon.bow.lv2,+2 exp when hunter is alone,單獨存在區域+2經驗
 weapon.bow.lv3,Damage x2,傷害x2
 weapon.sword.name,Sword,劍
 weapon.sword.lv1,None,無
-weapon.sword.lv2,+2 exp when hunter is alone,單獨存在區域+2經驗
+weapon.sword.lv2,+1 exp at the start of the round,回合開始+1經驗
 weapon.sword.lv3,"+X points when defeating monsters(X=monster )",打敗怪獸+X分(X=怪獸等級)
 weapon.knife.name,Knife,小刀
 weapon.knife.lv1,Monster rewards are doubled(except points),打敗怪獸資源x2
@@ -259,6 +259,10 @@ weapon.gloves.name,Gloves,拳套
 weapon.gloves.lv1,"base attack=1. +1 if your hp is below 50%.","基礎攻擊力=1，當hp少於一半時攻擊力+1"
 weapon.gloves.lv2,+1 blood bag at the start of the round,回合開始+1血袋
 weapon.gloves.lv3,"attack +1 every time your hp is lost",每次遭受攻擊而扣血，攻擊力+1
+weapon.flamethrower.name,Flamethrower,火焰噴射器
+weapon.flamethrower.lv1,None,無
+weapon.flamethrower.lv2,+1 blood bag at the start of the round,回合開始+1血袋
+weapon.flamethrower.lv3,"Popularity reward advances +2 instead of +1 when alone at a location",單獨存在區域人氣上升x2
 item.beer.name,Beer,啤酒
 item.beer.desc,gain 1 Energy,獲得 1 體力
 item.bloodBag.name,Blood Bag,血袋
@@ -501,6 +505,7 @@ battle.katanaLv3Kill,Katana Lv3 Power: Instant kill! ({0} total dice pips >= 27)
 battle.chainLv3Doubled,Chain Lv3 Power: Pet damage doubled!,鎖鏈 Lv3 能力：寵物傷害翻倍！
 battle.knifeLv3Activate,{0} activates Knife Lv3 Power: 2x damage! {1} extra damage dealt!,{0} 啟動小刀 Lv3 能力：雙倍傷害！額外造成 {1} 傷害！
 battle.glovesLv3Bonus,Gloves Lv3 Power: Attack increased! (+{0} total attack bonus),拳套 Lv3 能力：攻擊力提升！（+{0} 總攻擊加成）
+battle.flamethrowerBackfire,"Flamethrower backfire: {0} self-damage, +{0} EXP","火焰反噬：自損 {0} 點血量，獲得 {0} 經驗"
 battle.axeLv1Counter,Axe Lv1 Power: {0} fights back for {1} damage!,斧頭 Lv1 能力：{0} 反擊造成 {1} 傷害！
 battle.axeLv3Counter,Axe Lv3 Power: {0} fights back for {1} damage!,斧頭 Lv3 能力：{0} 反擊造成 {1} 傷害！
 battle.axeCounterCapped,Axe counter damage capped at {0}!,斧頭反擊傷害被限制在 {0}！

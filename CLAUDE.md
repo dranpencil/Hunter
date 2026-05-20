@@ -1,7 +1,7 @@
 # Rock, Paper, Hunters - Full Project Documentation
 
 ## Overview
-Rock, Paper, Hunters is a strategic digital board game for 2-4 players where each player controls a Hunter and an Apprentice token, placing them on 7 different locations to gather resources, fight monsters, and score points. The game features sophisticated AI opponents, 11 unique weapons with special powers, dynamic resource management, and Firebase-based online multiplayer.
+Rock, Paper, Hunters is a strategic digital board game for 2-4 players where each player controls a Hunter and an Apprentice token, placing them on 7 different locations to gather resources, fight monsters, and score points. The game features sophisticated AI opponents, 12 unique weapons with special powers, dynamic resource management, and Firebase-based online multiplayer.
 
 ## Project Structure
 
@@ -202,7 +202,7 @@ Each location gets "entries" (weighted lottery tickets). Base: 4 entries per loc
 - Fake Blood always used for bonus points
 - Weapon-specific ammo management (Rifle: 3+ bullets, Plasma: 3+ batteries)
 
-## Weapons System (11 Weapons)
+## Weapons System (12 Weapons)
 
 Each weapon has: unique damage array [6 values for dice 1-6], 3 power levels (track positions 1, 3, 7), preferred location, capacity, ammunition type (Rifle/Plasma only).
 
@@ -216,9 +216,10 @@ Each weapon has: unique damage array [6 values for dice 1-6], 3 power levels (tr
 | Axe | [0,0,0,1,2,2] | 6 | Hospital | Lv1: Counter 1 dmg; Lv3: Counter equal |
 | Whip | [0,0,1,1,1,1] | 8 | Bar | Taming cost -1 EP; Lv3: 0 EP |
 | Bow | [0,0,0,1,1,2] | 7 | Hospital | Lv1: +16% dodge; Lv3: Dmg x2 |
-| Sword | [0,0,0,1,1,2] | 7 | Dojo | Lv3: +1 pt per die showing 1 |
+| Sword | [0,0,0,1,1,2] | 4 | Dojo | Lv3: +X pts on defeat (X = monster level) |
 | Knife | [0,0,1,1,1,1] | 8 | Plaza | Lv1: Double dmg once/battle |
 | Gloves | [0,0,0,1,1,1] | 8 | Hospital | Lv3: +1 dmg [5,6] per HP lost |
+| Flamethrower | [-1,1,1,1,1,1] | 7 | Station | Face 1 = 1 HP self-damage + 1 EXP per die; Lv2: +1 blood bag at round start; Lv3: Alone advances popularity +2 |
 
 ## Combat System
 
