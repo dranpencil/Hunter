@@ -219,7 +219,7 @@ Each weapon has: unique damage array [6 values for dice 1-6], 3 power levels (tr
 | Sword | [0,0,0,1,1,2] | 4 | Dojo | Lv3: +X pts on defeat (X = monster level) |
 | Knife | [0,0,1,1,1,1] | 8 | Plaza | Lv1: Double dmg once/battle |
 | Gloves | [0,0,0,1,1,1] | 8 | Hospital | Lv3: +1 dmg [5,6] per HP lost |
-| Flamethrower | [-1,1,1,1,1,1] | 7 | Station | Face 1 = 1 HP self-damage + 1 EXP per die; Lv2: +1 blood bag at round start; Lv3: Alone advances popularity +2 |
+| Flamethrower | [-1,1,1,1,1,1] | 7 | Station | Face 1 = 1 HP self-damage per die; Lv2: +1 blood bag at round start; Lv3: Alone advances popularity +2 |
 
 ## Combat System
 

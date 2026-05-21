@@ -505,7 +505,7 @@ battle.katanaLv3Kill,Katana Lv3 Power: Instant kill! ({0} total dice pips >= 27)
 battle.chainLv3Doubled,Chain Lv3 Power: Pet damage doubled!,鎖鏈 Lv3 能力：寵物傷害翻倍！
 battle.knifeLv3Activate,{0} activates Knife Lv3 Power: 2x damage! {1} extra damage dealt!,{0} 啟動小刀 Lv3 能力：雙倍傷害！額外造成 {1} 傷害！
 battle.glovesLv3Bonus,Gloves Lv3 Power: Attack increased! (+{0} total attack bonus),拳套 Lv3 能力：攻擊力提升！（+{0} 總攻擊加成）
-battle.flamethrowerBackfire,"Flamethrower backfire: {0} self-damage, +{0} EXP","火焰反噬：自損 {0} 點血量，獲得 {0} 經驗"
+battle.flamethrowerBackfire,Flamethrower backfire: {0} self-damage,火焰反噬：自損 {0} 點血量
 battle.axeLv1Counter,Axe Lv1 Power: {0} fights back for {1} damage!,斧頭 Lv1 能力：{0} 反擊造成 {1} 傷害！
 battle.axeLv3Counter,Axe Lv3 Power: {0} fights back for {1} damage!,斧頭 Lv3 能力：{0} 反擊造成 {1} 傷害！
 battle.axeCounterCapped,Axe counter damage capped at {0}!,斧頭反擊傷害被限制在 {0}！

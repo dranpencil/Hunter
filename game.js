@@ -6948,13 +6948,12 @@ class Game {
 
             battleActions.push({k:'battle.playerAttacks', a:[this.getPlayerDisplayName(player), attackRolls.join(', '), playerDamage, petDamage > 0 ? t('battle.petDamageSuffix', petDamage) : '', totalDamage]});
 
-            // Flamethrower face-1 backfire: each die showing 1 deals 1 HP self-damage + 1 EXP
+            // Flamethrower face-1 backfire: each die showing 1 deals 1 HP self-damage
             if (player.weapon.name === 'Flamethrower') {
                 const backfireCount = attackRolls.filter(r => r === 1).length;
                 if (backfireCount > 0) {
                     currentPlayerHP -= backfireCount;
                     player.resources.hp = Math.max(0, currentPlayerHP);
-                    player.resources.exp = Math.min(player.maxResources.exp, player.resources.exp + backfireCount);
                     battleActions.push({k:'battle.flamethrowerBackfire', a:[backfireCount]});
                 }
             }
@@ -9981,12 +9980,11 @@ class Game {
         }
         this.logBattleAction(attackMessage, player);
         
-        // Flamethrower face-1 backfire: each die showing 1 deals 1 HP self-damage + 1 EXP
+        // Flamethrower face-1 backfire: each die showing 1 deals 1 HP self-damage
         if (player.weapon.name === 'Flamethrower') {
             const backfireCount = allAttackRolls.filter(r => r === 1).length;
             if (backfireCount > 0) {
                 this.modifyResource(battle.playerId, 'hp', -backfireCount);
-                this.modifyResource(battle.playerId, 'exp', backfireCount);
                 this.logBattleActionT('battle.flamethrowerBackfire', [backfireCount], player);
                 if (!this.isAutomatedMode) {
                     const hpEl = document.getElementById('battle-player-hp');
