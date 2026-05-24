@@ -215,11 +215,11 @@ Each weapon has: unique damage array [6 values for dice 1-6], 3 power levels (tr
 | Chain | [0,0,1,1,1,2] | 7 | Bar | Tame at HP<=3; Lv3: Pet dmg x2 |
 | Axe | [0,0,0,1,2,2] | 6 | Hospital | Lv1: Counter 1 dmg; Lv3: Counter equal |
 | Whip | [0,0,1,1,1,1] | 8 | Bar | Taming cost -1 EP; Lv3: 0 EP |
-| Bow | [0,0,0,1,1,2] | 7 | Hospital | Lv1: +16% dodge; Lv3: Dmg x2 |
+| Bow | [0,0,0,0,0,4] | 7 | Hospital | Lv1: +16% dodge; Lv3: Dmg x2 |
 | Sword | [0,0,0,1,1,2] | 4 | Dojo | Lv3: +X pts on defeat (X = monster level) |
 | Knife | [0,0,1,1,1,1] | 8 | Plaza | Lv1: Double dmg once/battle |
 | Gloves | [0,0,0,1,1,1] | 8 | Hospital | Lv3: +1 dmg [5,6] per HP lost |
-| Flamethrower | [-1,1,1,1,1,1] | 7 | Station | Face 1 = 1 HP self-damage per die; Lv2: +1 blood bag at round start; Lv3: Alone advances popularity +2 |
+| Flamethrower | [-1,0,1,1,1,1] | 7 | Station | Face 1 = 1 HP self-damage per die; Lv2: +1 blood bag at round start; Lv3: Alone advances popularity +2 |
 
 ## Combat System
 

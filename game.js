@@ -1070,7 +1070,7 @@ class Game {
               lv1Power: '玩家受傷時反擊怪獸受1點傷害(受傷時獲得經驗-1)', lv2Power: '回合開始+1血袋', lv3Power: '玩家受傷時反擊怪獸受一樣的傷害', preferLocation: 'hospital' },
             { name: 'Whip', reqExpAttack: 4, reqExpDefense: 3, capacity: 6, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 1, 1, 1], priority: 5,
               lv1Power: '寵物和收服怪獸體力-1', lv2Power: '回合開始+2啤酒', lv3Power: '寵物和收服不耗體力', preferLocation: 'bar' },
-            { name: 'Bow', reqExpAttack: 5, reqExpDefense: 3, capacity: 6, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 0, 0, 3], priority: 1,
+            { name: 'Bow', reqExpAttack: 5, reqExpDefense: 3, capacity: 6, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 0, 0, 4], priority: 1,
               lv1Power: '閃避率+16%', lv2Power: '單獨存在區域+2經驗', lv3Power: '傷害x2', preferLocation: 'plaza' },
             { name: 'Sword', reqExpAttack: 5, reqExpDefense: 3, capacity: 4, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 1, 1, 2], priority: 9,
               lv1Power: '無', lv2Power: '回合開始+1經驗', lv3Power: '打敗怪獸+X分(X=怪獸等級)', preferLocation: 'dojo' },
@@ -1078,7 +1078,7 @@ class Game {
               lv1Power: '打敗怪獸資源x2', lv2Power: '單獨存在區域+1分', lv3Power: '可將一次的攻擊力x2', preferLocation: 'plaza' },
             { name: 'Gloves', reqExpAttack: 4, reqExpDefense: 3, capacity: 6, initialMoney: 4, attackDice: 2, defenseDice: 0, damage: [0, 0, 0, 1, 1, 1], priority: 7,
               lv1Power: '基礎攻擊力=1，當hp少於一半時攻擊力+1', lv2Power: '回合開始+1血袋', lv3Power: '每次遭受攻擊而扣血，攻擊力+1', preferLocation: 'hospital' },
-            { name: 'Flamethrower', reqExpAttack: 5, reqExpDefense: 3, capacity: 7, initialMoney: 5, attackDice: 2, defenseDice: 0, damage: [-1, 1, 1, 1, 1, 1], priority: 12,
+            { name: 'Flamethrower', reqExpAttack: 5, reqExpDefense: 3, capacity: 7, initialMoney: 5, attackDice: 2, defenseDice: 0, damage: [-1, 0, 1, 1, 1, 1], priority: 12,
               lv1Power: '無', lv2Power: '回合開始+1血袋', lv3Power: '單獨存在區域人氣上升x2', preferLocation: 'station' }
         ];
         
@@ -9348,13 +9348,13 @@ class Game {
         let petDisplay = [];
         
         if (battle.petsUsed.level1 > 0) {
-            petDisplay.push(`${petIcons[1]} x${battle.petsUsed.level1} (+${battle.petsUsed.level1} ATK)`);
+            petDisplay.push(`${petIcons[1]} x${battle.petsUsed.level1} ${t('pet.battleAtk', battle.petsUsed.level1)}`);
         }
         if (battle.petsUsed.level2 > 0) {
-            petDisplay.push(`${petIcons[2]} x${battle.petsUsed.level2} (+${battle.petsUsed.level2 * 2} ATK)`);
+            petDisplay.push(`${petIcons[2]} x${battle.petsUsed.level2} ${t('pet.battleAtk', battle.petsUsed.level2 * 2)}`);
         }
         if (battle.petsUsed.level3 > 0) {
-            petDisplay.push(`${petIcons[3]} x${battle.petsUsed.level3} (+${battle.petsUsed.level3 * 4} ATK)`);
+            petDisplay.push(`${petIcons[3]} x${battle.petsUsed.level3} ${t('pet.battleAtk', battle.petsUsed.level3 * 4)}`);
         }
         
         if (petDisplay.length > 0) {
@@ -13593,11 +13593,11 @@ class Game {
         container.innerHTML = '';
         
         const petInfo = {
-            1: { cost: 2, attack: 1, icon: '🐾', name: 'Level 1 Pet' },
-            2: { cost: 3, attack: 2, icon: '🦊', name: 'Level 2 Pet' },
-            3: { cost: 4, attack: 4, icon: '🐺', name: 'Level 3 Pet' }
+            1: { cost: 2, attack: 1, icon: '🐾' },
+            2: { cost: 3, attack: 2, icon: '🦊' },
+            3: { cost: 4, attack: 4, icon: '🐺' }
         };
-        
+
         [1, 2, 3].forEach(level => {
             const availablePets = player.pets[`level${level}`];
             if (availablePets > 0) {
@@ -13605,8 +13605,7 @@ class Game {
                 petDiv.className = 'pet-selection-row';
                 petDiv.innerHTML = `
                     <span class="pet-info">
-                        ${petInfo[level].icon} ${petInfo[level].name} 
-                        (${petInfo[level].cost} EP, +${petInfo[level].attack} ATK)
+                        ${petInfo[level].icon} ${t('pet.name', level)} ${t('pet.statsOption', petInfo[level].cost, petInfo[level].attack)}
                     </span>
                     <span class="pet-counter">
                         <button onclick="game.adjustPetSelection(${level}, -1)">-</button>

@@ -356,6 +356,9 @@ monster.changeNoEP,Change (No EP),換一隻 （無體力）
 monster.changeNoMore,Change (No More Monsters),換一隻 （沒有更多怪獸）
 monster.readyButton,Ready,就緒
 monster.noPetsAvailable,No pets available,沒有可用的寵物
+pet.name,Level {0} Pet,等級 {0} 寵物
+pet.statsOption,"({0} EP, +{1} ATK)",（{0} 體力，+{1} 攻擊）
+pet.battleAtk,(+{0} ATK),（+{0} 攻擊）
 monster.chooseTitle,"{0}: Choose Monster to Fight","{0}：選擇要對戰的怪獸"
 status.botSelecting,{0} (Bot) is selecting locations...,{0} （電腦）正在選擇區域...
 status.botThinking,<strong>{0}</strong> is thinking...,<strong>{0}</strong> 思考中...
