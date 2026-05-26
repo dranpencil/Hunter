@@ -2891,6 +2891,23 @@ button {
         height: 80px;
         font-size: 12px;
     }
+
+    .room-list-container {
+        min-width: unset;
+        width: 100%;
+    }
+
+    .room-list-header,
+    .room-list-entry {
+        grid-template-columns: 1fr 60px 60px 30px;
+        padding: 8px 10px;
+        font-size: 12px;
+    }
+
+    .lobby-action-buttons {
+        flex-direction: column;
+        gap: 10px;
+    }
 }
 
 /* Dummy Token Styles */
@@ -4333,6 +4350,129 @@ button {
     flex-direction: column;
     gap: 15px;
     margin-bottom: 20px;
+}
+
+/* Game Lobby - Room List */
+.game-lobby {
+    animation: fadeIn 0.3s ease;
+}
+
+.room-list-container {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    margin: 15px 0;
+    max-height: 300px;
+    overflow-y: auto;
+    min-width: 500px;
+}
+
+.room-list-header {
+    display: grid;
+    grid-template-columns: 1fr 80px 80px 40px;
+    padding: 10px 15px;
+    background: rgba(0, 0, 0, 0.2);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    font-size: 13px;
+    font-weight: bold;
+    color: #f39c12;
+    position: sticky;
+    top: 0;
+}
+
+.room-list {
+    min-height: 60px;
+}
+
+.room-list-empty {
+    padding: 30px;
+    color: #7f8c8d;
+    font-style: italic;
+    text-align: center;
+}
+
+.room-list-entry {
+    display: grid;
+    grid-template-columns: 1fr 80px 80px 40px;
+    padding: 10px 15px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    cursor: pointer;
+    transition: background 0.2s;
+    color: #ecf0f1;
+    font-size: 14px;
+    align-items: center;
+}
+
+.room-list-entry:hover {
+    background: rgba(243, 156, 18, 0.15);
+}
+
+.room-list-entry.room-full {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.room-list-entry .room-list-col-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.room-list-entry .room-list-col-players {
+    text-align: center;
+}
+
+.room-list-entry .room-list-col-timer {
+    text-align: center;
+    font-size: 12px;
+    color: #bdc3c7;
+}
+
+.room-list-entry .room-list-col-lock {
+    text-align: center;
+    font-size: 16px;
+}
+
+.lobby-action-buttons {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    margin: 20px 0 15px;
+}
+
+/* Password Modal */
+#password-modal .modal-content {
+    max-width: 350px;
+}
+
+#password-modal-input {
+    width: 80%;
+    padding: 10px;
+    font-size: 16px;
+    background: #2c3e50;
+    color: #ecf0f1;
+    border: 2px solid #7f8c8d;
+    border-radius: 5px;
+    margin: 15px 0;
+    text-align: center;
+}
+
+#password-modal-input:focus {
+    border-color: #f39c12;
+    outline: none;
+}
+
+.password-modal-room-name {
+    color: #f39c12;
+    font-weight: bold;
+    margin: 5px 0;
+}
+
+.modal-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 10px;
 }
 
 .lobby-view {

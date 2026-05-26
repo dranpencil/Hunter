@@ -1223,45 +1223,199 @@ class Game {
     }
 
     showOnlinePlay() {
-        // Hide main menu
         const mainMenu = document.getElementById('main-menu');
         if (mainMenu) mainMenu.style.display = 'none';
 
-        // Show online lobby
         const lobby = document.getElementById('online-lobby');
         if (lobby) lobby.style.display = 'flex';
 
-        // Show the online menu (create/join choice)
-        this.showOnlineMenu();
+        if (!this.lobbyManager) {
+            this.lobbyManager = new OnlineManager();
+        }
+        this.showGameLobby();
         this.applyTranslationsToDOM();
     }
 
-    showOnlineMenu() {
-        document.getElementById('online-menu').style.display = 'block';
+    showGameLobby() {
+        document.getElementById('game-lobby').style.display = 'block';
         document.getElementById('create-room-view').style.display = 'none';
         document.getElementById('join-room-view').style.display = 'none';
         document.getElementById('waiting-room-host').style.display = 'none';
         document.getElementById('waiting-room-guest').style.display = 'none';
+
+        if (!this.lobbyManager) {
+            this.lobbyManager = new OnlineManager();
+        }
+        this.lobbyManager.listenForAvailableRooms((rooms) => {
+            this.renderRoomList(rooms);
+        });
+    }
+
+    renderRoomList(rooms) {
+        const container = document.getElementById('room-list');
+        const emptyMsg = document.getElementById('room-list-empty');
+        container.querySelectorAll('.room-list-entry').forEach(el => el.remove());
+
+        if (rooms.length === 0) {
+            emptyMsg.style.display = 'block';
+            return;
+        }
+        emptyMsg.style.display = 'none';
+
+        rooms.forEach(room => {
+            const entry = document.createElement('div');
+            entry.className = 'room-list-entry';
+            if (room.currentPlayers >= room.playerCount) {
+                entry.classList.add('room-full');
+            }
+
+            const timerText = room.phaseTimeLimit > 0
+                ? room.phaseTimeLimit + 's'
+                : t('lobby.create.timerNone');
+            const lockIcon = room.hasPassword ? '🔒' : '';
+
+            entry.innerHTML = `
+                <span class="room-list-col-name">${this.escapeHtml(room.roomName)}</span>
+                <span class="room-list-col-players">${room.currentPlayers}/${room.playerCount}</span>
+                <span class="room-list-col-timer">${timerText}</span>
+                <span class="room-list-col-lock">${lockIcon}</span>
+            `;
+            entry.onclick = () => this.onRoomListClick(room);
+            container.appendChild(entry);
+        });
+    }
+
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    onRoomListClick(room) {
+        if (room.currentPlayers >= room.playerCount) return;
+
+        if (room.hasPassword) {
+            this.pendingJoinRoom = room;
+            document.getElementById('password-modal-room-name').textContent = room.roomName;
+            document.getElementById('password-modal-input').value = '';
+            document.getElementById('password-modal-error').style.display = 'none';
+            document.getElementById('password-modal').style.display = 'flex';
+        } else {
+            this.joinRoomFromLobby(room.code, null);
+        }
+    }
+
+    confirmPasswordJoin() {
+        const password = document.getElementById('password-modal-input').value;
+        if (!password) {
+            const errEl = document.getElementById('password-modal-error');
+            errEl.textContent = t('lobby.password.required');
+            errEl.style.display = 'block';
+            return;
+        }
+        document.getElementById('password-modal').style.display = 'none';
+        this.joinRoomFromLobby(this.pendingJoinRoom.code, password);
+    }
+
+    cancelPasswordJoin() {
+        document.getElementById('password-modal').style.display = 'none';
+        this.pendingJoinRoom = null;
+    }
+
+    async joinRoomFromLobby(roomCode, password) {
+        if (this.lobbyManager) {
+            this.lobbyManager.stopListeningForRooms();
+        }
+
+        this.onlineManager = new OnlineManager();
+        this.isOnlineMode = true;
+        this.isHost = false;
+
+        try {
+            const room = await this.onlineManager.joinRoom(roomCode, password);
+
+            if (room.phaseTimeLimit !== undefined && room.phaseTimeLimit !== null) {
+                this.phaseTimeLimit = room.phaseTimeLimit;
+            }
+
+            document.getElementById('game-lobby').style.display = 'none';
+            document.getElementById('join-room-view').style.display = 'none';
+            document.getElementById('waiting-room-guest').style.display = 'block';
+            document.getElementById('guest-room-code').textContent = roomCode;
+
+            const totalPlayers = room.playerCount || 2;
+            document.getElementById('guest-human-total').textContent = totalPlayers;
+
+            this.buildOnlinePreferenceUI('guest');
+
+            this.onlineManager.listenForPlayers((players) => {
+                const connectedCount = Object.keys(players).length;
+                document.getElementById('guest-human-count').textContent = connectedCount;
+                this.updateWaitingRoomSlots(players, 'guest-player-slot-list', totalPlayers);
+                this.refreshOnlinePreferenceDropdowns(players, 'guest');
+            });
+
+            this.onlineManager.listenForGameStart(() => {
+                this.onlineManager.listenForConfig((config) => {
+                    if (config && config.weapons) {
+                        this.initOnlineGameAsGuest(config);
+                    }
+                });
+            });
+
+            this.setupOnlineDisconnectHandlers();
+
+        } catch (error) {
+            console.error('Error joining room:', error);
+
+            if (error.message === 'Incorrect password' && this.pendingJoinRoom) {
+                const errEl = document.getElementById('password-modal-error');
+                errEl.textContent = t('lobby.password.incorrect');
+                errEl.style.display = 'block';
+                document.getElementById('password-modal').style.display = 'flex';
+            } else {
+                alert(error.message || t('alert.failJoinRoom'));
+                this.showGameLobby();
+            }
+
+            this.isOnlineMode = false;
+            this.onlineManager = null;
+        }
     }
 
     backFromOnlineLobby() {
+        if (this.lobbyManager) {
+            this.lobbyManager.stopListeningForRooms();
+            this.lobbyManager = null;
+        }
         document.getElementById('online-lobby').style.display = 'none';
         this.showMainMenu();
     }
 
-    backToOnlineMenu() {
-        this.showOnlineMenu();
+    backToLobby() {
+        this.showGameLobby();
+    }
+
+    showJoinByCode() {
+        if (this.lobbyManager) {
+            this.lobbyManager.stopListeningForRooms();
+        }
+        document.getElementById('game-lobby').style.display = 'none';
+        document.getElementById('join-room-view').style.display = 'block';
+        document.getElementById('join-error').style.display = 'none';
+        document.getElementById('join-password-section').style.display = 'none';
+        document.getElementById('room-code-input').value = '';
+        document.getElementById('join-password-input').value = '';
     }
 
     showCreateRoom() {
-        document.getElementById('online-menu').style.display = 'none';
+        if (this.lobbyManager) {
+            this.lobbyManager.stopListeningForRooms();
+        }
+        document.getElementById('game-lobby').style.display = 'none';
         document.getElementById('create-room-view').style.display = 'block';
-    }
-
-    showJoinRoom() {
-        document.getElementById('online-menu').style.display = 'none';
-        document.getElementById('join-room-view').style.display = 'block';
-        document.getElementById('join-error').style.display = 'none';
+        document.getElementById('online-room-name').value = '';
+        document.getElementById('online-room-password').value = '';
     }
 
     updateHumanPlayerOptions() {
@@ -1281,21 +1435,21 @@ class Game {
 
     async createOnlineRoom() {
         const playerCount = parseInt(document.getElementById('online-player-count').value);
-        const maxHumans = playerCount; // All slots open for human players
+        const maxHumans = playerCount;
 
-        // Read phase time limit setting
         this.phaseTimeLimit = parseInt(document.getElementById('online-phase-timer').value);
 
-        // Initialize OnlineManager
+        const roomName = document.getElementById('online-room-name').value.trim() || t('lobby.create.defaultRoomName');
+        const password = document.getElementById('online-room-password').value.trim() || null;
+
         this.onlineManager = new OnlineManager();
         this.isOnlineMode = true;
         this.isHost = true;
         this.onlinePlayerCount = playerCount;
 
         try {
-            const roomCode = await this.onlineManager.createRoom(playerCount, maxHumans);
+            const roomCode = await this.onlineManager.createRoom(playerCount, maxHumans, roomName, password);
 
-            // Store phase time limit in room data
             this.onlineManager.roomRef.child('phaseTimeLimit').set(this.phaseTimeLimit);
 
             // Show waiting room
@@ -1412,6 +1566,8 @@ class Game {
         const codeInput = document.getElementById('room-code-input');
         const code = codeInput.value.trim().toUpperCase();
         const errorEl = document.getElementById('join-error');
+        const passwordInput = document.getElementById('join-password-input');
+        const password = passwordInput.value.trim() || null;
 
         if (code.length !== 4) {
             errorEl.textContent = t('alert.invalidRoomCode');
@@ -1419,32 +1575,26 @@ class Game {
             return;
         }
 
-        // Initialize OnlineManager
         this.onlineManager = new OnlineManager();
         this.isOnlineMode = true;
         this.isHost = false;
 
         try {
-            const room = await this.onlineManager.joinRoom(code);
+            const room = await this.onlineManager.joinRoom(code, password);
 
-            // Read phase time limit from room data
             if (room.phaseTimeLimit !== undefined && room.phaseTimeLimit !== null) {
                 this.phaseTimeLimit = room.phaseTimeLimit;
             }
 
-            // Show guest waiting room
             document.getElementById('join-room-view').style.display = 'none';
             document.getElementById('waiting-room-guest').style.display = 'block';
             document.getElementById('guest-room-code').textContent = code;
 
-            // Set player count display
             const totalPlayers = room.playerCount || 2;
             document.getElementById('guest-human-total').textContent = totalPlayers;
 
-            // Build preference UI for guest
             this.buildOnlinePreferenceUI('guest');
 
-            // Listen for players to update guest slot list and preferences
             this.onlineManager.listenForPlayers((players) => {
                 const connectedCount = Object.keys(players).length;
                 document.getElementById('guest-human-count').textContent = connectedCount;
@@ -1452,10 +1602,7 @@ class Game {
                 this.refreshOnlinePreferenceDropdowns(players, 'guest');
             });
 
-            // Listen for game start
             this.onlineManager.listenForGameStart(() => {
-                console.log('Game started by host!');
-                // Listen for config first, then game state
                 this.onlineManager.listenForConfig((config) => {
                     if (config && config.weapons) {
                         this.initOnlineGameAsGuest(config);
@@ -1463,12 +1610,17 @@ class Game {
                 });
             });
 
-            // Set up disconnect handlers
             this.setupOnlineDisconnectHandlers();
 
         } catch (error) {
             console.error('Error joining room:', error);
-            errorEl.textContent = error.message || 'Failed to join room.';
+
+            if (error.message === 'Incorrect password') {
+                document.getElementById('join-password-section').style.display = 'block';
+                errorEl.textContent = t('lobby.password.incorrect');
+            } else {
+                errorEl.textContent = error.message || t('alert.failJoinRoom');
+            }
             errorEl.style.display = 'block';
             this.isOnlineMode = false;
             this.onlineManager = null;
@@ -1482,20 +1634,19 @@ class Game {
         }
         this.isOnlineMode = false;
         this.isHost = false;
-        this.showOnlineMenu();
+        this.showGameLobby();
     }
 
     async leaveOnlineRoom() {
         if (this.onlineManager) {
             this.onlineManager.cleanup();
-            // Remove self from room's player list
             if (this.onlineManager.roomRef) {
                 await this.onlineManager.roomRef.child(`players/${this.onlineManager.localId}`).remove();
             }
             this.onlineManager = null;
         }
         this.isOnlineMode = false;
-        this.showOnlineMenu();
+        this.showGameLobby();
     }
 
     setupOnlineDisconnectHandlers() {

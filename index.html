@@ -79,17 +79,30 @@
         <!-- Online Lobby Screen -->
         <div id="online-lobby" class="online-lobby" style="display: none;">
             <div class="lobby-content">
-                <!-- Create/Join Selection -->
-                <div id="online-menu" class="online-menu">
-                    <h2 data-i18n="lobby.online.title">Online Play</h2>
-                    <div class="online-menu-buttons">
+                <!-- Game Lobby -->
+                <div id="game-lobby" class="game-lobby">
+                    <h2 data-i18n="lobby.title">Game Lobby</h2>
+                    <div class="room-list-container">
+                        <div class="room-list-header">
+                            <span class="room-list-col-name" data-i18n="lobby.list.roomName">Room Name</span>
+                            <span class="room-list-col-players" data-i18n="lobby.list.players">Players</span>
+                            <span class="room-list-col-timer" data-i18n="lobby.list.timer">Timer</span>
+                            <span class="room-list-col-lock"></span>
+                        </div>
+                        <div id="room-list" class="room-list">
+                            <div id="room-list-empty" class="room-list-empty" data-i18n="lobby.list.empty">
+                                No games available. Host one!
+                            </div>
+                        </div>
+                    </div>
+                    <div class="lobby-action-buttons">
                         <button class="menu-button" onclick="game.showCreateRoom()">
                             <span class="button-icon">🏠</span>
-                            <span data-i18n="lobby.online.createRoom">Create Room</span>
+                            <span data-i18n="lobby.hostGame">Host Game</span>
                         </button>
-                        <button class="menu-button" onclick="game.showJoinRoom()">
-                            <span class="button-icon">🚪</span>
-                            <span data-i18n="lobby.online.joinRoom">Join Room</span>
+                        <button class="menu-button" onclick="game.showJoinByCode()">
+                            <span class="button-icon">🔑</span>
+                            <span data-i18n="lobby.joinByCode">Join by Code</span>
                         </button>
                     </div>
                     <button class="back-btn" onclick="game.backFromOnlineLobby()" data-i18n="common.back">Back</button>
@@ -99,6 +112,11 @@
                 <div id="create-room-view" class="lobby-view" style="display: none;">
                     <h2 data-i18n="lobby.create.title">Create Room</h2>
                     <div class="create-room-settings">
+                        <div class="setting-group">
+                            <label for="online-room-name" data-i18n="lobby.create.roomName">Room Name:</label>
+                            <input type="text" id="online-room-name" maxlength="20"
+                                   data-i18n-placeholder="lobby.create.roomNamePlaceholder" placeholder="My Game Room">
+                        </div>
                         <div class="setting-group">
                             <label for="online-player-count" data-i18n="lobby.create.totalPlayers">Total Players:</label>
                             <select id="online-player-count">
@@ -117,9 +135,14 @@
                                 <option value="0" selected data-i18n="lobby.create.timerNone">No time limit</option>
                             </select>
                         </div>
+                        <div class="setting-group">
+                            <label for="online-room-password" data-i18n="lobby.create.password">Password (optional):</label>
+                            <input type="text" id="online-room-password" maxlength="20"
+                                   data-i18n-placeholder="lobby.create.passwordPlaceholder" placeholder="Leave blank for public">
+                        </div>
                     </div>
                     <button class="ready-btn" onclick="game.createOnlineRoom()" data-i18n="lobby.create.button">Create Room</button>
-                    <button class="back-btn" onclick="game.backToOnlineMenu()" data-i18n="common.back">Back</button>
+                    <button class="back-btn" onclick="game.backToLobby()" data-i18n="common.back">Back</button>
                 </div>
 
                 <!-- Waiting Room (Host) -->
@@ -154,10 +177,15 @@
                         <label for="room-code-input" data-i18n="lobby.join.enterCode">Enter Room Code:</label>
                         <input type="text" id="room-code-input" maxlength="4" placeholder="ABCD"
                                oninput="this.value = this.value.toUpperCase()">
+                        <div id="join-password-section" style="display: none;">
+                            <label for="join-password-input" data-i18n="lobby.join.passwordLabel">Password:</label>
+                            <input type="text" id="join-password-input" maxlength="20"
+                                   data-i18n-placeholder="lobby.password.placeholder" placeholder="Password">
+                        </div>
                         <p id="join-error" class="join-error" style="display: none;"></p>
                     </div>
                     <button class="ready-btn" onclick="game.joinOnlineRoom()" data-i18n="lobby.join.button">Join</button>
-                    <button class="back-btn" onclick="game.backToOnlineMenu()" data-i18n="common.back">Back</button>
+                    <button class="back-btn" onclick="game.backToLobby()" data-i18n="common.back">Back</button>
                 </div>
 
                 <!-- Waiting Room (Guest) -->
@@ -185,6 +213,21 @@
         <div id="online-connection-bar" class="online-connection-bar" style="display: none;">
             <span id="connection-status-text" data-i18n="connection.connected">Connected</span>
             <span id="connection-role-text"></span>
+        </div>
+
+        <!-- Password Prompt Modal -->
+        <div id="password-modal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <h3 data-i18n="lobby.password.title">Enter Password</h3>
+                <p id="password-modal-room-name" class="password-modal-room-name"></p>
+                <input type="text" id="password-modal-input" maxlength="20"
+                       data-i18n-placeholder="lobby.password.placeholder" placeholder="Password">
+                <p id="password-modal-error" class="join-error" style="display: none;"></p>
+                <div class="modal-buttons">
+                    <button onclick="game.confirmPasswordJoin()" data-i18n="lobby.join.button">Join</button>
+                    <button onclick="game.cancelPasswordJoin()" data-i18n="common.cancel">Cancel</button>
+                </div>
+            </div>
         </div>
 
         <!-- Disconnect Modal -->

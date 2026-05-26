@@ -119,6 +119,13 @@ chat.canned.location.forest,Forest,森林
 lobby.online.title,Online Play,線上遊戲
 lobby.online.createRoom,Create Room,建立房間
 lobby.online.joinRoom,Join Room,加入房間
+lobby.title,Game Lobby,遊戲大廳
+lobby.hostGame,Host Game,建立遊戲
+lobby.joinByCode,Join by Code,輸入代碼加入
+lobby.list.roomName,Room Name,房間名稱
+lobby.list.players,Players,玩家
+lobby.list.timer,Timer,計時
+lobby.list.empty,No games available. Host one!,目前沒有遊戲。開一場吧！
 lobby.create.title,Create Room,建立房間
 lobby.create.totalPlayers,Total Players:,總玩家數：
 lobby.create.players2,2 Players,2位玩家
@@ -131,6 +138,16 @@ lobby.create.timer120,2 minutes,2 分鐘
 lobby.create.timer180,3 minutes,3 分鐘
 lobby.create.timerNone,No time limit,無時間限制
 lobby.create.button,Create Room,建立房間
+lobby.create.roomName,Room Name:,房間名稱：
+lobby.create.roomNamePlaceholder,My Game Room,我的遊戲房間
+lobby.create.password,"Password (optional):","密碼（選填）："
+lobby.create.passwordPlaceholder,Leave blank for public,留空為公開房間
+lobby.create.defaultRoomName,Game Room,遊戲房間
+lobby.password.title,Enter Password,輸入密碼
+lobby.password.placeholder,Password,密碼
+lobby.password.required,Please enter the password.,請輸入密碼。
+lobby.password.incorrect,Incorrect password.,密碼錯誤。
+lobby.join.passwordLabel,Password:,密碼：
 lobby.waiting.title,Waiting for Players,等待玩家中
 lobby.waiting.shareCode,Share this room code:,分享這個房間代碼：
 lobby.waiting.copyCode,Copy Code,複製代碼

@@ -14,7 +14,9 @@
       "Bash(cp -r C:/Users/dranp/claude_lab/Rules_EN.files C:/Users/dranp/claude_lab/RockPaperHunters/Assets/StreamingAssets/Rulebook/)",
       "Bash(cp -r C:/Users/dranp/claude_lab/Rules_ZH.files C:/Users/dranp/claude_lab/RockPaperHunters/Assets/StreamingAssets/Rulebook/)",
       "Bash(git add *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\dranp\\\\claude_lab\" -Recurse -File -Include \"*.js\", \"*.html\")",
+      "Bash(Select-Object -ExpandProperty FullName)"
     ],
     "deny": []
   }

@@ -55,7 +55,7 @@ class OnlineManager {
 
     // ==================== ROOM MANAGEMENT ====================
 
-    async createRoom(playerCount, humanPlayerCount) {
+    async createRoom(playerCount, humanPlayerCount, roomName, password) {
         this.init();
         this.isHost = true;
 
@@ -79,6 +79,9 @@ class OnlineManager {
             status: 'waiting',
             playerCount: playerCount,
             humanPlayerCount: humanPlayerCount,
+            roomName: roomName || 'Game Room',
+            password: password || null,
+            hasPassword: !!password,
             config: {
                 weapons: null
             },
@@ -87,8 +90,8 @@ class OnlineManager {
 
         await this.roomRef.set(roomData);
 
-        // Set up onDisconnect cleanup for host
-        this.onDisconnectRef = this.roomRef.child(`heartbeat/${this.localId}`);
+        // Set up onDisconnect cleanup for host — remove entire room if host disconnects
+        this.onDisconnectRef = this.roomRef;
         this.onDisconnectRef.onDisconnect().remove();
 
         // Start heartbeat
@@ -97,7 +100,7 @@ class OnlineManager {
         return code;
     }
 
-    async joinRoom(roomCode) {
+    async joinRoom(roomCode, password) {
         this.init();
         this.isHost = false;
         this.roomCode = roomCode.toUpperCase();
@@ -117,6 +120,10 @@ class OnlineManager {
         const currentPlayerCount = room.players ? Object.keys(room.players).length : 0;
         if (currentPlayerCount >= room.humanPlayerCount) {
             throw new Error('Room is full');
+        }
+
+        if (room.hasPassword && room.password !== password) {
+            throw new Error('Incorrect password');
         }
 
         // Join the room by adding to players list
@@ -268,9 +275,42 @@ class OnlineManager {
         }
     }
 
+    // ==================== LOBBY ====================
+
+    listenForAvailableRooms(callback) {
+        this.init();
+        const query = this.db.ref('rooms').orderByChild('status').equalTo('waiting');
+        const handler = query.on('value', (snapshot) => {
+            const rooms = [];
+            snapshot.forEach((child) => {
+                const room = child.val();
+                rooms.push({
+                    code: child.key,
+                    roomName: room.roomName || child.key,
+                    playerCount: room.playerCount,
+                    currentPlayers: room.players ? Object.keys(room.players).length : 0,
+                    hasPassword: !!room.hasPassword,
+                    createdAt: room.createdAt,
+                    phaseTimeLimit: room.phaseTimeLimit
+                });
+            });
+            rooms.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+            callback(rooms);
+        });
+        this.lobbyListener = { ref: query, event: 'value', handler };
+    }
+
+    stopListeningForRooms() {
+        if (this.lobbyListener) {
+            this.lobbyListener.ref.off(this.lobbyListener.event, this.lobbyListener.handler);
+            this.lobbyListener = null;
+        }
+    }
+
     // ==================== CLEANUP ====================
 
     cleanup() {
+        this.stopListeningForRooms();
         // Remove all listeners
         this.listeners.forEach(({ ref, event, handler }) => {
             ref.off(event, handler);
