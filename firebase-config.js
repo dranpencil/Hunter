@@ -100,7 +100,7 @@ class OnlineManager {
         return code;
     }
 
-    async joinRoom(roomCode, password) {
+    async joinRoom(roomCode, password, bypassPassword = false) {
         this.init();
         this.isHost = false;
         this.roomCode = roomCode.toUpperCase();
@@ -122,7 +122,7 @@ class OnlineManager {
             throw new Error('Room is full');
         }
 
-        if (room.hasPassword && room.password !== password) {
+        if (room.hasPassword && !bypassPassword && room.password !== password) {
             throw new Error('Incorrect password');
         }
 

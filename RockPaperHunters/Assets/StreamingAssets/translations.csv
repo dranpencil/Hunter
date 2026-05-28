@@ -80,11 +80,11 @@ chat.title,Chat,聊天
 chat.placeholder,Type a message...,輸入訊息...
 chat.send,Send,送出
 chat.quick,Quick,快捷
-chat.tab.greeting,問候語,問候語
-chat.tab.midgame,比賽中,比賽中
-chat.tab.closing,結語,結語
-chat.tab.tactics,戰術,戰術
-chat.tab.locations,區域,區域
+chat.tab.greeting,Greeting,問候語
+chat.tab.midgame,Mid-game,比賽中
+chat.tab.closing,Closing,結語
+chat.tab.tactics,Tactics,戰術
+chat.tab.locations,Location,區域
 chat.canned.greeting.0,Hello,你好
 chat.canned.greeting.1,"Good luck, have fun!",請多多指教
 chat.canned.greeting.2,"I'm a newbie, please go easy on me",我是新手，請鞭小力一點
@@ -149,6 +149,7 @@ lobby.password.required,Please enter the password.,請輸入密碼。
 lobby.password.incorrect,Incorrect password.,密碼錯誤。
 lobby.join.passwordLabel,Password:,密碼：
 lobby.waiting.title,Waiting for Players,等待玩家中
+lobby.waiting.roomNameLabel,Room:,房間：
 lobby.waiting.shareCode,Share this room code:,分享這個房間代碼：
 lobby.waiting.copyCode,Copy Code,複製代碼
 lobby.waiting.copied,Copied!,已複製！

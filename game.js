@@ -1243,6 +1243,14 @@ class Game {
         document.getElementById('waiting-room-host').style.display = 'none';
         document.getElementById('waiting-room-guest').style.display = 'none';
 
+        // Tear down any waiting-room chat panel when returning to the lobby list.
+        const logSection = document.getElementById('game-log-section');
+        if (logSection) {
+            logSection.style.display = 'none';
+            logSection.classList.remove('chat-only', 'has-chat');
+        }
+        this.waitingRoomPlayers = null;
+
         if (!this.lobbyManager) {
             this.lobbyManager = new OnlineManager();
         }
@@ -1342,6 +1350,7 @@ class Game {
             document.getElementById('join-room-view').style.display = 'none';
             document.getElementById('waiting-room-guest').style.display = 'block';
             document.getElementById('guest-room-code').textContent = roomCode;
+            document.getElementById('guest-room-name').textContent = room.roomName || roomCode;
 
             const totalPlayers = room.playerCount || 2;
             document.getElementById('guest-human-total').textContent = totalPlayers;
@@ -1349,6 +1358,7 @@ class Game {
             this.buildOnlinePreferenceUI('guest');
 
             this.onlineManager.listenForPlayers((players) => {
+                this.waitingRoomPlayers = players;
                 const connectedCount = Object.keys(players).length;
                 document.getElementById('guest-human-count').textContent = connectedCount;
                 this.updateWaitingRoomSlots(players, 'guest-player-slot-list', totalPlayers);
@@ -1364,6 +1374,8 @@ class Game {
             });
 
             this.setupOnlineDisconnectHandlers();
+            this.ensureChatStarted();
+            this.setChatMode('waiting');
 
         } catch (error) {
             console.error('Error joining room:', error);
@@ -1403,9 +1415,7 @@ class Game {
         document.getElementById('game-lobby').style.display = 'none';
         document.getElementById('join-room-view').style.display = 'block';
         document.getElementById('join-error').style.display = 'none';
-        document.getElementById('join-password-section').style.display = 'none';
         document.getElementById('room-code-input').value = '';
-        document.getElementById('join-password-input').value = '';
     }
 
     showCreateRoom() {
@@ -1456,6 +1466,7 @@ class Game {
             document.getElementById('create-room-view').style.display = 'none';
             document.getElementById('waiting-room-host').style.display = 'block';
             document.getElementById('room-code-display').textContent = roomCode;
+            document.getElementById('host-room-name').textContent = roomName;
             document.getElementById('host-guest-joined').style.display = 'none';
             document.getElementById('waiting-status-text').textContent = t('lobby.waiting.spinner');
 
@@ -1472,6 +1483,7 @@ class Game {
 
             // Listen for players to join
             this.onlineManager.listenForPlayers((players) => {
+                this.waitingRoomPlayers = players;
                 const connectedCount = Object.keys(players).length;
                 console.log(`Players connected: ${connectedCount}/${playerCount}`);
 
@@ -1520,6 +1532,8 @@ class Game {
 
             // Set up disconnect handlers
             this.setupOnlineDisconnectHandlers();
+            this.ensureChatStarted();
+            this.setChatMode('waiting');
 
         } catch (error) {
             console.error('Error creating room:', error);
@@ -1566,8 +1580,6 @@ class Game {
         const codeInput = document.getElementById('room-code-input');
         const code = codeInput.value.trim().toUpperCase();
         const errorEl = document.getElementById('join-error');
-        const passwordInput = document.getElementById('join-password-input');
-        const password = passwordInput.value.trim() || null;
 
         if (code.length !== 4) {
             errorEl.textContent = t('alert.invalidRoomCode');
@@ -1580,7 +1592,7 @@ class Game {
         this.isHost = false;
 
         try {
-            const room = await this.onlineManager.joinRoom(code, password);
+            const room = await this.onlineManager.joinRoom(code, null, true);
 
             if (room.phaseTimeLimit !== undefined && room.phaseTimeLimit !== null) {
                 this.phaseTimeLimit = room.phaseTimeLimit;
@@ -1589,6 +1601,7 @@ class Game {
             document.getElementById('join-room-view').style.display = 'none';
             document.getElementById('waiting-room-guest').style.display = 'block';
             document.getElementById('guest-room-code').textContent = code;
+            document.getElementById('guest-room-name').textContent = room.roomName || code;
 
             const totalPlayers = room.playerCount || 2;
             document.getElementById('guest-human-total').textContent = totalPlayers;
@@ -1596,6 +1609,7 @@ class Game {
             this.buildOnlinePreferenceUI('guest');
 
             this.onlineManager.listenForPlayers((players) => {
+                this.waitingRoomPlayers = players;
                 const connectedCount = Object.keys(players).length;
                 document.getElementById('guest-human-count').textContent = connectedCount;
                 this.updateWaitingRoomSlots(players, 'guest-player-slot-list', totalPlayers);
@@ -1611,16 +1625,13 @@ class Game {
             });
 
             this.setupOnlineDisconnectHandlers();
+            this.ensureChatStarted();
+            this.setChatMode('waiting');
 
         } catch (error) {
             console.error('Error joining room:', error);
 
-            if (error.message === 'Incorrect password') {
-                document.getElementById('join-password-section').style.display = 'block';
-                errorEl.textContent = t('lobby.password.incorrect');
-            } else {
-                errorEl.textContent = error.message || t('alert.failJoinRoom');
-            }
+            errorEl.textContent = error.message || t('alert.failJoinRoom');
             errorEl.style.display = 'block';
             this.isOnlineMode = false;
             this.onlineManager = null;
@@ -3834,6 +3845,10 @@ class Game {
                 </div>
             </div>
         `;
+
+        // Persist the localized default name so the player-slot list / chat match the textbox
+        // (Firebase stores literal 'Host'/'PlayerN' defaults that don't localize otherwise).
+        this.updateOnlinePreference('name', defaultName, role);
     }
 
     toggleGuestReady() {
@@ -7601,13 +7616,13 @@ class Game {
         if (preferredResource) {
             // Choose the same resource as the bot's preferred location
             selectedResource = preferredResource;
-            this.addLogEntryT('log.botStationPreferred', [player, preferredResource], 'resource-gain', player);
+            this.addLogEntryT('log.botStationPreferred', [player, this.getResourceDisplayName(preferredResource)], 'resource-gain', player);
         } else {
             // Choose randomly from available options
             const availableResources = ['money', 'beer', 'bloodBag', 'exp'];
             const randomIndex = Math.floor(Math.random() * availableResources.length);
             selectedResource = availableResources[randomIndex];
-            this.addLogEntryT('log.botStationRandom', [player, selectedResource], 'resource-gain', player);
+            this.addLogEntryT('log.botStationRandom', [player, this.getResourceDisplayName(selectedResource)], 'resource-gain', player);
         }
         
         // Apply the selection
@@ -15537,7 +15552,7 @@ class Game {
         const idx = this.pendingStationPlayers.indexOf(action.playerId);
         if (idx >= 0) this.pendingStationPlayers.splice(idx, 1);
 
-        this.addLogEntryT('log.guestStationChoice', [guestPlayer, action.data.resource], 'resource-gain', guestPlayer);
+        this.addLogEntryT('log.guestStationChoice', [guestPlayer, this.getResourceDisplayName(action.data.resource)], 'resource-gain', guestPlayer);
 
         this.waitingForGuestAction = false;
 
@@ -16689,20 +16704,46 @@ class Game {
     // ==================== CHAT SYSTEM ====================
 
     initChat() {
+        this.ensureChatStarted();
+        // Clear waiting-room chat history when the game begins.
+        const msgContainer = document.getElementById('chat-messages');
+        if (msgContainer) msgContainer.innerHTML = '';
+        this.closeCannedPanel();
+        this.setChatMode('game');
+    }
+
+    // Toggle the left panel between waiting-room (chat only) and in-game (log + chat) layouts.
+    setChatMode(mode) {
+        this.chatMode = mode;
+        const logSection = document.getElementById('game-log-section');
+        if (!logSection) return;
+        logSection.classList.add('has-chat');
+        logSection.classList.toggle('chat-only', mode === 'waiting');
+    }
+
+    ensureChatStarted() {
         if (!this.isOnlineMode || !this.onlineManager) return;
 
-        // Show chat section
+        // Show the left panel + chat section
         const chatSection = document.getElementById('chat-section');
         if (chatSection) chatSection.style.display = 'flex';
-
-        // Add class to log section so CSS knows chat is active
         const logSection = document.getElementById('game-log-section');
-        if (logSection) logSection.classList.add('has-chat');
+        if (logSection) logSection.style.display = 'flex';
 
-        // Listen for incoming chat messages
-        this.onlineManager.listenForChat((data) => {
-            this.onChatMessageReceived(data);
-        });
+        // Attach the Firebase chat listener once per room (each room has a fresh OnlineManager,
+        // so a new room re-attaches while the same room never double-attaches).
+        if (this.chatListenerAttachedTo !== this.onlineManager) {
+            const msgContainer = document.getElementById('chat-messages');
+            if (msgContainer) msgContainer.innerHTML = '';
+            this.onlineManager.listenForChat((data) => {
+                this.onChatMessageReceived(data);
+            });
+            this.chatListenerAttachedTo = this.onlineManager;
+        }
+
+        // Bind DOM/keyboard handlers once ever — they live on persistent DOM / document.
+        if (this.chatBindingsAttached) return;
+        this.chatBindingsAttached = true;
 
         // Bind send button
         const sendBtn = document.getElementById('chat-send-btn');
@@ -16822,6 +16863,14 @@ class Game {
             }
         }
 
+        // Waiting-room fallback: players aren't created yet, resolve from the Firebase roster.
+        if (senderName === 'Unknown' && this.waitingRoomPlayers && this.waitingRoomPlayers[data.senderId]) {
+            const p = this.waitingRoomPlayers[data.senderId];
+            senderName = p.preferredName || t('common.player');
+            const opt = this.getAllColorOptions().find(o => o.value === p.preferredColor);
+            senderColor = (opt && p.preferredColor !== 'random') ? opt.bg : '#95a5a6';
+        }
+
         const msgEl = document.createElement('div');
         msgEl.className = 'chat-message';
 
@@ -16867,7 +16916,13 @@ class Game {
         if (panel.style.display === 'none') {
             panel.style.display = 'flex';
             this.pendingTacticsMessage = null;
-            // Hide tab 4
+            // Tab visibility: greeting-only in the waiting room, full set in-game.
+            const waiting = this.chatMode === 'waiting';
+            [1, 2, 3].forEach(i => {
+                const tab = document.querySelector(`.canned-tab[data-tab="${i}"]`);
+                if (tab) tab.style.display = waiting ? 'none' : '';
+            });
+            // Tab 4 stays hidden until a tactics message is picked
             const tab4 = document.querySelector('.canned-tab[data-tab="4"]');
             if (tab4) tab4.style.display = 'none';
             // Open to context-aware default tab
@@ -16879,6 +16934,7 @@ class Game {
     }
 
     getDefaultCannedTab() {
+        if (this.chatMode === 'waiting') return 0;              // greeting-only before the game
         if (this.roundPhase === 'gameover') return 2;           // 結語
         if (this.roundPhase === 'selection' && this.currentRound === 1) return 0; // 問候語
         if (this.roundPhase === 'selection') return 3;           // 戰術

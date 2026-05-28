@@ -148,6 +148,7 @@
                 <!-- Waiting Room (Host) -->
                 <div id="waiting-room-host" class="lobby-view" style="display: none;">
                     <h2 data-i18n="lobby.waiting.title">Waiting for Players</h2>
+                    <div class="room-name-display"><span data-i18n="lobby.waiting.roomNameLabel">Room:</span> <span id="host-room-name"></span></div>
                     <div class="room-code-display">
                         <p data-i18n="lobby.waiting.shareCode">Share this room code:</p>
                         <div class="room-code" id="room-code-display">----</div>
@@ -177,11 +178,6 @@
                         <label for="room-code-input" data-i18n="lobby.join.enterCode">Enter Room Code:</label>
                         <input type="text" id="room-code-input" maxlength="4" placeholder="ABCD"
                                oninput="this.value = this.value.toUpperCase()">
-                        <div id="join-password-section" style="display: none;">
-                            <label for="join-password-input" data-i18n="lobby.join.passwordLabel">Password:</label>
-                            <input type="text" id="join-password-input" maxlength="20"
-                                   data-i18n-placeholder="lobby.password.placeholder" placeholder="Password">
-                        </div>
                         <p id="join-error" class="join-error" style="display: none;"></p>
                     </div>
                     <button class="ready-btn" onclick="game.joinOnlineRoom()" data-i18n="lobby.join.button">Join</button>
@@ -191,6 +187,7 @@
                 <!-- Waiting Room (Guest) -->
                 <div id="waiting-room-guest" class="lobby-view" style="display: none;">
                     <h2 data-i18n="lobby.guest.title">Waiting for Players</h2>
+                    <div class="room-name-display"><span data-i18n="lobby.waiting.roomNameLabel">Room:</span> <span id="guest-room-name"></span></div>
                     <div class="room-code-display">
                         <p data-i18n="lobby.guest.roomCode">Room Code:</p>
                         <div class="room-code" id="guest-room-code">----</div>

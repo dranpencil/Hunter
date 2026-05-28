@@ -62,7 +62,7 @@ Rock, Paper, Hunters is a strategic digital board game for 2-4 players where eac
 ### Startup
 1. Main menu: Local Play / Online Play / Data Collection / Rulebook / Tutorial (🎓) / Language (🌐)
 2. **Local**: Player count (2-4) -> Weapon selection -> Game starts
-3. **Online**: Create/Join room -> Preferences (color, weapon, name) -> Ready -> Game starts
+3. **Online**: Game Lobby (browse room list) -> Host Game / Join (click room or by code) -> Preferences (color, weapon, name) -> Ready -> Game starts
 4. **Tutorial**: One-click guided 4-round game; see Tutorial System section
 
 ### Round Phases
@@ -107,10 +107,24 @@ Rock, Paper, Hunters is a strategic digital board game for 2-4 players where eac
 
 ## Online Multiplayer System (Firebase)
 
+### Game Lobby
+Online Play opens a **public game lobby** (`#game-lobby`) with a live, auto-updating list of joinable rooms instead of a code-only entry screen.
+
+- **Room list** (`renderRoomList()`, game.js ~1254): each entry shows room name, current/total players, phase timer, and a 🔒 icon for password-protected rooms. Full rooms get `.room-full` (grayed out, not clickable). The list **never displays the room code**. User-supplied room names are sanitized via `escapeHtml()` before going into `innerHTML`.
+- **Live updates**: `OnlineManager.listenForAvailableRooms(callback)` (firebase-config.js ~280) queries `rooms` via `orderByChild('status').equalTo('waiting')` and maps children to `{ code, roomName, playerCount, currentPlayers, hasPassword, createdAt, phaseTimeLimit }`, sorted newest-first. `stopListeningForRooms()` detaches the listener when leaving the lobby. **Requires Firebase RTDB rule `".indexOn": ["status"]` under `/rooms`.**
+- **Two OnlineManager instances**: `this.lobbyManager` is a lightweight instance used only for browsing the list; `this.onlineManager` is the full instance created when actually hosting/joining a room. The lobby listener is always stopped before navigating into Host/Join.
+- **Host Game** (`showCreateRoom()` → `createOnlineRoom()`): host sets room name + optional password (plus player count / timer). `createRoom(playerCount, humanPlayerCount, roomName, password)` writes `roomName`, `password`, `hasPassword`. The host's `onDisconnect()` removes the **entire room** (not just its heartbeat) so abandoned rooms vanish from the lobby.
+- **Join paths** — two ways in, with different password handling:
+  - **Lobby-list click** (`onRoomListClick()` → `joinRoomFromLobby()`): the code is hidden from browsers, so password-protected rooms prompt via `#password-modal` and **enforce** the password. Wrong password re-opens the modal with an error.
+  - **Join by Code** (`showJoinByCode()` → `joinOnlineRoom()`): the 4-char code is shared out-of-band by the host and acts as the credential, so it **bypasses the password** entirely — `joinRoom(code, null, true)` passes `bypassPassword = true`. The check in `joinRoom()` is `if (room.hasPassword && !bypassPassword && room.password !== password)`.
+- **Navigation**: `backToLobby()` returns from Host/Join views to the lobby; `backFromOnlineLobby()` exits to the main menu (nulls `lobbyManager`); Cancel/Leave from the waiting rooms also return to the lobby. All re-resume the room-list listener.
+- **i18n**: lobby strings live under the `lobby.*` prefix in `translations.csv` (`lobby.title`, `lobby.hostGame`, `lobby.joinByCode`, `lobby.list.*`, `lobby.create.roomName`/`password`/`defaultRoomName`, `lobby.password.*`).
+
 ### Firebase Structure
 ```
 /rooms/{roomCode}
   ├── hostId, status, playerCount, humanPlayerCount
+  ├── roomName, password, hasPassword   (lobby: display name + optional password gate)
   ├── players/  { joinOrder, preferredColor/Weapon/Name, isReady }
   ├── config/   { humanSlots, weapons, colors, playerNames }
   ├── gameState/ { roundPhase, players[], dummyTokens, battleLog, ... }
@@ -128,7 +142,7 @@ Rock, Paper, Hunters is a strategic digital board game for 2-4 players where eac
 ### Room Management
 - 4-character room codes (A-Z, 2-9, excluding I/O/0/1)
 - Heartbeat: 5s interval write, 300s disconnect timeout, 240s warning
-- `onDisconnect().remove()` for cleanup on network failure
+- Host `onDisconnect().remove()` deletes the **entire room** on network failure (keeps the lobby list free of stale rooms); guests' onDisconnect removes only their heartbeat node
 - Room deletion: 60s after game ends
 
 ### Online Action Flow (Guest -> Host)
@@ -481,6 +495,10 @@ Multiple consecutive steps can share the same `i18nKey` (e.g. `14a` + `14b` both
 | `executeBotBattle()` | ~3233 | Bot combat AI |
 | `handleBotTacticalItemUsage()` | ~4854 | Bot item optimization |
 | `nextRound()` | ~5208 | End-of-round processing |
+| `showGameLobby()` / `renderRoomList()` | ~1240 / ~1254 | Lobby view + live room-list render |
+| `onRoomListClick()` / `joinRoomFromLobby()` | ~1294 / ~1325 | Lobby-list join (enforces password) |
+| `showJoinByCode()` / `joinOnlineRoom()` | ~1399 / ~1565 | Join-by-code (bypasses password) |
+| `OnlineManager.listenForAvailableRooms()` | firebase-config.js ~280 | Query waiting rooms for lobby list |
 | `applyRemoteGameState()` | ~13332 | Guest state sync from host |
 | `handleGuestPhaseUpdate()` | ~13461 | Guest UI updates per phase |
 | `handleGuestAction()` | ~14530 | Host processes guest actions |
@@ -513,5 +531,5 @@ Multiple consecutive steps can share the same `i18nKey` (e.g. `14a` + `14b` both
 - **Data Export**: CSV format with comprehensive game metrics
 
 ---
-*Last Updated: 2026-04-18*
-*Game Version: 1.4 - Bilingual (EN/ZH) + Guided Tutorial*
+*Last Updated: 2026-05-28*
+*Game Version: 1.5 - Bilingual (EN/ZH) + Guided Tutorial + Public Game Lobby*
