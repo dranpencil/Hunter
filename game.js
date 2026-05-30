@@ -1197,7 +1197,12 @@ class Game {
         if (gameBoard) gameBoard.style.display = 'none';
         if (playerArea) playerArea.style.display = 'none';
         if (gameStatus) gameStatus.style.display = 'none';
-        if (gameLog) gameLog.style.display = 'none';
+        if (gameLog) {
+            gameLog.style.display = 'none';
+            gameLog.classList.remove('chat-only', 'has-chat');
+        }
+        const chatSection = document.getElementById('chat-section');
+        if (chatSection) chatSection.style.display = 'none';
         
         // Show main menu
         const mainMenu = document.getElementById('main-menu');
@@ -1249,6 +1254,8 @@ class Game {
             logSection.style.display = 'none';
             logSection.classList.remove('chat-only', 'has-chat');
         }
+        const chatSection = document.getElementById('chat-section');
+        if (chatSection) chatSection.style.display = 'none';
         this.waitingRoomPlayers = null;
 
         if (!this.lobbyManager) {
