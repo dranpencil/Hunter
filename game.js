@@ -3733,11 +3733,12 @@ class Game {
     
     
     toggleSlotType(slotIndex) {
+        if (slotIndex === 0) return;
         if (!this.soloModeSlots[slotIndex].active) return;
-        
+
         const slot = this.soloModeSlots[slotIndex];
         slot.type = slot.type === 'player' ? 'bot' : 'player';
-        
+
         this.updateSoloModeUI();
     }
     
@@ -4179,9 +4180,9 @@ class Game {
                         </div>
                     </div>
                     <div class="slot-buttons">
-                        <button class="slot-toggle" onclick="game.toggleSlotType(${index})">
+                        ${index > 0 ? `<button class="slot-toggle" onclick="game.toggleSlotType(${index})">
                             ${slot.type === 'player' ? t('setup.changeToBot') : t('setup.changeToPlayer')}
-                        </button>
+                        </button>` : ''}
                         ${index > 0 ? `<button class="slot-remove" onclick="game.activateSlot(${index})">${t('setup.remove')}</button>` : ''}
                     </div>
                 `;

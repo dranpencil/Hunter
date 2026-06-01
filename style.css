@@ -34,7 +34,7 @@ body {
     border-radius: 15px;
     text-align: center;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-    max-width: 1200px;
+    max-width: 1440px;
     margin: 0 auto;
 }
 
@@ -3073,8 +3073,8 @@ button {
     align-items: center;
     justify-content: space-between;
     transition: all 0.3s;
-    width: 260px;
-    min-width: 240px;
+    width: 320px;
+    min-width: 280px;
 }
 
 .player-slot.active {
