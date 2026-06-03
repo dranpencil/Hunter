@@ -280,13 +280,34 @@ class OnlineManager {
     listenForAvailableRooms(callback) {
         this.init();
         const query = this.db.ref('rooms').orderByChild('status').equalTo('waiting');
+        // Reap rooms whose host hasn't ping'd in this long. 5 min is well above the 5s heartbeat
+        // interval and any plausible network blip, while still cleaning up crashed-host rooms
+        // soon enough that the lobby doesn't fill with garbage.
+        const STALE_ROOM_MS = 5 * 60 * 1000;
         const handler = query.on('value', (snapshot) => {
             const rooms = [];
+            const now = Date.now();
             snapshot.forEach((child) => {
+                const code = child.key;
                 const room = child.val();
+
+                // Stale-room reaper: host's heartbeat (or its absence past the bootstrap window)
+                // is the truth source for "is anyone home?". If the host's onDisconnect() failed
+                // to fire (browser crash, sleep, canceled hook via the disconnect-modal path),
+                // this is the fallback that keeps the lobby clean.
+                const hostHeartbeat = (room.heartbeat && room.hostId) ? room.heartbeat[room.hostId] : null;
+                const heartbeatStale = hostHeartbeat ? (now - hostHeartbeat > STALE_ROOM_MS) : false;
+                const noHeartbeatPastBootstrap = !hostHeartbeat && room.createdAt && (now - room.createdAt > STALE_ROOM_MS);
+                if (heartbeatStale || noHeartbeatPastBootstrap) {
+                    // Fire-and-forget removal; don't block the lobby render. Concurrent removes
+                    // from multiple viewers are idempotent (rooms/{code} either exists or doesn't).
+                    this.db.ref(`rooms/${code}`).remove().catch(() => {});
+                    return;
+                }
+
                 rooms.push({
-                    code: child.key,
-                    roomName: room.roomName || child.key,
+                    code,
+                    roomName: room.roomName || code,
                     playerCount: room.playerCount,
                     currentPlayers: room.players ? Object.keys(room.players).length : 0,
                     hasPassword: !!room.hasPassword,

@@ -1657,13 +1657,20 @@ class Game {
 
     async leaveOnlineRoom() {
         if (this.onlineManager) {
-            this.onlineManager.cleanup();
-            if (this.onlineManager.roomRef) {
-                await this.onlineManager.roomRef.child(`players/${this.onlineManager.localId}`).remove();
+            if (this.isHost && this.onlineManager.roomRef) {
+                // Host leaving the waiting room must delete the room, not just their player entry —
+                // otherwise the room is orphaned (status stays 'waiting', no living host).
+                try { await this.onlineManager.deleteRoom(); } catch (e) { console.warn('deleteRoom on leave failed:', e); }
+            } else {
+                this.onlineManager.cleanup();
+                if (this.onlineManager.roomRef) {
+                    await this.onlineManager.roomRef.child(`players/${this.onlineManager.localId}`).remove();
+                }
             }
             this.onlineManager = null;
         }
         this.isOnlineMode = false;
+        this.isHost = false;
         this.showGameLobby();
     }
 
@@ -1700,11 +1707,19 @@ class Game {
         };
     }
 
-    handleDisconnectAcknowledge() {
+    async handleDisconnectAcknowledge() {
         document.getElementById('disconnect-modal').style.display = 'none';
         document.getElementById('online-connection-bar').style.display = 'none';
         if (this.onlineManager) {
-            this.onlineManager.cleanup();
+            // If the host is abandoning a waiting/in-progress room (not a finished one — that path
+            // already uses scheduleRoomDeletion), tear down the RTDB room before cleanup cancels
+            // the host's onDisconnect().remove() hook. Otherwise the room is leaked forever:
+            // status stays 'waiting', hostId points at a dead session, and no other client can clean it up.
+            if (this.isHost && this.onlineManager.roomRef && this.roundPhase !== 'gameover') {
+                try { await this.onlineManager.deleteRoom(); } catch (e) { console.warn('deleteRoom on disconnect failed:', e); }
+            } else {
+                this.onlineManager.cleanup();
+            }
             this.onlineManager = null;
         }
         this.isOnlineMode = false;
@@ -2104,6 +2119,7 @@ class Game {
                 }
                 if (this.currentBattle.monster) {
                     try { this.updateMonsterEffectDisplay(this.currentBattle.monster); } catch (e) { /* ignore */ }
+                    try { this._renderBattleMonsterPortrait(this.currentBattle.monster); } catch (e) { /* ignore */ }
                 }
                 // Re-render battle player weapon name + dice grid (translated labels)
                 try {
@@ -2111,10 +2127,21 @@ class Game {
                     if (battlePlayer) {
                         const weaponEl = document.getElementById('battle-player-weapon');
                         if (weaponEl) weaponEl.textContent = this.getWeaponDisplayName(battlePlayer.weapon.name);
+                        this._renderBattlePlayerWeapon(battlePlayer.weapon.name);
                         this.renderBattleDiceGrid(this.getEffectiveAttackArray(battlePlayer), battlePlayer.weapon.name);
                     }
                 } catch (e) { /* ignore */ }
             }
+            // Re-render monster encountered modal name if visible
+            try {
+                const encModal = document.getElementById('monster-selection-modal');
+                const encName = document.getElementById('monster-encountered-name');
+                if (encModal && encModal.style.display !== 'none' && encName && this.currentSelectedMonster) {
+                    encName.textContent = this.getMonsterDisplayName(this.currentSelectedMonster);
+                    const encImg = document.getElementById('monster-encountered-image');
+                    if (encImg) encImg.alt = this.getMonsterDisplayName(this.currentSelectedMonster);
+                }
+            } catch (e) { /* ignore */ }
             // Re-render capacity overflow modal if visible
             const capacityModal = document.getElementById('capacity-modal');
             if (capacityModal && capacityModal.style.display !== 'none' && this.currentOverflowPlayer != null && typeof this.showCapacityOverflowModal === 'function') {
@@ -3124,6 +3151,51 @@ class Game {
             return prefix + ' ' + parts.slice(1).join(' ');
         }
         return player.name;
+    }
+
+    getMonsterDisplayName(monster) {
+        if (!monster) return '';
+        const lang = (window.getLanguage && window.getLanguage()) || 'en';
+        return lang === 'zh'
+            ? (monster.ZH_name || monster.EN_name || '')
+            : (monster.EN_name || monster.ZH_name || '');
+    }
+
+    getMonsterImagePath(monster) {
+        if (!monster || monster.index === undefined || monster.index === null) return '';
+        return encodeURI(`Monster_Images/${monster.index}_${monster.EN_name}_${monster.ZH_name}.jpg`);
+    }
+
+    _renderBattleMonsterPortrait(monster) {
+        const img = document.getElementById('battle-monster-image');
+        const name = document.getElementById('battle-monster-name');
+        if (!img || !name) return;
+        if (!monster || monster.index === undefined || monster.index === null) {
+            img.src = '';
+            img.alt = '';
+            img.style.display = 'none';
+            name.textContent = '';
+            return;
+        }
+        const displayName = this.getMonsterDisplayName(monster);
+        img.src = this.getMonsterImagePath(monster);
+        img.alt = displayName;
+        img.style.display = '';
+        name.textContent = displayName;
+    }
+
+    _renderBattlePlayerWeapon(weaponName) {
+        const img = document.getElementById('battle-player-weapon-image');
+        if (!img) return;
+        if (!weaponName) {
+            img.src = '';
+            img.alt = '';
+            img.style.display = 'none';
+            return;
+        }
+        img.src = `${weaponName.toLowerCase()}.png`;
+        img.alt = this.getWeaponDisplayName(weaponName);
+        img.style.display = '';
     }
 
     showPlayerStatusIndicators(titleOnly = false) {
@@ -8431,42 +8503,42 @@ class Game {
         // Since we can't directly read CSV files in browser, we'll use the parsed data
         // Effect IDs correspond to the order in Monster.csv
         const monsterData = [
-            { level: 1, hp: 4, att: 1, money: 3, energy: 1, blood: 0, effect: "無", effectId: 1, pts: 2 },
-            { level: 1, hp: 4, att: 1, money: 0, energy: 3, blood: 0, effect: "血減半時，攻擊力+1", effectId: 2, pts: 3 },
-            { level: 1, hp: 4, att: 2, money: 2, energy: 1, blood: 0, effect: "偷走玩家2金幣", effectId: 3, pts: 4 },
-            { level: 1, hp: 3, att: 2, money: 0, energy: 1, blood: 1, effect: "死亡時，玩家及在森林裡的玩家-1血(不會導致玩家血歸零)", effectId: 4, pts: 3 },
-            { level: 1, hp: 3, att: 1, money: 0, energy: 0, blood: 1, effect: "玩家受傷無法獲得經驗", effectId: 5, pts: 2 },
-            { level: 1, hp: 3, att: 2, money: 0, energy: 0, blood: 1, effect: "玩家無法一次給予怪獸超過2點傷害", effectId: 6, pts: 4 },
-            { level: 1, hp: 3, att: 1, money: 1, energy: 1, blood: 0, effect: "玩家防禦力1以上先攻", effectId: 7, pts: 2 },
-            { level: 1, hp: 3, att: 2, money: 0, energy: 2, blood: 1, effect: "這回合其他怪獸+1血", effectId: 8, pts: 2 },
-            { level: 1, hp: 3, att: 3, money: 2, energy: 1, blood: 0, effect: "不在森林的玩家-1血", effectId: 9, pts: 4 },
-            { level: 1, hp: 2, att: 3, money: 0, energy: 1, blood: 1, effect: "每次玩家攻擊-1體力", effectId: 10, pts: 3 },
-            { level: 1, hp: 2, att: 3, money: 0, energy: 2, blood: 0, effect: "遭受攻擊後若沒有死亡+1血", effectId: 11, pts: 4 },
-            { level: 1, hp: 2, att: 3, money: 3, energy: 0, blood: 0, effect: "不怕手榴彈", effectId: 12, pts: 3 },
-            { level: 2, hp: 7, att: 2, money: 3, energy: 1, blood: 0, effect: "不在森林的玩家-1血", effectId: 13, pts: 7 },
-            { level: 2, hp: 7, att: 2, money: 0, energy: 3, blood: 0, effect: "玩家無法一次給予怪獸超過4點傷害", effectId: 14, pts: 8 },
-            { level: 2, hp: 7, att: 2, money: 2, energy: 1, blood: 0, effect: "不怕手榴彈、炸彈", effectId: 15, pts: 8 },
-            { level: 2, hp: 7, att: 3, money: 2, energy: 2, blood: 1, effect: "這回合其他怪獸+1血", effectId: 16, pts: 6 },
-            { level: 2, hp: 6, att: 2, money: 1, energy: 2, blood: 0, effect: "玩家防禦力3以上先攻", effectId: 17, pts: 6 },
-            { level: 2, hp: 6, att: 3, money: 2, energy: 0, blood: 1, effect: "玩家防禦力2以上先攻", effectId: 18, pts: 7 },
-            { level: 2, hp: 6, att: 4, money: 3, energy: 1, blood: 0, effect: "每次玩家攻擊-1體力", effectId: 19, pts: 8 },
-            { level: 2, hp: 6, att: 3, money: 0, energy: 3, blood: 1, effect: "需要+1體力收服", effectId: 20, pts: 6 },
-            { level: 2, hp: 5, att: 4, money: 2, energy: 1, blood: 0, effect: "玩家防禦力2以上先攻", effectId: 21, pts: 8 },
-            { level: 2, hp: 5, att: 4, money: 2, energy: 0, blood: 1, effect: "玩家受傷最多獲得2經驗", effectId: 22, pts: 7 },
-            { level: 2, hp: 5, att: 4, money: 0, energy: 2, blood: 1, effect: "不在森林的玩家-2經驗", effectId: 23, pts: 7 },
-            { level: 2, hp: 5, att: 3, money: 2, energy: 2, blood: 0, effect: "血減半時，攻擊力+1", effectId: 24, pts: 6 },
-            { level: 3, hp: 13, att: 3, money: 0, energy: 0, blood: 3, effect: "不在森林的玩家-2血", effectId: 25, pts: 15 },
-            { level: 3, hp: 12, att: 3, money: 1, energy: 3, blood: 0, effect: "血減半時，攻擊力+1", effectId: 26, pts: 15 },
-            { level: 3, hp: 12, att: 4, money: 0, energy: 1, blood: 2, effect: "玩家防禦力3以上先攻", effectId: 27, pts: 16 },
-            { level: 3, hp: 11, att: 3, money: 2, energy: 2, blood: 0, effect: "不在森林的玩家-2分", effectId: 28, pts: 14 },
-            { level: 3, hp: 11, att: 5, money: 2, energy: 1, blood: 1, effect: "每次玩家攻擊-1體力", effectId: 29, pts: 16 },
-            { level: 3, hp: 11, att: 4, money: 1, energy: 3, blood: 0, effect: "玩家無法一次給予怪獸超過6點傷害", effectId: 30, pts: 15 },
-            { level: 3, hp: 11, att: 4, money: 2, energy: 2, blood: 0, effect: "死亡時，玩家及在森林裡的玩家-1血(不會導致玩家血歸零)", effectId: 31, pts: 15 },
-            { level: 3, hp: 11, att: 5, money: 1, energy: 0, blood: 2, effect: "玩家防禦力4以上先攻", effectId: 32, pts: 16 },
-            { level: 3, hp: 10, att: 4, money: 3, energy: 1, blood: 0, effect: "這回合其他怪獸+1血", effectId: 33, pts: 14 },
-            { level: 3, hp: 10, att: 4, money: 4, energy: 0, blood: 0, effect: "玩家受傷最多獲得4經驗", effectId: 34, pts: 14 },
-            { level: 3, hp: 10, att: 4, money: 0, energy: 4, blood: 0, effect: "玩家防禦力3以上先攻", effectId: 35, pts: 14 },
-            { level: 3, hp: 10, att: 5, money: 2, energy: 1, blood: 0, effect: "不怕手榴彈、炸彈、炸藥", effectId: 36, pts: 16 }
+            { level: 1, hp: 4, att: 1, money: 3, energy: 1, blood: 0, effect: "無", effectId: 1, pts: 2, EN_name: "Lithic Golemite", ZH_name: "石蟻獸" },
+            { level: 1, hp: 4, att: 1, money: 0, energy: 3, blood: 0, effect: "血減半時，攻擊力+1", effectId: 2, pts: 3, EN_name: "Magma Hermit", ZH_name: "熔岩寄居蟹" },
+            { level: 1, hp: 4, att: 2, money: 2, energy: 1, blood: 0, effect: "偷走玩家2金幣", effectId: 3, pts: 4, EN_name: "Mag-Sprite", ZH_name: "磁吸小精靈" },
+            { level: 1, hp: 3, att: 2, money: 0, energy: 1, blood: 1, effect: "死亡時，玩家及在森林裡的玩家-1血(不會導致玩家血歸零)", effectId: 4, pts: 3, EN_name: "Toxic Pufferpod", ZH_name: "毒素河豚怪" },
+            { level: 1, hp: 3, att: 1, money: 0, energy: 0, blood: 1, effect: "玩家受傷無法獲得經驗", effectId: 5, pts: 2, EN_name: "Glitchwing Influx", ZH_name: "霧化干擾蟲" },
+            { level: 1, hp: 3, att: 2, money: 0, energy: 0, blood: 1, effect: "玩家無法一次給予怪獸超過2點傷害", effectId: 6, pts: 4, EN_name: "Silica Shield-Beast", ZH_name: "硬化硅晶獸" },
+            { level: 1, hp: 3, att: 1, money: 1, energy: 1, blood: 0, effect: "玩家防禦力1以上先攻", effectId: 7, pts: 2, EN_name: "Clumsy Monument", ZH_name: "笨重石偶" },
+            { level: 1, hp: 3, att: 2, money: 0, energy: 2, blood: 1, effect: "這回合其他怪獸+1血", effectId: 8, pts: 2, EN_name: "Spore Jelly", ZH_name: "發光孢子水母" },
+            { level: 1, hp: 3, att: 3, money: 2, energy: 1, blood: 0, effect: "不在森林的玩家-1血", effectId: 9, pts: 4, EN_name: "Kite Seeker", ZH_name: "追獵風箏幼體" },
+            { level: 1, hp: 2, att: 3, money: 0, energy: 1, blood: 1, effect: "每次玩家攻擊-1體力", effectId: 10, pts: 3, EN_name: "Tar Sludge", ZH_name: "黏滯泥魔" },
+            { level: 1, hp: 2, att: 3, money: 0, energy: 2, blood: 0, effect: "遭受攻擊後若沒有死亡+1血", effectId: 11, pts: 4, EN_name: "Mitotic Coagulant", ZH_name: "細胞分裂體" },
+            { level: 1, hp: 2, att: 3, money: 3, energy: 0, blood: 0, effect: "不怕手榴彈", effectId: 12, pts: 3, EN_name: "Aegis Beetle", ZH_name: "防爆盾甲蟲" },
+            { level: 2, hp: 7, att: 2, money: 3, energy: 1, blood: 0, effect: "不在森林的玩家-1血", effectId: 13, pts: 7, EN_name: "Arclight Sentinel", ZH_name: "異星長弓哨兵" },
+            { level: 2, hp: 7, att: 2, money: 0, energy: 3, blood: 0, effect: "玩家無法一次給予怪獸超過4點傷害", effectId: 14, pts: 8, EN_name: "Prism Refractor", ZH_name: "折射晶稜獸" },
+            { level: 2, hp: 7, att: 2, money: 2, energy: 1, blood: 0, effect: "不怕手榴彈、炸彈", effectId: 15, pts: 8, EN_name: "Alloy Armadillo", ZH_name: "重裝合金犰狳" },
+            { level: 2, hp: 7, att: 3, money: 2, energy: 2, blood: 1, effect: "這回合其他怪獸+1血", effectId: 16, pts: 6, EN_name: "Totem Automaton", ZH_name: "微光圖騰傀儡" },
+            { level: 2, hp: 6, att: 2, money: 1, energy: 2, blood: 0, effect: "玩家防禦力3以上先攻", effectId: 17, pts: 6, EN_name: "Mantis Shredder", ZH_name: "破甲螳螂" },
+            { level: 2, hp: 6, att: 3, money: 2, energy: 0, blood: 1, effect: "玩家防禦力2以上先攻", effectId: 18, pts: 7, EN_name: "Spark-Hound", ZH_name: "電弧獵犬" },
+            { level: 2, hp: 6, att: 4, money: 3, energy: 1, blood: 0, effect: "每次玩家攻擊-1體力", effectId: 19, pts: 8, EN_name: "Kinetic Ooze", ZH_name: "力場軟泥怪" },
+            { level: 2, hp: 6, att: 3, money: 0, energy: 3, blood: 1, effect: "需要+1體力收服", effectId: 20, pts: 6, EN_name: "Hypno-Siren Angler", ZH_name: "迷幻催眠釣手" },
+            { level: 2, hp: 5, att: 4, money: 2, energy: 1, blood: 0, effect: "玩家防禦力2以上先攻", effectId: 21, pts: 8, EN_name: "Void-Skiff Serpent", ZH_name: "迅捷虚空蛇" },
+            { level: 2, hp: 5, att: 4, money: 2, energy: 0, blood: 1, effect: "玩家受傷最多獲得2經驗", effectId: 22, pts: 7, EN_name: "Mnemonic Devourer", ZH_name: "記憶吞噬者" },
+            { level: 2, hp: 5, att: 4, money: 0, energy: 2, blood: 1, effect: "不在森林的玩家-2經驗", effectId: 23, pts: 7, EN_name: "Echo Resonance Spire", ZH_name: "回音干擾塔" },
+            { level: 2, hp: 5, att: 3, money: 2, energy: 2, blood: 0, effect: "血減半時，攻擊力+1", effectId: 24, pts: 6, EN_name: "Binary Berserker", ZH_name: "雙子狂暴者" },
+            { level: 3, hp: 13, att: 3, money: 0, energy: 0, blood: 3, effect: "不在森林的玩家-2血", effectId: 25, pts: 15, EN_name: "Void-Cannon Colossus", ZH_name: "虛空巨砲石像" },
+            { level: 3, hp: 12, att: 3, money: 1, energy: 3, blood: 0, effect: "血減半時，攻擊力+1", effectId: 26, pts: 15, EN_name: "Doom-Forge Titan", ZH_name: "末日熔岩泰坦" },
+            { level: 3, hp: 12, att: 4, money: 0, energy: 1, blood: 2, effect: "玩家防禦力3以上先攻", effectId: 27, pts: 16, EN_name: "Nightmare-Blade Stalker", ZH_name: "夢靨追獵巨刃" },
+            { level: 3, hp: 11, att: 3, money: 2, energy: 2, blood: 0, effect: "不在森林的玩家-2分", effectId: 28, pts: 14, EN_name: "Fate Depriver", ZH_name: "命運剝奪者" },
+            { level: 3, hp: 11, att: 5, money: 2, energy: 1, blood: 1, effect: "每次玩家攻擊-1體力", effectId: 29, pts: 16, EN_name: "Gravitational Singularity", ZH_name: "重力畸變怪" },
+            { level: 3, hp: 11, att: 4, money: 1, energy: 3, blood: 0, effect: "玩家無法一次給予怪獸超過6點傷害", effectId: 30, pts: 15, EN_name: "Shrine Warden", ZH_name: "神廟守護者" },
+            { level: 3, hp: 11, att: 4, money: 2, energy: 2, blood: 0, effect: "死亡時，玩家及在森林裡的玩家-1血(不會導致玩家血歸零)", effectId: 31, pts: 15, EN_name: "Unstable Core", ZH_name: "動盪核心" },
+            { level: 3, hp: 11, att: 5, money: 1, energy: 0, blood: 2, effect: "玩家防禦力4以上先攻", effectId: 32, pts: 16, EN_name: "Hell Executioner", ZH_name: "地獄斬首者" },
+            { level: 3, hp: 10, att: 4, money: 3, energy: 1, blood: 0, effect: "這回合其他怪獸+1血", effectId: 33, pts: 14, EN_name: "Void Matriarch", ZH_name: "虛空航母" },
+            { level: 3, hp: 10, att: 4, money: 4, energy: 0, blood: 0, effect: "玩家受傷最多獲得4經驗", effectId: 34, pts: 14, EN_name: "Cognitive Suppressor", ZH_name: "認知抑止裝置" },
+            { level: 3, hp: 10, att: 4, money: 0, energy: 4, blood: 0, effect: "玩家防禦力3以上先攻", effectId: 35, pts: 14, EN_name: "Rift Predator", ZH_name: "裂隙掠奪者" },
+            { level: 3, hp: 10, att: 5, money: 2, energy: 1, blood: 0, effect: "不怕手榴彈、炸彈、炸藥", effectId: 36, pts: 16, EN_name: "Ironclad Dreadnought", ZH_name: "鋼鐵移動要塞" }
         ];
 
         // Organize by level and add index for unique identification
@@ -8885,6 +8957,15 @@ class Game {
         document.getElementById('monster-blood-display').textContent = monster.blood;
         document.getElementById('monster-pts-display').textContent = monster.pts;
         document.getElementById('monster-effect-display').textContent = this.getMonsterEffectDisplay(monster);
+
+        const encImg = document.getElementById('monster-encountered-image');
+        const encName = document.getElementById('monster-encountered-name');
+        if (encImg && encName) {
+            const displayName = this.getMonsterDisplayName(monster);
+            encImg.src = this.getMonsterImagePath(monster);
+            encImg.alt = displayName;
+            encName.textContent = displayName;
+        }
 
         // Initialize beer consumption section
         const beerSection = document.getElementById('monster-select-beer-section');
@@ -9476,6 +9557,7 @@ class Game {
         document.getElementById('monster-battle').style.display = 'flex';
         document.getElementById('battle-player-name').textContent = this.getPlayerDisplayName(player);
         document.getElementById('battle-player-weapon').textContent = this.getWeaponDisplayName(player.weapon.name);
+        this._renderBattlePlayerWeapon(player.weapon.name);
         this.renderBattleDiceGrid(this.getEffectiveAttackArray(player), player.weapon.name);
         document.getElementById('battle-player-hp').textContent = `${player.resources.hp}/${player.maxResources.hp}`;
         document.getElementById('battle-player-ep').textContent = `${player.resources.ep}/${player.maxResources.ep}`;
@@ -9508,6 +9590,7 @@ class Game {
         }
         
         document.getElementById('battle-monster-level').textContent = battle.monster.level;
+        this._renderBattleMonsterPortrait(battle.monster);
         this.updateMonsterDisplay();
         
         // Display monster effect if present
@@ -14169,7 +14252,10 @@ class Game {
                 attack: battle.monster.attack || battle.monster.att || 0,
                 effect: battle.monster.effect || '',
                 effectId: battle.monster.effectId || 0,
-                rewards: battle.monster.rewards || null
+                rewards: battle.monster.rewards || null,
+                index: battle.monster.index,
+                EN_name: battle.monster.EN_name || '',
+                ZH_name: battle.monster.ZH_name || ''
             } : null,
             turn: battle.turn,
             bonusPts: battle.bonusPts || 0,
@@ -15133,6 +15219,7 @@ class Game {
         document.getElementById('monster-battle').style.display = 'flex';
         document.getElementById('battle-player-name').textContent = battleState.playerName;
         document.getElementById('battle-player-weapon').textContent = battleState.playerWeaponName ? this.getWeaponDisplayName(battleState.playerWeaponName) : '';
+        this._renderBattlePlayerWeapon(battleState.playerWeaponName);
         this.renderBattleDiceGrid(battleState.playerEffectiveAttack, battleState.playerWeaponName);
         document.getElementById('battle-player-hp').textContent = `${battleState.playerHP}/${battleState.playerMaxHP}`;
         document.getElementById('battle-player-ep').textContent = `${battleState.playerEP}/${battleState.playerMaxEP}`;
@@ -15142,8 +15229,10 @@ class Game {
             document.getElementById('battle-monster-hp').textContent = `${battleState.monster.hp}/${battleState.monster.maxHp}`;
             document.getElementById('battle-monster-att').textContent = battleState.monster.attack;
             this.updateMonsterEffectDisplay(battleState.monster);
+            this._renderBattleMonsterPortrait(battleState.monster);
         } else {
             this.updateMonsterEffectDisplay(null);
+            this._renderBattleMonsterPortrait(null);
         }
 
         // Show monster rewards
@@ -15172,6 +15261,7 @@ class Game {
 
         document.getElementById('battle-player-name').textContent = playerName;
         document.getElementById('battle-player-weapon').textContent = '';
+        this._renderBattlePlayerWeapon(null);
         this.renderBattleDiceGrid(null);
         document.getElementById('battle-player-hp').textContent = '';
         document.getElementById('battle-player-ep').textContent = '';
@@ -15182,6 +15272,7 @@ class Game {
         document.getElementById('battle-monster-att').textContent = '?';
         document.getElementById('battle-monster-rewards').textContent = '';
         this.updateMonsterEffectDisplay(null);
+        this._renderBattleMonsterPortrait(null);
 
         // Hide all buttons
         document.getElementById('battle-attack-btn').style.display = 'none';
@@ -15200,6 +15291,7 @@ class Game {
 
         document.getElementById('battle-player-name').textContent = playerName;
         document.getElementById('battle-player-weapon').textContent = '';
+        this._renderBattlePlayerWeapon(null);
         this.renderBattleDiceGrid(null);
         document.getElementById('battle-player-hp').textContent = '';
         document.getElementById('battle-player-ep').textContent = '';
@@ -15209,6 +15301,7 @@ class Game {
         document.getElementById('battle-monster-hp').textContent = `${monsterPreview.hp}/${monsterPreview.maxHp || monsterPreview.hp}`;
         document.getElementById('battle-monster-att').textContent = monsterPreview.att || monsterPreview.attack;
         this.updateMonsterEffectDisplay(monsterPreview);
+        this._renderBattleMonsterPortrait(monsterPreview);
 
         // Show rewards
         let rewards = [];
@@ -15234,6 +15327,7 @@ class Game {
         document.getElementById('monster-battle').style.display = 'flex';
         document.getElementById('battle-player-name').textContent = battleState.playerName;
         document.getElementById('battle-player-weapon').textContent = battleState.playerWeaponName ? this.getWeaponDisplayName(battleState.playerWeaponName) : '';
+        this._renderBattlePlayerWeapon(battleState.playerWeaponName);
         this.renderBattleDiceGrid(battleState.playerEffectiveAttack, battleState.playerWeaponName);
         document.getElementById('battle-player-hp').textContent = `${battleState.playerHP}/${battleState.playerMaxHP}`;
         document.getElementById('battle-player-ep').textContent = `${battleState.playerEP}/${battleState.playerMaxEP}`;
@@ -15243,7 +15337,9 @@ class Game {
             document.getElementById('battle-monster-hp').textContent = `${battleState.monster.hp}/${battleState.monster.maxHp}`;
             document.getElementById('battle-monster-att').textContent = battleState.monster.attack;
             this.updateMonsterEffectDisplay(battleState.monster);
+            this._renderBattleMonsterPortrait(battleState.monster);
         } else {
+            this._renderBattleMonsterPortrait(null);
             this.updateMonsterEffectDisplay(null);
         }
 
@@ -15945,7 +16041,10 @@ class Game {
             blood: monster.blood || 0,
             pts: monster.pts || 0,
             effect: monster.effect || '',
-            effectId: monster.effectId || 0
+            effectId: monster.effectId || 0,
+            index: monster.index,
+            EN_name: monster.EN_name || '',
+            ZH_name: monster.ZH_name || ''
         };
         this.onlineManager.pushGameState(state);
         this.waitingForGuestAction = true;

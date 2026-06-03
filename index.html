@@ -553,8 +553,11 @@
                 <h3 data-i18n="battle.title">Monster Battle</h3>
                 <div class="battle-info">
                     <div class="battle-player">
+                        <div class="weapon-portrait-block">
+                            <img id="battle-player-weapon-image" class="weapon-portrait" src="" alt="">
+                            <h5 id="battle-player-weapon" class="battle-player-weapon"></h5>
+                        </div>
                         <h4 id="battle-player-name">Player 1</h4>
-                        <h5 id="battle-player-weapon" class="battle-player-weapon"></h5>
                         <p class="battle-player-hp-line"><span data-i18n="battle.playerHP">HP:</span> <span id="battle-player-hp">4/4</span></p>
                         <p class="battle-player-ep-line"><span data-i18n="battle.playerEP">EP:</span> <span id="battle-player-ep">6/6</span></p>
                         <div id="battle-dice-grid" class="battle-dice-grid"></div>
@@ -566,6 +569,10 @@
                     </div>
                     <div class="vs" data-i18n="battle.vs">VS</div>
                     <div class="battle-monster">
+                        <div class="monster-portrait-block">
+                            <img id="battle-monster-image" class="monster-portrait" src="" alt="">
+                            <div id="battle-monster-name" class="monster-name"></div>
+                        </div>
                         <h4><span data-i18n="common.level">Level</span> <span id="battle-monster-level">1</span> <span data-i18n="common.monster">Monster</span></h4>
                         <p><span data-i18n="battle.playerHP">HP:</span> <span id="battle-monster-hp">4/4</span></p>
                         <p><span data-i18n="battle.monsterATT">ATT:</span> <span id="battle-monster-att">2</span></p>
@@ -662,6 +669,10 @@
                         <p><span data-i18n="monster.energy">🍺 Beer:</span> <span id="monster-energy-display"></span></p>
                         <p><span data-i18n="monster.blood">🩸 Blood:</span> <span id="monster-blood-display"></span></p>
                         <p><span data-i18n="monster.points">🏆 Points:</span> <span id="monster-pts-display"></span></p>
+                    </div>
+                    <div class="monster-portrait-block">
+                        <img id="monster-encountered-image" class="monster-portrait" src="" alt="">
+                        <div id="monster-encountered-name" class="monster-name"></div>
                     </div>
                     <div class="monster-effect">
                         <h4 data-i18n="monster.effect">Effect:</h4>

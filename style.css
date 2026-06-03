@@ -3671,8 +3671,23 @@ button {
 /* Monster Selection Modal Styles */
 .monster-info {
     display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+        "stats   portrait"
+        "rewards portrait"
+        "effect  effect";
     gap: 15px;
     margin-bottom: 20px;
+}
+
+.monster-info > .monster-stats          { grid-area: stats; }
+.monster-info > .monster-rewards        { grid-area: rewards; }
+.monster-info > .monster-portrait-block { grid-area: portrait; align-self: start; }
+.monster-info > .monster-effect         { grid-area: effect; }
+
+#monster-selection-modal .monster-portrait {
+    max-width: 200px;
+    max-height: 200px;
 }
 
 .monster-stats p,
@@ -3698,6 +3713,64 @@ button {
     color: #495057;
     font-style: italic;
     min-height: 20px;
+}
+
+.monster-portrait-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 8px;
+}
+
+.monster-portrait {
+    max-width: 140px;
+    max-height: 140px;
+    width: 100%;
+    height: auto;
+    border-radius: 6px;
+    object-fit: cover;
+    background: #e9ecef;
+}
+
+.monster-portrait[src=""],
+.monster-portrait:not([src]) {
+    display: none;
+}
+
+.monster-name {
+    font-weight: bold;
+    text-align: center;
+    font-size: 1.05em;
+    color: #ffffff;
+}
+
+.battle-monster .monster-portrait {
+    max-width: 110px;
+    max-height: 110px;
+}
+
+.weapon-portrait-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 6px;
+}
+
+.weapon-portrait {
+    max-width: 110px;
+    max-height: 110px;
+    width: 100%;
+    height: auto;
+    border-radius: 6px;
+    object-fit: cover;
+    background: #e9ecef;
+}
+
+.weapon-portrait[src=""],
+.weapon-portrait:not([src]) {
+    display: none;
 }
 
 .monster-actions {
