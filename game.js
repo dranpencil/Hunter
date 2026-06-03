@@ -17102,11 +17102,11 @@ class Game {
     getCannedKeysForTab(tabIndex) {
         switch (tabIndex) {
             case 0: // greeting
-                return ['chat.canned.greeting.0', 'chat.canned.greeting.1', 'chat.canned.greeting.2', 'chat.canned.greeting.3'];
+                return ['chat.canned.greeting.0', 'chat.canned.greeting.1', 'chat.canned.greeting.2', 'chat.canned.greeting.3', 'chat.canned.greeting.4'];
             case 1: // mid-game
-                return ['chat.canned.midgame.0', 'chat.canned.midgame.1', 'chat.canned.midgame.2', 'chat.canned.midgame.3', 'chat.canned.midgame.4', 'chat.canned.midgame.5'];
+                return ['chat.canned.midgame.0', 'chat.canned.midgame.1', 'chat.canned.midgame.2', 'chat.canned.midgame.3', 'chat.canned.midgame.4', 'chat.canned.midgame.5', 'chat.canned.midgame.6', 'chat.canned.midgame.7', 'chat.canned.midgame.8'];
             case 2: // closing
-                return ['chat.canned.closing.0', 'chat.canned.closing.1', 'chat.canned.closing.2', 'chat.canned.closing.3', 'chat.canned.closing.4', 'chat.canned.closing.5'];
+                return ['chat.canned.closing.0', 'chat.canned.closing.1', 'chat.canned.closing.2', 'chat.canned.closing.3', 'chat.canned.closing.4', 'chat.canned.closing.5', 'chat.canned.closing.6', 'chat.canned.closing.7'];
             case 3: // tactics
                 return ['chat.canned.tactics.0', 'chat.canned.tactics.1', 'chat.canned.tactics.2', 'chat.canned.tactics.3', 'chat.canned.tactics.4', 'chat.canned.tactics.5', 'chat.canned.tactics.6', 'chat.canned.tactics.7'];
             case 4: // locations

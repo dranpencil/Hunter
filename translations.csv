@@ -86,29 +86,35 @@ chat.tab.closing,Closing,結語
 chat.tab.tactics,Tactics,戰術
 chat.tab.locations,Location,區域
 chat.canned.greeting.0,Hello,你好
-chat.canned.greeting.1,"Good luck, have fun!",請多多指教
-chat.canned.greeting.2,"I'm a newbie, please go easy on me",我是新手，請鞭小力一點
-chat.canned.greeting.3,Long time no see,好久不見
-chat.canned.midgame.0,Let's have an epic showdown!,來個精彩的對決吧
+chat.canned.greeting.1,Let's have an epic showdown!,來個精彩的對決吧
+chat.canned.greeting.2,"Good luck, have fun!",請多多指教
+chat.canned.greeting.3,"I'm a newbie, please go easy on me","我是新手，請鞭小力一點"
+chat.canned.greeting.4,Long time no see,好久不見
+chat.canned.midgame.0,This is a tough choice,這個真難抉擇
 chat.canned.midgame.1,This monster is a real pain,這隻怪獸真難纏
-chat.canned.midgame.2,Looks like luck is on my side today,看來我今天的運氣比較好
-chat.canned.midgame.3,Let me take the lead for a bit,讓我領先一下
-chat.canned.midgame.4,Looks like there's still a chance,看起來還有機會
-chat.canned.midgame.5,Let's go,大夥進攻囉
+chat.canned.midgame.2,Please don't run away with the lead,拜託不要領先太多
+chat.canned.midgame.3,"You saw right through me. Impressive","被你猜到了，真厲害"
+chat.canned.midgame.4,Let me take the lead for a bit,讓我領先一下
+chat.canned.midgame.5,Looks like there's still a chance,看起來還有機會
+chat.canned.midgame.6,Let's go,大夥進攻囉
+chat.canned.midgame.7,"Sorry, I need a moment to think",抱歉我需要思考一下
+chat.canned.midgame.8,We're really in sync...,很有默契喔…
 chat.canned.closing.0,What a great game,這真是場精彩的比賽
-chat.canned.closing.1,You saw right through me. Impressive,被你猜到了，真厲害
-chat.canned.closing.2,"The score is so close, it’s a real nail-biter",比分差距不大，真是驚險
-chat.canned.closing.3,Sorry for winning by so much,不好意思贏太多
-chat.canned.closing.4,Thanks,謝謝
-chat.canned.closing.5,"That was fun! Rematch?","好玩，要不要再一場？"
+chat.canned.closing.1,Looks like luck is on my side today,看來我今天的運氣比較好
+chat.canned.closing.2,Looks like luck isn't on my side today,看來我今天的運氣比較差
+chat.canned.closing.3,"The score is so close, it's a real nail-biter","比分差距不大，真是驚險"
+chat.canned.closing.4,Sorry for winning by so much,不好意思贏太多
+chat.canned.closing.5,Looks like I should step aside,看來我該讓賢了
+chat.canned.closing.6,Thanks,謝謝
+chat.canned.closing.7,"That was fun! Rematch?","好玩，要不要再一場？"
 chat.canned.tactics.0,"I'm heading to __, and nobody's stopping me","我要去__，誰都別想跟我搶"
-chat.canned.tactics.1,"Watch out! Someone is heading for __",小心！有人要去__
-chat.canned.tactics.2,"__ is looking very tempting this round",這輪__變得很誘人耶
+chat.canned.tactics.1,Watch out! Someone is heading for __,小心！有人要去__
+chat.canned.tactics.2,__ is looking very tempting this round,這輪__變得很誘人耶
 chat.canned.tactics.3,"You really want that __, don't you?","看起來你很想去__，嘿嘿"
 chat.canned.tactics.4,"Everyone, block him! He's rushing for __!","大家快去圍堵他，衝向__"
-chat.canned.tactics.5,"Don't tell me you're planning to go to __?",該不會你想去__吧？
+chat.canned.tactics.5,Don't tell me you're planning to go to __?,該不會你想去__吧？
 chat.canned.tactics.6,"Seems we both want __. How about we take turns?","看來我們都很想去__，要不輪流一下"
-chat.canned.tactics.7,"Sorry, I need a moment to think","各位高抬貴手，讓去__一次拜託"
+chat.canned.tactics.7,"Please be lenient — let me go to __ just once","各位高抬貴手，讓我去__一次拜託"
 chat.canned.location.workSite,Work Site,工地
 chat.canned.location.bar,Bar,酒吧
 chat.canned.location.station,Station,車站
