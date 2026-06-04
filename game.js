@@ -6694,7 +6694,7 @@ class Game {
         return combination;
     }
     
-    handleBotMonsterSelection(player) {
+    async handleBotMonsterSelection(player) {
         // Initialize monster tracking if not set
         if (!player.monstersDefeated) {
             player.monstersDefeated = { level1: 0, level2: 0, level3: 0 };
@@ -6798,43 +6798,65 @@ class Game {
         }
         this.playerShownMonsters[player.id].add(selectedMonster.index);
 
+        const prepareDisplay = (mon) => {
+            mon.baseHp = mon.hp;
+            mon.maxHp = mon.hp;
+            mon.hpBonusFromEffect = 0;
+            const hpBonus = this.activeMonsterEffects.find(eff => eff.type === 'otherMonstersHPBonus');
+            if (hpBonus) {
+                mon.hp += hpBonus.value;
+                mon.maxHp += hpBonus.value;
+                mon.hpBonusFromEffect = hpBonus.value;
+            }
+            if (player.tokens.apprentice === 7) {
+                mon.hp = Math.max(1, mon.hp - 1);
+            }
+        };
+
+        // Show modal with first draw so the watcher can see what the bot picked
+        prepareDisplay(selectedMonster);
+        this.currentMonsterPlayer = player.id;
+        this.currentSelectedMonster = selectedMonster;
+        this.showMonsterSelectionUI(selectedMonster, player.id);
+        const monsterActions = document.querySelector('#monster-selection-modal .monster-actions');
+        if (monsterActions) monsterActions.style.display = 'none';
+        if (this.gameMode === 'online' && this.isHost) {
+            this.pushMonsterPreviewToGuest(player.id, selectedMonster);
+        }
+        await this.sleep(this.getDelay(1000));
+
         while (selectedMonster && selectedMonster.effectId &&
                this.checkBattleOrder(selectedMonster.effectId, defenseCount) &&
                player.resources.ep > 0) {
             // Monster would attack first — spend 1 EP to try another
             this.modifyResource(player.id, 'ep', -1);
             this.addLogEntryT('log.botChangedMonster', [player, defenseCount], 'battle', player);
+            await this.sleep(this.getDelay(1000));
 
             const newMonster = this.selectRandomAvailableMonster(selectedLevel, player.id);
             if (!newMonster) {
                 // No more monsters available — must fight current one
                 this.addLogEntryT('log.botNoMoreMonsters', [player], 'battle', player);
+                await this.sleep(this.getDelay(1000));
                 break;
             }
 
             this.playerShownMonsters[player.id].add(newMonster.index);
             selectedMonster = newMonster;
+            prepareDisplay(selectedMonster);
+            this.currentSelectedMonster = selectedMonster;
+            this.showMonsterSelectionUI(selectedMonster, player.id);
+            if (monsterActions) monsterActions.style.display = 'none';
+            if (this.gameMode === 'online' && this.isHost) {
+                this.pushMonsterPreviewToGuest(player.id, selectedMonster);
+            }
+            await this.sleep(this.getDelay(1000));
         }
 
-        // Store original HP and apply monster effect HP bonus
-        selectedMonster.baseHp = selectedMonster.hp; // HP before any bonuses
-        selectedMonster.maxHp = selectedMonster.hp;
-        selectedMonster.hpBonusFromEffect = 0;
-
-        // Apply other monsters HP bonus if active (effects 8, 16, 33)
-        const hpBonus = this.activeMonsterEffects.find(effect => effect.type === 'otherMonstersHPBonus');
-        if (hpBonus) {
-            selectedMonster.hp += hpBonus.value;
-            selectedMonster.maxHp += hpBonus.value;
-            selectedMonster.hpBonusFromEffect = hpBonus.value;
-            console.log(`Other monster HP bonus applied: +${hpBonus.value} HP (${selectedMonster.baseHp} -> ${selectedMonster.maxHp})`);
-        }
-
-        // Check if player's apprentice is also in Forest for -1 HP bonus
-        if (player.tokens.apprentice === 7) { // Forest location
-            selectedMonster.hp = Math.max(1, selectedMonster.hp - 1);
-            console.log(`${player.name}'s apprentice in Forest - monster HP reduced by 1 (${selectedMonster.maxHp} -> ${selectedMonster.hp})`);
-        }
+        // Final look at the accepted monster, then close the modal
+        await this.sleep(this.getDelay(1000));
+        document.getElementById('monster-selection-modal').style.display = 'none';
+        if (monsterActions) monsterActions.style.display = '';
 
         // Register this monster's effects for subsequent battles
         if (selectedMonster.effectId) {
@@ -6853,39 +6875,88 @@ class Game {
         console.log('startMonsterBattle called for bot');
     }
     
-    handleBotBattle(player, battle) {
+    async handleBotBattle(player, battle) {
         console.log('=== handleBotBattle called ===');
         console.log('Player:', player.name);
         console.log('Battle:', battle);
 
-        // Hide battle UI for bot (host only sees status message)
-        document.getElementById('monster-battle').style.display = 'none';
+        const monster = battle.monster;
 
-        // Show status message
+        // Show battle UI for bot so watchers can follow the fight
+        document.getElementById('monster-battle').style.display = 'flex';
+
+        document.getElementById('battle-player-name').textContent = this.getPlayerDisplayName(player);
+        document.getElementById('battle-player-weapon').textContent = this.getWeaponDisplayName(player.weapon.name);
+        this._renderBattlePlayerWeapon(player.weapon.name);
+        this.renderBattleDiceGrid(this.getEffectiveAttackArray(player), player.weapon.name);
+        document.getElementById('battle-player-hp').textContent = `${player.resources.hp}/${player.maxResources.hp}`;
+        document.getElementById('battle-player-ep').textContent = `${player.resources.ep}/${player.maxResources.ep}`;
+
+        document.getElementById('battle-monster-level').textContent = monster.level;
+        document.getElementById('battle-monster-hp').textContent = `${monster.hp}/${monster.maxHp || monster.hp}`;
+        document.getElementById('battle-monster-att').textContent = monster.att;
+        this.updateMonsterEffectDisplay(monster);
+        this._renderBattleMonsterPortrait(monster);
+
+        const rewards = [];
+        if (monster.pts > 0) rewards.push(`🏆${monster.pts}`);
+        if (monster.money > 0) rewards.push(`💰${monster.money}`);
+        if (monster.energy > 0) rewards.push(`🍺${monster.energy}`);
+        if (monster.blood > 0) rewards.push(`🩸${monster.blood}`);
+        const rewardsEl = document.getElementById('battle-monster-rewards');
+        if (rewardsEl) rewardsEl.textContent = rewards.join(' ');
+
+        ['battle-attack-btn','battle-tame-btn','battle-defense-btn','battle-double-damage-btn'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = 'none';
+        });
+        const itemBtns = document.getElementById('battle-item-buttons');
+        if (itemBtns) itemBtns.innerHTML = '';
+        const logEl = document.getElementById('battle-log');
+        if (logEl) logEl.innerHTML = '';
+
         const statusElement = document.getElementById('status-message');
         if (statusElement) {
-            statusElement.innerHTML = t('status.botBattling', this.getPlayerDisplayName(player), battle.monster.level);
+            statusElement.innerHTML = t('status.botBattling', this.getPlayerDisplayName(player), monster.level);
         }
-        
+
         // Log battle start
-        this.addLogEntryT('log.botEntersBattle', [player, battle.monster.level, battle.monster.hp, battle.monster.att], 'battle', player);
-        
-        console.log('About to start executeBotBattle with 1000ms delay');
-        // Auto-battle with delay for visualization
-        setTimeout(() => {
-            console.log('Executing bot battle now...');
-            this.executeBotBattle(player, battle);
-        }, this.getDelay(1000));
+        this.addLogEntryT('log.botEntersBattle', [player, monster.level, monster.hp, monster.att], 'battle', player);
+
+        await this.sleep(this.getDelay(1000));
+        await this.executeBotBattle(player, battle);
     }
     
-    executeBotBattle(player, battle) {
+    async executeBotBattle(player, battle) {
         console.log('=== executeBotBattle called ===');
         console.log('Player:', player.name);
         console.log('Battle:', battle);
         console.log('Monster:', battle.monster);
-        
+
         const monster = battle.monster;
         let battleActions = [];
+
+        // Mid-battle HP tracking for paced UI refresh and online state push.
+        // These are reassigned later when the full simulation begins; the drain helper
+        // reads whatever values are in scope at call time.
+        let currentPlayerHP = player.resources.hp;
+        let currentMonsterHP = monster.hp;
+
+        const drain = async () => {
+            while (battleActions.length > 0) {
+                const action = battleActions.shift();
+                if (typeof action === 'object' && action.k) {
+                    this.logBattleActionT(action.k, action.a || [], player);
+                } else {
+                    this.flushBattleAction(action, player);
+                }
+                this.refreshBotBattleUI(player, currentPlayerHP, currentMonsterHP);
+                if (this.isHost && this.gameMode === 'online') {
+                    try { this.onlineManager.pushGameState(this.serializeGameState()); } catch (e) {}
+                }
+                await this.sleep(this.getDelay(1000));
+            }
+        };
         
         console.log('Step 1: Calculating combat items...');
         // Calculate sure damage from combat items
@@ -6969,53 +7040,47 @@ class Game {
             // Apply victory rewards
             this.applyBotVictoryRewards(player, monster, battle, battleActions);
             console.log('Victory rewards applied.');
-            
-            // Log all battle actions (entries are either {k,a} structured or plain strings)
-            battleActions.forEach(action => {
-                this.flushBattleAction(action, player);
-            });
+
+            // Drain accumulated log entries one-by-one with 1 s pauses
+            currentMonsterHP = 0;
+            await drain();
 
             // Update displays after all battle changes
             this.updateResourceDisplay();
             this.updateInventoryDisplayOld();
             this.updateInventoryDisplay(player.id);
 
-            // Force a complete UI refresh for bot players
-            if (player.isBot) {
-                setTimeout(() => {
-                    this.updateResourceDisplay();
-                    this.updateInventoryDisplayOld();
-                    this.updateInventoryDisplay(player.id);
-                }, this.getDelay(100));
-            }
-            
-            // Continue to next battle or end battle phase
-            setTimeout(() => {
-                if (this.gameMode === 'online' && this.isHost) {
-                    if (this.remainingForestHunters && this.remainingForestHunters.length > 0) {
-                        this.handleForestEncountersOnline(this.remainingForestHunters);
-                    } else {
-                        this.playerShownMonsters = {};
-                        this.endRoundOnline();
-                    }
+            // Hide battle UI, pause, then continue to next battle or end battle phase
+            document.getElementById('monster-battle').style.display = 'none';
+            ['battle-attack-btn','battle-tame-btn','battle-defense-btn'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = '';
+            });
+            await this.sleep(this.getDelay(2000));
+            if (this.gameMode === 'online' && this.isHost) {
+                if (this.remainingForestHunters && this.remainingForestHunters.length > 0) {
+                    this.handleForestEncountersOnline(this.remainingForestHunters);
                 } else {
-                    if (this.remainingForestHunters && this.remainingForestHunters.length > 0) {
-                        this.handleForestEncounters(this.remainingForestHunters);
-                    } else {
-                        this.playerShownMonsters = {};
-                        this.endRound();
-                    }
+                    this.playerShownMonsters = {};
+                    this.endRoundOnline();
                 }
-            }, this.getDelay(2000));
+            } else {
+                if (this.remainingForestHunters && this.remainingForestHunters.length > 0) {
+                    this.handleForestEncounters(this.remainingForestHunters);
+                } else {
+                    this.playerShownMonsters = {};
+                    this.endRound();
+                }
+            }
 
             console.log('Ending executeBotBattle with instant kill.');
             return;
         }
         
         console.log('Step 3: Starting full battle simulation...');
-        // Simulate full battle
-        let currentPlayerHP = player.resources.hp;
-        let currentMonsterHP = monster.hp;
+        // Simulate full battle (currentPlayerHP / currentMonsterHP are declared at the top of the function)
+        currentPlayerHP = player.resources.hp;
+        currentMonsterHP = monster.hp;
         console.log('Initial state - Player HP:', currentPlayerHP, 'Monster HP:', currentMonsterHP);
         let battleRound = 1;
 
@@ -7138,12 +7203,14 @@ class Game {
                     currentMonsterHP -= retaliationDamage;
                     if (currentMonsterHP <= 0) {
                         battleActions.push({k:'battle.axeKill', a:[]});
+                        await drain();
                         break;
                     }
                 }
 
                 if (currentPlayerHP <= 0) {
                     battleActions.push({k:'battle.playerDefeated', a:[this.getPlayerDisplayName(player)]});
+                    await drain();
                     break;
                 }
             }
@@ -7243,6 +7310,7 @@ class Game {
             
             if (currentMonsterHP <= 0) {
                 battleActions.push({k:'battle.monsterDefeatedSimple', a:[]});
+                await drain();
                 break;
             }
 
@@ -7321,20 +7389,23 @@ class Game {
                     }
                 }
                 currentMonsterHP -= retaliationDamage;
-                
+
                 if (currentMonsterHP <= 0) {
                     battleActions.push({k:'battle.axeKill', a:[]});
+                    await drain();
                     break;
                 }
             }
             } // End of monster turn (if !monsterAttacksFirst)
 
+            await drain();
             battleRound++;
-            
+
             // Safety break to prevent infinite battles
             if (battleRound > 20) {
                 battleActions.push({k:'battle.timeout', a:[]});
                 currentPlayerHP = 0;
+                await drain();
                 break;
             }
         }
@@ -7349,44 +7420,37 @@ class Game {
             player.resources.hp = currentPlayerHP;
             this.applyBotVictoryRewards(player, monster, battle, battleActions);
         }
-        
-        // Log all battle actions (entries are either {k,a} structured or plain strings)
-        battleActions.forEach(action => {
-            this.flushBattleAction(action, player);
-        });
-        
+
+        // Drain final outcome lines (survival / victory rewards) one-by-one
+        await drain();
+
         // Update displays after all battle changes
         this.updateResourceDisplay();
         this.updateInventoryDisplayOld();
         this.updateInventoryDisplay(player.id);
-        
-        // Force a complete UI refresh for bot players
-        if (player.isBot) {
-            setTimeout(() => {
-                this.updateResourceDisplay();
-                this.updateInventoryDisplayOld();
-                this.updateInventoryDisplay(player.id);
-            }, this.getDelay(100));
-        }
-        
-        // Continue to next battle or end battle phase
-        setTimeout(() => {
-            if (this.gameMode === 'online' && this.isHost) {
-                if (this.remainingForestHunters && this.remainingForestHunters.length > 0) {
-                    this.handleForestEncountersOnline(this.remainingForestHunters);
-                } else {
-                    this.playerShownMonsters = {};
-                    this.endRoundOnline();
-                }
+
+        // Hide battle UI, pause, then continue to next battle or end battle phase
+        document.getElementById('monster-battle').style.display = 'none';
+        ['battle-attack-btn','battle-tame-btn','battle-defense-btn'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = '';
+        });
+        await this.sleep(this.getDelay(2000));
+        if (this.gameMode === 'online' && this.isHost) {
+            if (this.remainingForestHunters && this.remainingForestHunters.length > 0) {
+                this.handleForestEncountersOnline(this.remainingForestHunters);
             } else {
-                if (this.remainingForestHunters && this.remainingForestHunters.length > 0) {
-                    this.handleForestEncounters(this.remainingForestHunters);
-                } else {
-                    this.playerShownMonsters = {};
-                    this.endRound();
-                }
+                this.playerShownMonsters = {};
+                this.endRoundOnline();
             }
-        }, this.getDelay(2000));
+        } else {
+            if (this.remainingForestHunters && this.remainingForestHunters.length > 0) {
+                this.handleForestEncounters(this.remainingForestHunters);
+            } else {
+                this.playerShownMonsters = {};
+                this.endRound();
+            }
+        }
     }
     
     applyBotVictoryRewards(player, monster, battle, battleActions) {
@@ -12795,6 +12859,22 @@ class Game {
         }
         return delay;
     }
+
+    sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    refreshBotBattleUI(player, currentPlayerHP, currentMonsterHP) {
+        const hpEl = document.getElementById('battle-player-hp');
+        const epEl = document.getElementById('battle-player-ep');
+        const monsterHpEl = document.getElementById('battle-monster-hp');
+        if (hpEl && player) hpEl.textContent = `${Math.max(0, currentPlayerHP)}/${player.maxResources.hp}`;
+        if (epEl && player) epEl.textContent = `${Math.max(0, player.resources.ep)}/${player.maxResources.ep}`;
+        if (monsterHpEl && this.currentBattle && this.currentBattle.monster) {
+            const maxHp = this.currentBattle.monster.maxHp || this.currentBattle.monster.hp;
+            monsterHpEl.textContent = `${Math.max(0, currentMonsterHP)}/${maxHp}`;
+        }
+    }
     
     showDataCollectionModal() {
         console.log('[DEBUG] showDataCollectionModal called');
@@ -15458,6 +15538,15 @@ class Game {
         document.getElementById('monster-blood-display').textContent = monsterData.blood;
         document.getElementById('monster-pts-display').textContent = monsterData.pts;
         document.getElementById('monster-effect-display').textContent = this.getMonsterEffectDisplay(monsterData);
+
+        const encImg = document.getElementById('monster-encountered-image');
+        const encName = document.getElementById('monster-encountered-name');
+        if (encImg && encName) {
+            const displayName = this.getMonsterDisplayName(monsterData);
+            encImg.src = this.getMonsterImagePath(monsterData);
+            encImg.alt = displayName;
+            encName.textContent = displayName;
+        }
 
         // Hide beer section (beer was already consumed in level selection)
         const beerSection = document.getElementById('monster-select-beer-section');
