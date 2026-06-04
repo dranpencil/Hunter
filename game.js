@@ -4078,9 +4078,8 @@ class Game {
                 const colorDot = colorOpt
                     ? `<span class="slot-color-dot" style="background: ${colorOpt.bg}; border: 1px solid ${colorOpt.border};"></span>`
                     : `<span class="slot-color-dot" style="background: linear-gradient(90deg, #e67e22, #27ae60, #3498db, #9b59b6); border: 1px solid #666;"></span>`;
-                const colorLabel = colorOpt ? colorOpt.label : t('color.random');
                 const weaponLabel = prefWeapon !== 'random' ? this.getWeaponDisplayName(prefWeapon) : t('weaponSelect.random');
-                const picksHtml = `<span class="slot-picks">${colorDot} ${colorLabel} · ${weaponLabel}</span>`;
+                const picksHtml = `<span class="slot-picks">${colorDot} ${weaponLabel}</span>`;
 
                 const readyIcon = data.isReady ? '&#x2705;' : '&#x1F534;';
                 li.innerHTML = `${label} <span class="slot-status">${readyIcon}</span>${picksHtml}`;
@@ -6813,15 +6812,19 @@ class Game {
             }
         };
 
+        // Ensure no stale spectator paint of #monster-battle bleeds behind the modal
+        document.getElementById('monster-battle').style.display = 'none';
+
         // Show modal with first draw so the watcher can see what the bot picked
         prepareDisplay(selectedMonster);
         this.currentMonsterPlayer = player.id;
         this.currentSelectedMonster = selectedMonster;
         this.showMonsterSelectionUI(selectedMonster, player.id);
+        document.getElementById('monster-battle').style.display = 'none';  // re-hide in case anything repainted it
         const monsterActions = document.querySelector('#monster-selection-modal .monster-actions');
         if (monsterActions) monsterActions.style.display = 'none';
         if (this.gameMode === 'online' && this.isHost) {
-            this.pushMonsterPreviewToGuest(player.id, selectedMonster);
+            this.pushMonsterPreviewToGuest(player.id, selectedMonster, true);
         }
         await this.sleep(this.getDelay(1000));
 
@@ -6846,9 +6849,10 @@ class Game {
             prepareDisplay(selectedMonster);
             this.currentSelectedMonster = selectedMonster;
             this.showMonsterSelectionUI(selectedMonster, player.id);
+            document.getElementById('monster-battle').style.display = 'none';  // re-hide in case anything repainted it
             if (monsterActions) monsterActions.style.display = 'none';
             if (this.gameMode === 'online' && this.isHost) {
-                this.pushMonsterPreviewToGuest(player.id, selectedMonster);
+                this.pushMonsterPreviewToGuest(player.id, selectedMonster, true);
             }
             await this.sleep(this.getDelay(1000));
         }
@@ -6923,6 +6927,11 @@ class Game {
         // Log battle start
         this.addLogEntryT('log.botEntersBattle', [player, monster.level, monster.hp, monster.att], 'battle', player);
 
+        // Online host: push initial battle state so guests open #monster-battle immediately
+        if (this.isHost && this.gameMode === 'online') {
+            try { this.pushBattleStateToGuest(); } catch (e) {}
+        }
+
         await this.sleep(this.getDelay(1000));
         await this.executeBotBattle(player, battle);
     }
@@ -6952,7 +6961,23 @@ class Game {
                 }
                 this.refreshBotBattleUI(player, currentPlayerHP, currentMonsterHP);
                 if (this.isHost && this.gameMode === 'online') {
-                    try { this.onlineManager.pushGameState(this.serializeGameState()); } catch (e) {}
+                    if (this.currentBattle && this.currentBattle.monster) {
+                        this.currentBattle.monster.hp = Math.max(0, currentMonsterHP);
+                    }
+                    player.resources.hp = Math.max(0, currentPlayerHP);
+                    try {
+                        const battleState = this.serializeBattleState();
+                        if (battleState) battleState.isActive = true;  // keep spectator visible through post-fight log lines
+                        const state = this.serializeGameState();
+                        state.roundPhase = 'battle';
+                        state.battleState = battleState;
+                        if (battleState) {
+                            state.currentBattlePlayerId = battleState.playerId;
+                            state.battlePhase = 'active';
+                            state.guestBattle = false;
+                        }
+                        this.onlineManager.pushGameState(state);
+                    } catch (e) {}
                 }
                 await this.sleep(this.getDelay(1000));
             }
@@ -7050,13 +7075,26 @@ class Game {
             this.updateInventoryDisplayOld();
             this.updateInventoryDisplay(player.id);
 
-            // Hide battle UI, pause, then continue to next battle or end battle phase
+            // Let watchers (host + guest) linger on the final state before tearing down
+            await this.sleep(this.getDelay(2000));
+
+            // Hide battle UI on host and tell guest to hide their spectator too
             document.getElementById('monster-battle').style.display = 'none';
             ['battle-attack-btn','battle-tame-btn','battle-defense-btn'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.style.display = '';
             });
-            await this.sleep(this.getDelay(2000));
+            if (this.gameMode === 'online' && this.isHost) {
+                try {
+                    const endState = this.serializeGameState();
+                    endState.roundPhase = 'battle';
+                    endState.battleState = null;
+                    endState.battlePhase = 'ended';
+                    endState.guestBattle = false;
+                    this.onlineManager.pushGameState(endState);
+                } catch (e) {}
+            }
+
             if (this.gameMode === 'online' && this.isHost) {
                 if (this.remainingForestHunters && this.remainingForestHunters.length > 0) {
                     this.handleForestEncountersOnline(this.remainingForestHunters);
@@ -7414,6 +7452,7 @@ class Game {
         if (currentPlayerHP <= 0) {
             // Bot lost
             player.resources.hp = 1; // Set HP to 1 on defeat
+            currentPlayerHP = 1;     // keep drain's HP mirror in sync — without this it overwrites back to 0
             battleActions.push({k:'battle.survivedWith1HP', a:[this.getPlayerDisplayName(player)]});
         } else {
             // Bot won - update HP after battle
@@ -7429,13 +7468,26 @@ class Game {
         this.updateInventoryDisplayOld();
         this.updateInventoryDisplay(player.id);
 
-        // Hide battle UI, pause, then continue to next battle or end battle phase
+        // Let watchers (host + guest) linger on the final state before tearing down
+        await this.sleep(this.getDelay(2000));
+
+        // Hide battle UI on host and tell guest to hide their spectator too
         document.getElementById('monster-battle').style.display = 'none';
         ['battle-attack-btn','battle-tame-btn','battle-defense-btn'].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.style.display = '';
         });
-        await this.sleep(this.getDelay(2000));
+        if (this.gameMode === 'online' && this.isHost) {
+            try {
+                const endState = this.serializeGameState();
+                endState.roundPhase = 'battle';
+                endState.battleState = null;
+                endState.battlePhase = 'ended';
+                endState.guestBattle = false;
+                this.onlineManager.pushGameState(endState);
+            } catch (e) {}
+        }
+
         if (this.gameMode === 'online' && this.isHost) {
             if (this.remainingForestHunters && this.remainingForestHunters.length > 0) {
                 this.handleForestEncountersOnline(this.remainingForestHunters);
@@ -15168,18 +15220,27 @@ class Game {
     }
 
     handleGuestBattleStateUpdate(state) {
+        const closeEncounterModal = () => {
+            document.getElementById('monster-selection-modal').style.display = 'none';
+            const actions = document.querySelector('#monster-selection-modal .monster-actions');
+            if (actions) actions.style.display = '';
+            const beerSection = document.getElementById('monster-select-beer-section');
+            if (beerSection) beerSection.style.display = '';
+        };
+
         if (!state.guestBattle) {
             // Not the guest's battle - spectate if there's an active battle
             if (state.battleState) {
+                closeEncounterModal();
                 this.showBattleSpectator(state.battleState);
             } else if (state.battlePhase === 'monster_select' && state.currentBattlePlayerId !== undefined) {
                 const battlePlayer = this.players.find(p => p.id === state.currentBattlePlayerId);
                 this.showMonsterSelectSpectator(battlePlayer ? battlePlayer.name : 'Unknown');
             } else if (state.battlePhase === 'monster_preview' && state.monsterPreview) {
-                const battlePlayer = this.players.find(p => p.id === state.currentBattlePlayerId);
-                this.showMonsterPreviewSpectator(battlePlayer ? battlePlayer.name : 'Unknown', state.monsterPreview);
+                this.showMonsterEncounterForGuestSpectator(state.monsterPreview, state.currentBattlePlayerId);
             } else {
                 document.getElementById('monster-battle').style.display = 'none';
+                closeEncounterModal();
             }
             return;
         }
@@ -15187,13 +15248,13 @@ class Game {
         if (state.currentBattlePlayerId !== this.localPlayerId) {
             // Spectating someone else's battle
             if (state.battleState) {
+                closeEncounterModal();
                 this.showBattleSpectator(state.battleState);
             } else if (state.battlePhase === 'monster_select') {
                 const battlePlayer = this.players.find(p => p.id === state.currentBattlePlayerId);
                 this.showMonsterSelectSpectator(battlePlayer ? battlePlayer.name : 'Unknown');
             } else if (state.battlePhase === 'monster_preview' && state.monsterPreview) {
-                const battlePlayer = this.players.find(p => p.id === state.currentBattlePlayerId);
-                this.showMonsterPreviewSpectator(battlePlayer ? battlePlayer.name : 'Unknown', state.monsterPreview);
+                this.showMonsterEncounterForGuestSpectator(state.monsterPreview, state.currentBattlePlayerId);
             }
             return;
         }
@@ -15275,6 +15336,7 @@ class Game {
                 const battleLog = document.getElementById('battle-log');
                 if (battleLog) {
                     battleLog.innerHTML = state.battleState.battleLogHTML;
+                    battleLog.scrollTop = battleLog.scrollHeight;
                 }
             }
 
@@ -15297,7 +15359,7 @@ class Game {
 
         // Show battle UI in read-only mode
         document.getElementById('monster-battle').style.display = 'flex';
-        document.getElementById('battle-player-name').textContent = battleState.playerName;
+        document.getElementById('battle-player-name').textContent = this._translatePlayerName(battleState.playerName);
         document.getElementById('battle-player-weapon').textContent = battleState.playerWeaponName ? this.getWeaponDisplayName(battleState.playerWeaponName) : '';
         this._renderBattlePlayerWeapon(battleState.playerWeaponName);
         this.renderBattleDiceGrid(battleState.playerEffectiveAttack, battleState.playerWeaponName);
@@ -15329,7 +15391,9 @@ class Game {
 
         // Show battle log
         if (battleState.battleLogHTML) {
-            document.getElementById('battle-log').innerHTML = battleState.battleLogHTML;
+            const battleLog = document.getElementById('battle-log');
+            battleLog.innerHTML = battleState.battleLogHTML;
+            battleLog.scrollTop = battleLog.scrollHeight;
         }
 
         document.getElementById('battle-turn').textContent = t('battle.watching', this._translatePlayerName(battleState.playerName));
@@ -15365,11 +15429,41 @@ class Game {
         document.getElementById('battle-turn').textContent = t('battle.choosingMonsterLevel', this._translatePlayerName(playerName));
     }
 
+    showMonsterEncounterForGuestSpectator(monsterPreview, playerId) {
+        // Open the same Monster Encountered modal the host sees, in read-only mode
+        document.getElementById('monster-battle').style.display = 'none';
+
+        const monster = {
+            level: monsterPreview.level,
+            hp: monsterPreview.hp,
+            maxHp: monsterPreview.maxHp || monsterPreview.hp,
+            att: monsterPreview.att || monsterPreview.attack || 0,
+            money: monsterPreview.money || 0,
+            energy: monsterPreview.energy || 0,
+            blood: monsterPreview.blood || 0,
+            pts: monsterPreview.pts || 0,
+            effect: monsterPreview.effect || '',
+            effectId: monsterPreview.effectId || 0,
+            index: monsterPreview.index,
+            EN_name: monsterPreview.EN_name || '',
+            ZH_name: monsterPreview.ZH_name || ''
+        };
+
+        this.currentMonsterPlayer = playerId;
+        this.currentSelectedMonster = monster;
+        this.showMonsterSelectionUI(monster, playerId);
+
+        const actions = document.querySelector('#monster-selection-modal .monster-actions');
+        if (actions) actions.style.display = 'none';
+        const beerSection = document.getElementById('monster-select-beer-section');
+        if (beerSection) beerSection.style.display = 'none';
+    }
+
     showMonsterPreviewSpectator(playerName, monsterPreview) {
         const battleDiv = document.getElementById('monster-battle');
         battleDiv.style.display = 'flex';
 
-        document.getElementById('battle-player-name').textContent = playerName;
+        document.getElementById('battle-player-name').textContent = this._translatePlayerName(playerName);
         document.getElementById('battle-player-weapon').textContent = '';
         this._renderBattlePlayerWeapon(null);
         this.renderBattleDiceGrid(null);
@@ -15405,7 +15499,7 @@ class Game {
     showBattleUIForGuest(battleState) {
         // Show full battle UI with controls for the guest
         document.getElementById('monster-battle').style.display = 'flex';
-        document.getElementById('battle-player-name').textContent = battleState.playerName;
+        document.getElementById('battle-player-name').textContent = this._translatePlayerName(battleState.playerName);
         document.getElementById('battle-player-weapon').textContent = battleState.playerWeaponName ? this.getWeaponDisplayName(battleState.playerWeaponName) : '';
         this._renderBattlePlayerWeapon(battleState.playerWeaponName);
         this.renderBattleDiceGrid(battleState.playerEffectiveAttack, battleState.playerWeaponName);
@@ -15433,6 +15527,7 @@ class Game {
         battleLog.innerHTML = '';
         if (battleState.battleLogHTML) {
             battleLog.innerHTML = battleState.battleLogHTML;
+            battleLog.scrollTop = battleLog.scrollHeight;
         }
 
         const attackBtn = document.getElementById('battle-attack-btn');
@@ -16113,7 +16208,7 @@ class Game {
         this.pushBattleStateToGuest();
     }
 
-    pushMonsterPreviewToGuest(playerId, monster) {
+    pushMonsterPreviewToGuest(playerId, monster, skipHostSpectator = false) {
         const state = this.serializeGameState();
         state.roundPhase = 'battle';
         state.guestBattle = true;
@@ -16139,7 +16234,7 @@ class Game {
         this.waitingForGuestAction = true;
 
         // Show host spectator view of monster preview
-        if (this.isHost && playerId !== this.localPlayerId) {
+        if (!skipHostSpectator && this.isHost && playerId !== this.localPlayerId) {
             const battlePlayer = this.players.find(p => p.id === playerId);
             this.showMonsterPreviewSpectator(battlePlayer ? battlePlayer.name : 'Unknown', state.monsterPreview);
         }
